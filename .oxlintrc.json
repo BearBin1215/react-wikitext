@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "jsx-a11y",
+    "import",
+    "promise",
+    "node",
+    "vitest"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-empty-object-type": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/refs": "error",
+    "react/set-state-in-effect": "warn",
+    "unicorn/require-post-message-target-origin": "off",
+    "vitest/valid-expect": "off"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.{ts,tsx}"],
+      "rules": {
+        "vitest/no-conditional-expect": "off",
+        "vitest/valid-title": "off",
+        "vitest/require-mock-type-parameters": "off"
+      }
+    }
+  ],
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true,
+    "vitest": true
+  },
+  "ignorePatterns": ["dist/**", "**/dist/**", "**/dist-*/**", "node_modules/**", "coverage/**"]
+}

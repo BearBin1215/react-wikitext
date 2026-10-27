@@ -1,0 +1,53 @@
+{
+  "name": "react-wikitext",
+  "version": "0.1.0-alpha.2",
+  "description": "React components for rendering wikitext.",
+  "keywords": [
+    "hast",
+    "mediawiki",
+    "parser",
+    "react",
+    "renderer",
+    "unified",
+    "wiki",
+    "wikitext"
+  ],
+  "homepage": "https://react-wikitext.pages.dev",
+  "bugs": {
+    "url": "https://github.com/BearBin1215/react-wikitext/issues"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "React Wikitext contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BearBin1215/react-wikitext.git"
+  },
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/hast": "3.0.5",
+    "@types/node": "24.19.2",
+    "@types/unist": "3.0.3",
+    "entities": "8.1.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "packageManager": "pnpm@10.34.9"
+}
