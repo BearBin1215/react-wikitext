@@ -10,6 +10,7 @@ import {
 import { PARSE_MAX_STAGE } from "@/parse/loadParser";
 import { MEDIAWIKI_CONFIG, type ParserConfig } from "@/configs";
 import { normalizeConfig } from "@/configs/config";
+import { prepareWikitext, type WikitextPrepareOptions } from "@/hast";
 
 const require = createRequire(import.meta.url);
 interface NodeParserModule {
@@ -58,6 +59,10 @@ export function parse(source: string, options: TestParseOptions = {}): WikitextD
   return config
     ? createParser(config).parse(source, parseOptions)
     : parseWikitext(source, parseOptions);
+}
+
+export function prepare(source: string, options: WikitextPrepareOptions = {}) {
+  return prepareWikitext(parse(source), options);
 }
 
 function oracleJson(source: string, config: ParserConfig = MEDIAWIKI_CONFIG): OracleNode {

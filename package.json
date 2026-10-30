@@ -43,9 +43,12 @@
     "@types/node": "24.19.2",
     "@types/unist": "3.0.3",
     "entities": "8.1.0",
+    "hast-util-sanitize": "5.0.2",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",
     "typescript": "6.0.3",
+    "unified": "11.0.5",
+    "vfile": "6.0.3",
     "vite": "8.3.5",
     "vitest": "5.0.5"
   },
