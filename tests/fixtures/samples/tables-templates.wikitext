@@ -1,0 +1,47 @@
+{{Sample top}}
+{{Sample info
+|image=Table-sample-a.png
+|名称=表格样本
+|别名=表格、{{lang|ja|{{Ruby|表|ひょう}}格}}<ref>[https://example.net/a/table {{lang|ja|表格}} - Example Wiki]</ref>
+|相关条目=[[目标甲]]、[[目标乙]]、[[目标丙]]
+|空参数=
+}}
+
+'''表格样本'''（{{lang|ja|'''テーブル'''}}）是解析回归用的合成条目，正文只描述本条样本自身。
+
+== 语法说明 ==
+本段包含[[目标甲]]（如[[目标丁]]）、[[目标乙]]（如[[目标戊]]）和'''粗体'''、''斜体''、'''''粗斜体'''''。
+
+重复的表格只保留两张：一张验证普通单元格，一张验证单元格内的列表与 HTML。
+
+== 表格 ==
+{| class="wikitable" width="75%"
+!style="background:#f0d0f0" width="120"|种类
+!style="background:#f0d0f0"|范例
+|-
+|第一类||[[目标甲]]、[[目标乙]]、[[目标丙]]、[[目标丁]]等
+|-
+|第二类||[[目标戊|别名甲(目标戊)]]、[[目标己]]、[[目标庚]]、[[目标辛|别名乙(目标辛)]]等
+|}
+
+=== 单元格内的列表与 HTML ===
+{| class="wikitable" width="75%"
+!style="background:#f0d0f0" width="120"|种类
+!style="background:#f0d0f0"|范例
+|-
+|含列表||
+* 子项一：[[目标甲]]、[[目标乙]](附加：[[目标丙]]、[[目标丁|别名丙(目标丁)]])等
+* 子项二：[[目标戊]]、[[目标己]]（[[目标庚]]）等
+|-
+|含 HTML||[[目标辛|<abbr title="example" lang="en">别名丁</abbr>]]、<abbr title="demo" lang="en">别名戊</abbr>等
+|}
+
+{{Sample navbox}}
+
+== 注释与外部链接 ==
+<references/>
+{{To wikipedia|Category:Test sample}}
+
+[[分类:测试样本]]
+[[Category:Test samples| ]]
+[[en:Test sample]]

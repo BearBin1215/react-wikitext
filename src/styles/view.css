@@ -1,0 +1,517 @@
+@import "./tokens.css";
+
+.wtr-view {
+  color: var(--wtr-text);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+}
+
+.wtr-view .wtr-paragraph {
+  margin: 0 0 0.9em;
+}
+
+.wtr-view .wtr-heading {
+  margin: 1.4em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+  border-bottom: 1px solid var(--wtr-border);
+  padding-bottom: 0.2em;
+}
+
+.wtr-view h1.wtr-heading {
+  font-size: 1.8em;
+}
+.wtr-view h2.wtr-heading {
+  font-size: 1.5em;
+}
+.wtr-view h3.wtr-heading {
+  font-size: 1.3em;
+  border-bottom: 0;
+}
+.wtr-view h4.wtr-heading {
+  font-size: 1.15em;
+  border-bottom: 0;
+}
+.wtr-view h5.wtr-heading,
+.wtr-view h6.wtr-heading {
+  font-size: 1em;
+  border-bottom: 0;
+}
+
+.wtr-view .wtr-hr {
+  border: 0;
+  border-top: 1px solid var(--wtr-border);
+  margin: 1.2em 0;
+}
+
+.wtr-link {
+  color: var(--wtr-accent);
+  text-decoration: none;
+  cursor: default;
+}
+
+.wtr-link--resolved,
+.wtr-ext-link {
+  cursor: pointer;
+}
+
+.wtr-ext-link {
+  color: var(--wtr-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.wtr-link--blocked {
+  color: var(--wtr-muted);
+  text-decoration: line-through;
+}
+
+.wtr-redirect {
+  margin: 0 0 1em;
+  padding: 0.5em 0.75em;
+  border-left: 3px solid var(--wtr-accent);
+  background: var(--wtr-placeholder-bg);
+  font-size: 0.95em;
+}
+
+.wtr-redirect__label {
+  margin: 0;
+  color: var(--wtr-muted);
+}
+
+.wtr-redirect__list {
+  margin: 0.25em 0 0;
+  padding-left: 1.5em;
+}
+
+.wtr-unknown--inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  max-width: 100%;
+  padding: 0.05em 0.4em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 4px;
+  background: var(--wtr-placeholder-bg);
+  vertical-align: baseline;
+  font-size: 0.8em;
+}
+
+.wtr-unknown__label {
+  color: var(--wtr-muted);
+  white-space: nowrap;
+}
+
+.wtr-unknown__source {
+  font-family: var(--wtr-font-mono);
+  font-size: 0.95em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wtr-unknown--block {
+  margin: 0 0 1em;
+  padding: 0.6em 0.75em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-unknown--block .wtr-unknown__source {
+  margin: 0.4em 0 0;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.wtr-list {
+  margin: 0.4em 0 0.9em;
+  padding-left: 1.7em;
+  /* 宿主常见的 CSS reset（Tailwind、Rspress 等）会清掉列表标记，这里显式声明。 */
+  list-style-position: outside;
+}
+
+.wtr-list--ul {
+  list-style-type: disc;
+}
+
+.wtr-list--ol {
+  list-style-type: decimal;
+}
+
+.wtr-list .wtr-list {
+  margin: 0.2em 0;
+}
+
+.wtr-list__item > .wtr-list {
+  margin-top: 0.2em;
+}
+
+.wtr-list--dl .wtr-list__item {
+  margin: 0.2em 0;
+}
+
+dl.wtr-list dt.wtr-list__item {
+  font-weight: 600;
+}
+
+dl.wtr-list dd.wtr-list__item {
+  margin-left: 1.2em;
+}
+
+.wtr-table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  max-width: 100%;
+  font-size: 0.95em;
+}
+
+.wtr-table__caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  padding: 0.25em 0.4em;
+}
+
+.wtr-table__cell {
+  border: 1px solid var(--wtr-border);
+  padding: 0.3em 0.6em;
+  vertical-align: top;
+  text-align: left;
+}
+
+.wtr-table__cell--filler {
+  border: 0;
+  padding: 0;
+}
+
+.wtr-table__cell th,
+th.wtr-table__cell {
+  font-weight: 600;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-table--degraded {
+  margin: 0.8em 0;
+  padding: 0.6em 0.75em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-table--degraded .wtr-unknown__source {
+  margin: 0.4em 0 0;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.wtr-fragment {
+  display: contents;
+}
+
+.wtr-template {
+  margin: 0.5em 0;
+  border: 1px solid var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+  font-size: 0.92em;
+}
+
+.wtr-template--inline,
+.wtr-magic-word,
+.wtr-argument {
+  display: inline-block;
+  padding: 0 0.35em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 4px;
+  background: var(--wtr-placeholder-bg);
+  color: var(--wtr-muted);
+  font-size: 0.85em;
+}
+
+.wtr-template__summary {
+  padding: 0.4em 0.6em;
+  cursor: pointer;
+  color: var(--wtr-muted);
+}
+
+.wtr-template__params {
+  margin: 0;
+  padding: 0 0.8em 0.6em 1.8em;
+}
+
+.wtr-template__param {
+  padding: 0.1em 0;
+  overflow-wrap: anywhere;
+}
+
+.wtr-template__param-name {
+  color: var(--wtr-accent);
+}
+
+.wtr-template__param-eq {
+  padding: 0 0.35em;
+  color: var(--wtr-muted);
+}
+
+.wtr-argument__default {
+  color: var(--wtr-muted);
+}
+
+.wtr-file {
+  margin: 0.8em 0;
+  padding: 0.5em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-file--inline {
+  display: inline-block;
+  margin: 0 0.2em;
+  padding: 0 0.35em;
+  font-size: 0.9em;
+}
+
+.wtr-file__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wtr-file__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.wtr-file__label,
+.wtr-gallery__label {
+  color: var(--wtr-muted);
+  font-family: var(--wtr-font-mono);
+  font-size: 0.85em;
+}
+
+.wtr-file__caption,
+.wtr-gallery__caption {
+  margin-top: 0.35em;
+  font-size: 0.9em;
+}
+
+.wtr-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14em, 1fr));
+  gap: 0.6em;
+  margin: 0.8em 0;
+}
+
+.wtr-gallery__item {
+  margin: 0;
+  padding: 0.5em;
+  border: 1px dashed var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-ref {
+  color: var(--wtr-accent);
+  font-size: 0.8em;
+}
+
+.wtr-ref__link {
+  color: inherit;
+  /* 行内引用链接必须有不依赖颜色的可识别样式。 */
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.wtr-ref__link:hover,
+.wtr-ref__link:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+.wtr-references {
+  margin-top: 1.5em;
+  padding-top: 0.75em;
+  border-top: 1px solid var(--wtr-border);
+}
+
+.wtr-references__list {
+  margin: 0;
+  padding-left: 2em;
+}
+
+.wtr-references__item {
+  margin: 0.25em 0;
+}
+
+.wtr-toc {
+  margin: 1em 0 1.2em;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+  font-size: 0.95em;
+}
+
+.wtr-toc__title {
+  margin-bottom: 0.35em;
+  font-weight: 600;
+}
+
+.wtr-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wtr-toc__item > .wtr-toc__list {
+  padding-left: 1.2em;
+}
+
+.wtr-toc__item {
+  margin: 0.15em 0;
+}
+
+.wtr-toc__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.wtr-toc__link {
+  color: var(--wtr-accent);
+}
+
+a.wtr-toc__link:hover,
+a.wtr-toc__link:focus-visible {
+  text-decoration: underline;
+}
+
+.wtr-toc__number {
+  color: var(--wtr-muted);
+}
+
+.wtr-toc--columns-2 .wtr-toc__list {
+  column-count: 2;
+  column-gap: 2em;
+}
+
+.wtr-toc--columns-3 .wtr-toc__list {
+  column-count: 3;
+  column-gap: 2em;
+}
+
+.wtr-poem__stanza {
+  margin: 0.75em 0;
+}
+
+.wtr-gallery__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.wtr-references__backlink {
+  margin-left: 0.35em;
+  color: inherit;
+  /* 回链与注释文字同色，用下划线区分，不依赖颜色对比。 */
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.wtr-categories {
+  margin-top: 1.5em;
+  padding-top: 0.75em;
+  border-top: 1px solid var(--wtr-border);
+  font-size: 0.9em;
+}
+
+.wtr-categories__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em 0.75em;
+}
+
+.wtr-categories__label {
+  color: var(--wtr-muted);
+}
+
+.wtr-categories__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em 0.75em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wtr-categories__item {
+  margin: 0;
+}
+
+.wtr-nowiki {
+  font-family: var(--wtr-font-mono);
+  font-size: 0.9em;
+  white-space: pre-wrap;
+}
+
+.wtr-ext-pre,
+.wtr-ext-code {
+  margin: 0.8em 0;
+  padding: 0.6em 0.75em;
+  border: 1px solid var(--wtr-border);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+  overflow: auto;
+  font-family: var(--wtr-font-mono);
+  font-size: 0.85em;
+}
+
+.wtr-math {
+  font-family: var(--wtr-font-mono);
+  font-size: 0.9em;
+  padding: 0 0.25em;
+  border-radius: 3px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-blocked-html,
+.wtr-blocked-html-block {
+  display: inline-block;
+  margin: 0.3em 0;
+  padding: 0.15em 0.5em;
+  border: 1px solid var(--wtr-danger);
+  border-radius: 4px;
+  color: var(--wtr-danger);
+  font-size: 0.8em;
+}
+
+.wtr-blocked-html-block {
+  display: block;
+}
+
+.wtr-html-block {
+  margin: 0.6em 0;
+}
+
+.wtr-render-error {
+  margin: 0.8em 0;
+  padding: 0.6em 0.75em;
+  border: 1px solid var(--wtr-danger);
+  border-radius: 6px;
+  background: var(--wtr-placeholder-bg);
+}
+
+.wtr-render-error__label {
+  color: var(--wtr-danger);
+  font-size: 0.85em;
+}
+
+.wtr-render-error__source {
+  margin: 0.4em 0 0;
+  white-space: pre-wrap;
+  font-family: var(--wtr-font-mono);
+  font-size: 0.85em;
+}

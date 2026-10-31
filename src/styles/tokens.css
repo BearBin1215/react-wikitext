@@ -1,0 +1,24 @@
+/*
+ * 主题 token 的单一来源，由 styles.css @import。
+ * 宿主可在任意祖先覆盖 --wtr-* 变量；深色主题通过 [data-wtr-theme="dark"] 切换。
+ */
+:root {
+  --wtr-font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  --wtr-text: #1f2328;
+  --wtr-muted: #656d76;
+  --wtr-border: #d0d7de;
+  --wtr-accent: #0969da;
+  --wtr-accent-soft: #ddf4ff;
+  --wtr-placeholder-bg: #f6f8fa;
+  --wtr-danger: #cf222e;
+}
+
+[data-wtr-theme="dark"] {
+  --wtr-text: #e6edf3;
+  --wtr-muted: #8b949e;
+  --wtr-border: #30363d;
+  --wtr-accent: #58a6ff;
+  --wtr-accent-soft: #172a45;
+  --wtr-placeholder-bg: #161b22;
+  --wtr-danger: #ff7b72;
+}

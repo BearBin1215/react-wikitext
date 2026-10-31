@@ -1,0 +1,67 @@
+{{Sample top|image=Quote-sample-a.svg|color=#34a853}}
+{{Sample info
+|image=Quote-sample-b.jpg
+|名称=引用块样本
+|别名=引用样本、折叠样本、{{Hidden text|嵌套别名一}}、{{Hidden text|嵌套别名二}}
+|分组=Example Group
+|关联=[[目标甲]]、[[目标乙]] <br />[[目标丙]]、[[目标丁]]
+}}
+
+{{Cquote|<big><big><big>'''''{{color|red|Be an example<ref>脚注一用于验证引用块内的 <ref> 嵌套。</ref><ref>脚注二用于验证同一位置出现多个脚注。</ref>}}</big></big></big>'''''}}
+
+'''引用块样本'''是合成条目，正文只说明本条样本覆盖的行内与块级语法。
+
+== 引用与画廊 ==
+本段包含{{Hidden text|嵌套参数一}}、[[目标戊]]、[[目标壬]]与<del>删除线</del>，用于验证同一段落内的多种标记。
+
+<gallery>
+Quote-sample-b.jpg|图注一
+Quote-sample-c.jpg|图注二
+</gallery>
+
+== 编号与外链 ==
+1.第一段用数字开头，用于验证裸编号不会被当成 wiki 列表。该段覆盖[[目标己]]、[[目标庚(消歧义)|目标庚]]等重复项。
+
+{{Hidden text|嵌套参数二}}。本段用于验证跨句的行内模板。
+
+详见[[目标丙]]
+
+=== 相关创作 ===
+'''占位标题！[[目标辛|别名甲]]'''，本句用于验证粗体与管道链接的组合。
+{{Video embed|id=example-id|page=2}}
+
+{{Hide|标题=折叠标题，含{{Hidden text|嵌套参数三}}与管道语法|内容=
+[https://example.org/long/path/1 折叠内容里的外链标题]（括号内的补充说明）
+
+'''加粗的中间行'''
+
+# [https://example.org/translate?sl=en&tl=zh-CN&text=alpha%20beta%20gamma.%0D%0Adelta%20epsilon. 编号外链一]
+# [https://example.org/translate?sl=en&tl=zh-CN&text=zeta%20eta%2Ctheta%20iota%20kappa 编号外链二]
+}}
+
+2.第二段继续验证数字开头的段落，以及{{Hidden text|嵌套参数四}}之后的普通文本。
+
+{{Hidden text|嵌套参数五}}后续内容……{{Hidden text|嵌套参数六}}
+
+== 其他写法 ==
+如下：
+<gallery>
+Quote-sample-d.jpg|图注三
+Quote-sample-e.jpg|图注四
+</gallery>
+
+*《[[作品甲]]》：只覆盖书名号与[[作品乙]]、[[作品丙]]、[[作品丁]]的重复项。
+
+{{Sample navbox}}
+{{Sample navbox-alt}}
+{{Template:Sample navbox-alt}}
+
+== 外部链接 ==
+*国际版：https://www.example.com/
+*地区版：https://www.example.com.hk/
+*备用域名：https://parent.example/
+
+== 注释 ==
+<references/>
+[[分类:引用块]][[分类:折叠模板]]
+{{To wikipedia|Quote sample}}

@@ -1,0 +1,27 @@
+[
+  {
+    "file": "tables-templates.wikitext",
+    "title": "Tables Sample",
+    "notes": "多行模板参数、空值参数、嵌套 {{lang}}/{{Ruby}}、含外链的 <ref>、带 style/width 的 wikitable 表头、单元格内列表、<abbr>、带排序键的分类与跨语言链接"
+  },
+  {
+    "file": "links-lists.wikitext",
+    "title": "Links Sample",
+    "notes": "参数值内的 <br>、含链接的标题、跨命名空间前缀（wikipedia:/commons:/jawp:）、裸链接、二级列表、*: 缩进续行、编号列表、;/: 与 ;; 定义列表、缩进行"
+  },
+  {
+    "file": "blocks-and-file.wikitext",
+    "title": "Blocks Sample",
+    "notes": "行尾空格、<pre> 块、[[image:…|right|thumb|250px|说明]] 与 [[File:…|left|120px]]、段首加粗编号、加粗词引导的说明段、<s>、失效链接模板、连续分类链接"
+  },
+  {
+    "file": "definition-lists.wikitext",
+    "title": "Define Sample",
+    "notes": "{{Dablink}}消歧义、信息框内的 {{Sample date}}/{{Sample calc}}/{{Ruby}} 嵌套、<br />、二级列表、*: 缩进续行、;/: 定义列表、<del>、<gallery>、[[文件:…]] 中文别名"
+  },
+  {
+    "file": "quote-hide-ext.wikitext",
+    "title": "Quote Sample",
+    "notes": "单行命名参数模板、{{Cquote}} 内的 <big> 与五引号嵌套 <ref>、{{Hide}} 多行参数值、参数值内的编号外链、裸编号段落、<gallery>、{{Template:…}} 显式前缀、裸 URL 列表"
+  }
+]

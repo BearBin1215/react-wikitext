@@ -1,4 +1,6 @@
 import { createRequire } from "node:module";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   createWikiparser,
   parseWikitext,
@@ -11,6 +13,7 @@ import { PARSE_MAX_STAGE } from "@/parse/loadParser";
 import { MEDIAWIKI_CONFIG, type ParserConfig } from "@/configs";
 import { normalizeConfig } from "@/configs/config";
 import { prepareWikitext, type WikitextPrepareOptions } from "@/hast";
+import { WikitextView, type WikitextViewProps } from "@/view";
 
 const require = createRequire(import.meta.url);
 interface NodeParserModule {
@@ -63,6 +66,39 @@ export function parse(source: string, options: TestParseOptions = {}): WikitextD
 
 export function prepare(source: string, options: WikitextPrepareOptions = {}) {
   return prepareWikitext(parse(source), options);
+}
+
+/** 测试默认使用 MediaWiki 裸锚点，避免每次断言都依赖自动实例前缀。 */
+const TEST_PREPARE_OPTIONS: WikitextPrepareOptions = { headingIdStrategy: "mediawiki" };
+
+export function renderView(
+  source: string,
+  props: Omit<WikitextViewProps, "document"> = {},
+  prepareOptions: WikitextPrepareOptions = {},
+): string {
+  return renderToStaticMarkup(
+    createElement(WikitextView, {
+      document: prepare(source, { ...TEST_PREPARE_OPTIONS, ...prepareOptions }),
+      ...props,
+    }),
+  );
+}
+
+export function renderViewWithConfig(
+  source: string,
+  config: ParserConfig,
+  props: Omit<WikitextViewProps, "document"> = {},
+  prepareOptions: WikitextPrepareOptions = {},
+): string {
+  return renderToStaticMarkup(
+    createElement(WikitextView, {
+      document: prepareWikitext(parse(source, { config }), {
+        ...TEST_PREPARE_OPTIONS,
+        ...prepareOptions,
+      }),
+      ...props,
+    }),
+  );
 }
 
 function oracleJson(source: string, config: ParserConfig = MEDIAWIKI_CONFIG): OracleNode {
