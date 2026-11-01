@@ -20,9 +20,19 @@
     "noEmit": true,
     "types": ["vite/client", "node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@pg/*": ["./playground/src/*"],
+      "react-wikitext": ["./src/index.ts"],
+      "react-wikitext/ast": ["./src/ast/index.ts"],
+      "react-wikitext/parse": ["./src/parse/index.ts"],
+      "react-wikitext/expand": ["./src/expand/index.ts"],
+      "react-wikitext/hast": ["./src/hast/index.ts"],
+      "react-wikitext/unified": ["./src/unified/index.ts"],
+      "react-wikitext/view": ["./src/view/index.ts"],
+      "react-wikitext/configs": ["./src/configs/index.ts"],
+      "react-wikitext/styles.css": ["./src/styles/view.css"]
     }
   },
-  "include": ["src", "tests", "vitest.config.ts"],
+  "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"],
   "exclude": ["dist", "node_modules"]
 }
