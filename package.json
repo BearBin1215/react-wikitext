@@ -130,7 +130,14 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs",
+    "test:types:consumer": "tsc -p tests/consumer/types/tsconfig.node16.json && tsc -p tests/consumer/types/tsconfig.bundler.json",
+    "test:vite": "vite build --config tests/consumer/vite/vite.config.mjs && node tests/consumer/vite/check.mjs",
+    "test:webpack": "webpack --config tests/consumer/webpack/webpack.config.mjs && node tests/consumer/webpack/check.mjs",
+    "test:view-only": "node tests/consumer/view-only/generate.mjs && vite build --config tests/consumer/view-only/vite.config.mjs && node tests/consumer/view-only/check.mjs",
+    "test:view-only:webpack": "node tests/consumer/view-only/generate.mjs && webpack --config tests/consumer/view-only/webpack.config.mjs && node tests/consumer/view-only/check-webpack.mjs",
+    "test:consumer": "pnpm test:dist && pnpm test:types:consumer && pnpm test:vite && pnpm test:webpack && pnpm test:view-only && pnpm test:view-only:webpack"
   },
   "dependencies": {
     "wikiparser-node": "1.48.1"
@@ -158,7 +165,9 @@
     "unified": "11.0.5",
     "vfile": "6.0.3",
     "vite": "8.3.5",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "webpack": "5.112.2",
+    "webpack-cli": "6.0.1"
   },
   "peerDependencies": {
     "react": ">=18.2 <20",

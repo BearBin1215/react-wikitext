@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-*/
+tests/consumer/view-only/snapshot.json
 coverage/
 pnpm-debug.log*
 *.log

@@ -34,5 +34,5 @@
     }
   },
   "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "tests/consumer/types", "tests/consumer/vite"]
 }
