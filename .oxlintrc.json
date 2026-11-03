@@ -37,6 +37,12 @@
   },
   "overrides": [
     {
+      "files": ["playground/src/main.tsx"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
       "files": ["tests/**/*.{ts,tsx}"],
       "rules": {
         "vitest/no-conditional-expect": "off",
@@ -51,5 +57,13 @@
     "node": true,
     "vitest": true
   },
-  "ignorePatterns": ["dist/**", "**/dist/**", "**/dist-*/**", "node_modules/**", "coverage/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "**/dist/**",
+    "**/dist-*/**",
+    "node_modules/**",
+    "playwright-report/**",
+    "test-results/**",
+    "coverage/**"
+  ]
 }

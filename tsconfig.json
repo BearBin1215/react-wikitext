@@ -33,6 +33,15 @@
       "react-wikitext/styles.css": ["./src/styles/view.css"]
     }
   },
-  "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"],
+  "include": [
+    "src",
+    "playground",
+    "tests",
+    "e2e",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "tsdown.config.ts"
+  ],
   "exclude": ["dist", "node_modules", "tests/consumer/types", "tests/consumer/vite"]
 }

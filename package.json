@@ -122,6 +122,8 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
+    "play": "vite",
+    "play:dist": "pnpm build && vite --mode dist",
     "build": "tsdown",
     "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
@@ -131,6 +133,7 @@
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs",
     "test:types:consumer": "tsc -p tests/consumer/types/tsconfig.node16.json && tsc -p tests/consumer/types/tsconfig.bundler.json",
     "test:vite": "vite build --config tests/consumer/vite/vite.config.mjs && node tests/consumer/vite/check.mjs",
@@ -143,6 +146,10 @@
     "wikiparser-node": "1.48.1"
   },
   "devDependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@playwright/test": "1.64.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/hast": "3.0.5",
@@ -152,6 +159,7 @@
     "@types/react-dom": "19.3.0",
     "@types/unist": "3.0.3",
     "@vitejs/plugin-react": "6.1.2",
+    "codemirror": "6.0.2",
     "entities": "8.1.0",
     "hast-util-sanitize": "5.0.2",
     "hast-util-to-jsx-runtime": "2.3.6",

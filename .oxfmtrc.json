@@ -8,6 +8,8 @@
     ".vscode/",
     "tests/fixtures/samples/",
     "pnpm-lock.yaml",
+    "playwright-report/",
+    "test-results/",
     "coverage/",
     "LICENSE"
   ]

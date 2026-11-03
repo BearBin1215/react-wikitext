@@ -3,6 +3,8 @@ dist/
 dist-*/
 tests/consumer/view-only/snapshot.json
 coverage/
+playwright-report/
+test-results/
 pnpm-debug.log*
 *.log
 *.local
