@@ -140,7 +140,8 @@
     "test:webpack": "webpack --config tests/consumer/webpack/webpack.config.mjs && node tests/consumer/webpack/check.mjs",
     "test:view-only": "node tests/consumer/view-only/generate.mjs && vite build --config tests/consumer/view-only/vite.config.mjs && node tests/consumer/view-only/check.mjs",
     "test:view-only:webpack": "node tests/consumer/view-only/generate.mjs && webpack --config tests/consumer/view-only/webpack.config.mjs && node tests/consumer/view-only/check-webpack.mjs",
-    "test:consumer": "pnpm test:dist && pnpm test:types:consumer && pnpm test:vite && pnpm test:webpack && pnpm test:view-only && pnpm test:view-only:webpack"
+    "test:consumer": "pnpm test:dist && pnpm test:types:consumer && pnpm test:vite && pnpm test:webpack && pnpm test:view-only && pnpm test:view-only:webpack",
+    "bench": "vitest run --config vitest.bench.config.ts && node tests/performance/validate-report.mjs"
   },
   "dependencies": {
     "wikiparser-node": "1.48.1"

@@ -49,6 +49,13 @@
         "vitest/valid-title": "off",
         "vitest/require-mock-type-parameters": "off"
       }
+    },
+    {
+      "files": ["tests/performance/**/*.ts"],
+      "rules": {
+        "eslint/no-await-in-loop": "off",
+        "vitest/expect-expect": "off"
+      }
     }
   ],
   "env": {
