@@ -141,12 +141,17 @@
     "test:view-only": "node tests/consumer/view-only/generate.mjs && vite build --config tests/consumer/view-only/vite.config.mjs && node tests/consumer/view-only/check.mjs",
     "test:view-only:webpack": "node tests/consumer/view-only/generate.mjs && webpack --config tests/consumer/view-only/webpack.config.mjs && node tests/consumer/view-only/check-webpack.mjs",
     "test:consumer": "pnpm test:dist && pnpm test:types:consumer && pnpm test:vite && pnpm test:webpack && pnpm test:view-only && pnpm test:view-only:webpack",
+    "test:consumer:browser": "pnpm test:consumer && playwright test --config playwright.consumer.config.ts --grep \"@consumer\"",
+    "test:a11y:build": "vite build --config tests/consumer/a11y/vite.config.mjs",
+    "test:a11y": "pnpm build && pnpm test:a11y:build && playwright test --config playwright.consumer.config.ts --grep \"@a11y\"",
+    "test:budget": "pnpm build && node tests/consumer/browser/generate-budget.mjs && playwright test --config playwright.consumer.config.ts --grep \"@budget\"",
     "bench": "vitest run --config vitest.bench.config.ts && node tests/performance/validate-report.mjs"
   },
   "dependencies": {
     "wikiparser-node": "1.48.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@codemirror/commands": "6.11.1",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",

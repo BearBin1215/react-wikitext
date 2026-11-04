@@ -42,6 +42,7 @@
     "vitest.config.ts",
     "vitest.bench.config.ts",
     "playwright.config.ts",
+    "playwright.consumer.config.ts",
     "tsdown.config.ts"
   ],
   "exclude": ["dist", "node_modules", "tests/consumer/types", "tests/consumer/vite"]
