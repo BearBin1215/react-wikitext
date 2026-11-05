@@ -1,0 +1,163 @@
+---
+title: Parsing /parse
+description: Default parser, parse options, budgets, custom adapters, and parse errors.
+---
+
+# Parsing `/parse`
+
+```ts
+import {
+  createWikiparser,
+  parseWikitext,
+  WikitextParseError,
+  DEFAULT_MAX_SOURCE_LENGTH,
+} from "react-wikitext/parse";
+```
+
+`/parse` executes the `wikiparser-node@1.48.1` browser bundle at module load and captures the global parser; it does not load React. The default parser instance is created lazily on the first parse. Parsing is synchronous.
+
+## parseWikitext
+
+```ts
+const document = parseWikitext(source, {
+  pageName: "Example",
+  retainSyntax: false,
+});
+```
+
+Uses the shared parser with default configuration; suitable for one-off parsing and simple scenarios.
+
+## createWikiparser
+
+```ts
+const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+
+const document = parser.parse(source, { maxSourceLength: 50_000 });
+const effective = parser.resolveOptions({ maxSourceLength: 50_000 });
+```
+
+- The default config is `MEDIAWIKI_CONFIG`, a frozen snapshot of the `wikiparser-node@1.48.1` site configuration.
+- Configuration is deep-cloned and normalized when the factory is created; later mutations of the original object do not affect the parser.
+- Changing config requires creating a new parser; for partial overrides use `createMediaWikiConfig` from `/configs`.
+- The library does not export a minimum config. For custom config, copy the default and adjust fields.
+
+## Parse options
+
+```ts
+interface WikitextParseOptions {
+  pageName?: string;
+  maxSourceLength?: number; // default 100_000
+  maxSyntaxNodes?: number; // default 50_000
+  maxSemanticNodes?: number; // default 50_000
+  maxDepth?: number; // default 1_000
+  retainSyntax?: boolean; // default false
+}
+```
+
+| Option             | Description                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| `pageName`         | Page context (for example, page names in templates or magic words); the library never invents one |
+| `maxSourceLength`  | Maximum length after LF normalization                                                             |
+| `maxSyntaxNodes`   | Maximum syntax tree nodes                                                                         |
+| `maxSemanticNodes` | Maximum semantic AST nodes                                                                        |
+| `maxDepth`         | Maximum syntax tree depth                                                                         |
+| `retainSyntax`     | Keep the upstream token syntax tree in the document (debugging only)                              |
+
+Effective budgets merge by precedence: per-call options override factory `defaults`, and `defaults` override the shared defaults. CRLF / CR is normalized to LF before parsing, and budgets are checked after normalization. Budgets must be positive integers; `0`, negative numbers, fractions, `NaN`, and `Infinity` all throw `INVALID_CONFIG`.
+
+`retainSyntax` only decides whether the upstream token syntax tree is published on the snapshot, and significantly increases memory and build cost. Source text, semantic node `position`, and `origin.range` always exist, and query helpers never read the syntax tree; enable it only when you need to inspect upstream tokens.
+
+### resolveOptions
+
+```ts
+parser.resolveOptions(options?): WikitextResolvedParseOptions
+```
+
+Returns the effective budgets, `pageName`, and `retainSyntax` for a parse without parsing anything. Use it for cache keys instead of reimplementing the merge rules. `meta.limits` on the produced document contains the same values.
+
+## Returned document
+
+```ts
+interface WikitextDocument {
+  source: string;
+  ast: WikitextRoot;
+  syntax?: WikitextSyntaxRoot;
+  meta: WikitextDocumentMeta;
+  diagnostics: WikitextDiagnostic[];
+}
+```
+
+`meta` contains:
+
+- `parser` / `parserVersion`.
+- `pageName`.
+- `astSchemaVersion` and optional `syntaxSchemaVersion`.
+- `sourceNormalized`, `originalLength`, and `retainSyntax`.
+- `limits`: the effective `maxSourceLength`, `maxSyntaxNodes`, `maxSemanticNodes`, and `maxDepth`.
+
+The same source with a different config or `pageName` can produce a different AST; those are parse inputs, not render options.
+
+## Custom adapter
+
+Import `createWikitextParser` from [`/ast`](./ast.mdx) when wiring another parser: that entry loads neither the default IIFE nor React. `/parse` also re-exports the same factory, but importing it executes the upstream IIFE, so it is a poor fit when you only need a custom adapter.
+
+```ts
+import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
+
+const adapter: WikitextParserAdapter = {
+  name: "my-parser",
+  version: "1.0.0",
+  parse(source, context) {
+    // Must return a plain object matching WikitextSyntaxRoot.
+    // Ranges are based on LF-normalized source, 1-based line/column + 0-based offset.
+    return buildSyntaxRoot(source, context);
+  },
+};
+
+const parser = createWikitextParser(adapter, {
+  defaults: { pageName: "Example" },
+});
+```
+
+- The adapter only maps source → syntax tree; normalization, budget merging, semantic AST construction, diagnostics, and meta are handled by the factory.
+- `context.limits` provides the effective `maxSyntaxNodes` and `maxDepth` so adapters can stop early.
+- The factory still validates structure, ranges, and budgets after the adapter returns.
+- The adapter's `name` / `version` are written to document meta.
+- The `WikitextParser` interface also includes `resolveOptions()`; objects created by `createWikitextParser` provide it automatically, while hand-written implementations must add it.
+
+## Errors
+
+```ts
+class WikitextParseError extends WikitextError {
+  constructor(
+    code:
+      | "SOURCE_TOO_LONG"
+      | "SOURCE_TOO_COMPLEX"
+      | "INVALID_CONFIG"
+      | "PARSE_FAILED"
+      | "PARSER_UNAVAILABLE",
+    message: string,
+    options?: { cause?: unknown },
+  );
+}
+```
+
+| Code                 | Condition                                             |
+| -------------------- | ----------------------------------------------------- |
+| `SOURCE_TOO_LONG`    | Normalized source exceeds the length budget           |
+| `SOURCE_TOO_COMPLEX` | Node count or depth exceeds the budget                |
+| `INVALID_CONFIG`     | Site config is missing required fields                |
+| `PARSE_FAILED`       | Upstream parsing or semantic construction failed      |
+| `PARSER_UNAVAILABLE` | The default IIFE did not initialize the global parser |
+
+Node and depth limits are listed in [Performance and budgets](../guide/performance.mdx); the effective values appear in `error.message` when triggered.
+
+## Related
+
+- Querying, serialization, and node types are in [`/ast`](./ast.mdx).
+- The full adapter flow and syntax tree shape are in [Custom parsers](../guide/custom-parser.mdx).
+- Config constants are in [`/configs`](./configs.mdx).
+- For workers or caching, parse in a worker and serialize the result back.

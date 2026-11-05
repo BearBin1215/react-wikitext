@@ -1,0 +1,255 @@
+---
+title: React 组件
+description: Wikitext、WikitextView、WikitextFragment、覆盖组件与 Context Hook。
+---
+
+# React 组件
+
+根入口与 `/view` 都导出视图组件；只有根入口额外导出源码组件 `Wikitext`。
+
+:::warning 警告
+这些组件在模块加载时创建 Context，并使用 `useId` / `useMemo`，只能在客户端组件中运行。根入口与 `/view` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用；服务端只调用 `/parse` 与 `/hast`。
+:::
+
+## Wikitext
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+<Wikitext source={source} lang="zh-CN" />;
+```
+
+源码组件在内部完成解析、准备与渲染，只支持同步管线。
+
+### 属性
+
+```ts
+interface WikitextProps extends Omit<WikitextViewProps, "document"> {
+  source: string;
+  parser?: WikitextParser;
+  parseOptions?: WikitextParseOptions;
+  prepareOptions?: WikitextPrepareOptions;
+  onPrepared?: (document: WikitextRenderDocument) => void;
+  onError?: (error: WikitextError, info: { stage: "parse" | "prepare" }) => void;
+  fallback?:
+    | React.ReactNode
+    | ((error: WikitextError, info: { stage: "parse" | "prepare" }) => React.ReactNode);
+}
+```
+
+| 属性                 | 说明                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `source`             | 待渲染的 wikitext 源码                                                                 |
+| `parser`             | 复用已创建的解析器；缺省使用默认配置的共享解析器                                       |
+| `parseOptions`       | 解析选项，见 [`/parse`](./parse.mdx)                                                   |
+| `prepareOptions`     | 准备选项，见 [`/hast`](./prepare.mdx)                                                  |
+| `onPrepared`         | 准备成功后回调；读取 `diagnostics`、`headings` 与生效设置                              |
+| `onError`            | 解析/准备失败回调；`error` 一定是 `WikitextError`，`info.stage` 区分阶段               |
+| `fallback`           | 失败时渲染的内容；提供后完全接管展示，不再渲染内置错误容器                             |
+| `components`         | 按 HTML 标签覆盖组件                                                                   |
+| `semanticComponents` | 按 wiki 语义类型覆盖组件                                                               |
+| `lang` / `dir`       | 写入根容器的语言与方向                                                                 |
+| `idPrefix`           | 实例标题 id 前缀；只在 `headingIdStrategy: "instance"` 下生效，非法/空值回退到 `useId` |
+| `className`          | 与 `wtr-view` 合并                                                                     |
+| `containerProps`     | 根容器的额外属性；类型层排除 `dangerouslySetInnerHTML`                                 |
+| `onRenderError`      | 单个块渲染失败时的回调                                                                 |
+
+### 行为
+
+- 解析与准备分别用 `useMemo` 缓存，依赖为 `[parser, source, parseOptions]` 与 `[parsedDocument, prepareOptions]`；只改 `prepareOptions` 会复用上一次的解析结果。
+- 每次渲染传入新的选项对象会导致对应阶段重跑；请固定引用。
+- 插件与解析回调必须是纯函数；异步插件会抛 `ASYNC_PLUGIN_IN_SYNC_PATH`。
+- 导入 `/parse` 会执行上游 IIFE；默认解析器实例在首次解析时懒创建。不需要解析器时使用 `/view`。
+- 占位、拦截与降级以诊断形式写入快照，页面仍然渲染成功；用 `onPrepared` 读取这些记录，不要依赖 `onError`。
+
+## WikitextView
+
+```tsx
+import { WikitextView } from "react-wikitext/view";
+
+<WikitextView document={prepared} lang="zh-CN" />;
+```
+
+`WikitextView` 只接收准备完成的渲染快照。渲染期间不解析源码、不运行插件或解析回调。视图会在渲染前做一次轻量运行时校验：把解析快照直接传进来时会抛 `WikitextError("INVALID_DOCUMENT")`，而不是静默渲染空内容。
+
+### 属性
+
+| 属性                 | 说明                                            |
+| -------------------- | ----------------------------------------------- |
+| `document`           | `WikitextRenderDocument`                        |
+| `components`         | 按 HAST 标签名覆盖组件                          |
+| `semanticComponents` | 按 wiki 语义类型覆盖组件                        |
+| `lang` / `dir`       | 写入根容器的语言与方向                          |
+| `idPrefix`           | `instance` 策略下的实例前缀；未传时使用 `useId` |
+| `className`          | 与 `wtr-view` 合并                              |
+| `containerProps`     | 根容器属性；排除 `dangerouslySetInnerHTML`      |
+| `onRenderError`      | 块级渲染失败回调                                |
+
+- 根节点固定为 `div.wtr-view`。
+- `idPrefix` 同时影响标题 id、文档内 `#fragment` 链接与表格 `headers`。
+- 每个顶层块包在错误边界内；一个块失败不会影响其他块。
+- 视图内部建立语义索引与 HAST 索引，供组件与 `WikitextFragment` 使用。
+
+## WikitextFragment
+
+```tsx
+import { WikitextFragment } from "react-wikitext/view";
+
+<WikitextFragment nodes={node.children} mode="block" />;
+```
+
+| 属性        | 说明                           |
+| ----------- | ------------------------------ |
+| `nodes`     | 当前渲染文档中的语义节点数组   |
+| `mode`      | `"inline"`（默认）或 `"block"` |
+| `className` | 可选外层类名                   |
+
+- 必须在 `<WikitextView>` 的 Context 内使用，否则抛错。
+- `nodes` 必须是当前视图渲染文档中的**同一批节点对象**；仅 id 相同并不够。
+- 只渲染能在准备结果 HAST 索引中找到的节点，适合模板参数、文件说明与 `ref` 内容。
+- inline 模式无 `className` 时不额外包裹 DOM；有 `className` 时使用 `<span>`；block 模式使用 `wtr-fragment` 容器。
+- 同一视图内重复渲染同一节点会产生重复内容与重复标题 id。
+
+## 组件覆盖
+
+### HTML 组件
+
+```ts
+type WikitextHtmlComponents = Partial<
+  Record<string, React.ComponentType<WikitextHtmlComponentProps>>
+>;
+
+interface WikitextHtmlComponentProps extends React.HTMLAttributes<HTMLElement> {
+  node?: import("hast").Element;
+  document: WikitextRenderDocument;
+  semantic?: WikitextNode;
+  origin?: WikitextOrigin;
+  children?: React.ReactNode;
+  href?: string;
+  src?: string;
+  alt?: string;
+}
+```
+
+按键名映射，例如 `p`、`table`、`img`、`a`。组件收到经过安全校验的 DOM 属性，以及 HAST 元素、文档和可选的语义节点。
+
+### 语义组件
+
+```ts
+type WikitextSemanticComponents = {
+  link?: React.ComponentType<WikitextLinkComponentProps>;
+  template?: React.ComponentType<WikitextTemplateComponentProps>;
+  parserFunction?: React.ComponentType<WikitextTemplateComponentProps>;
+  argument?: React.ComponentType<WikitextSemanticComponentProps<WikitextArgument>>;
+  file?: React.ComponentType<WikitextFileComponentProps>;
+  reference?: React.ComponentType<WikitextReferenceComponentProps>;
+  extension?: React.ComponentType<WikitextExtensionComponentProps>;
+  unknown?: React.ComponentType<WikitextUnknownComponentProps>;
+  table?: React.ComponentType<WikitextSemanticComponentProps<WikitextTable>>;
+};
+```
+
+所有语义组件都会收到：
+
+```ts
+interface WikitextSemanticComponentProps<Node extends WikitextNode> {
+  document: WikitextRenderDocument;
+  node: Node;
+  hastNode: import("hast").Element;
+  origin?: WikitextOrigin;
+  children?: React.ReactNode;
+}
+```
+
+额外字段：
+
+| 类型                          | 额外属性                              |
+| ----------------------------- | ------------------------------------- |
+| `link`                        | `target`、`kind`、`href?`、`external` |
+| `template` / `parserFunction` | `displayName`                         |
+| `file`                        | `name`                                |
+| `reference`                   | `number`                              |
+| `extension`                   | `name`、`block`                       |
+| `unknown`                     | `parsedType`、`block`                 |
+
+优先级：显式语义组件替换整个语义结构；未替换时，默认 HAST 内部的标签继续应用 `components`；最后回退到原生元素。
+
+### 自定义模板卡片
+
+```tsx
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside className="template-card">
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+```
+
+### 自定义链接
+
+```tsx
+<WikitextView
+  document={prepared}
+  semanticComponents={{
+    link: ({ href, external, children }) =>
+      href ? (
+        <a
+          href={href}
+          {...(external ? { target: "_blank", rel: "nofollow noopener noreferrer" } : {})}
+        >
+          {children}
+        </a>
+      ) : (
+        <span className="unresolved-link">{children}</span>
+      ),
+  }}
+/>
+```
+
+## Context Hook
+
+```ts
+interface WikitextViewContextValue {
+  document: WikitextRenderDocument;
+  semanticIndex: ReadonlyMap<string, WikitextNode>;
+  hastIndex: ReadonlyMap<string, import("hast").ElementContent>;
+  components: WikitextHtmlComponents;
+  semanticComponents: WikitextSemanticComponents;
+  idPrefix: string;
+  mapId: (id: string) => string;
+  mapHref: (href: string) => string;
+  onRenderError?: (error: Error, info: { node: WikitextNode }) => void;
+}
+
+function useWikitextContext(): WikitextViewContextValue;
+function useWikitextLabels(): WikitextLabels;
+function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): string };
+```
+
+- 这些 Hook 必须在 `<WikitextView>` 内使用。
+- `useWikitextLabels()` 读取渲染快照中的最终文案。
+- `useWikitextIds()` 适合需要在自定义组件中生成锚点或片段链接的场景。
+
+## 渲染错误
+
+```tsx
+<Wikitext
+  source={source}
+  onRenderError={(error, { node }) => {
+    reportError(error, { nodeType: node.type, nodeId: node.id });
+  }}
+/>
+```
+
+错误边界按顶层 HAST 块隔离。占位内容显示 `labels.renderFailed`、节点类型与源码。解析与准备错误不会进入错误边界：未提供 `onError` 与 `fallback` 时直接抛给外层错误边界；只提供 `onError` 时显示内置错误容器（文案取 `prepareOptions.labels.renderFailed`）；提供 `fallback` 时由它完全接管，返回 `null` 即不渲染任何内容。
+
+## 相关类型
+
+根入口额外导出视图组件会用到的精选语义类型：`WikitextLink`、`WikitextTemplate`、`WikitextFile`、`WikitextReference`、`WikitextTable`、`WikitextUnknown` 等。完整节点子类型与 AST 工具从 [`/ast`](./ast.mdx) 导入。

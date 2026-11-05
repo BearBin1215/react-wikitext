@@ -1,0 +1,188 @@
+---
+title: Rendering Behavior
+description: What the default pipeline outputs, and the stable behavior boundaries.
+---
+
+# Rendering Behavior
+
+This page describes what the default pipeline **actually outputs**. The library does not infer semantics for appearance: structures that cannot be rendered safely or correctly become source cards or explicit placeholders. To look up a single construct, see [Syntax support](./syntax-support.mdx).
+
+## Combined preview
+
+The example below covers the TOC, a blocked address, escaped script source, a normal table, a degraded extension tag, and the category footer:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== First section ==
+First paragraph with a [javascript:alert(1) blocked link].
+
+== Second section ==
+Second paragraph.
+
+== Third section ==
+Third paragraph.
+
+== Fourth section ==
+<script>script that never runs</script>
+
+{| class="wikitable"
+|-
+! Header !! Second column
+|-
+| Cell || Content
+|}
+
+<chem>Example formula</chem>
+
+[[Category:Example category]]`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="en" />;
+}
+```
+
+Four headings trigger the TOC. The `javascript:` address becomes readable text, the `<script>` source is escaped, the table renders normally, an extension tag such as `<chem>` becomes a source card, and the category is collected into the footer.
+
+## Paragraphs, text, and formatting
+
+- Consecutive inline content becomes `<p class="wtr-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
+- Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When both are open, the output is `<i><b>…</b></i>`.
+- Headings render as real `<h1>`–`<h6 class="wtr-heading">` and participate in anchors and the table of contents.
+- Horizontal rules render as `<hr class="wtr-hr">`.
+- Comments, categories, and behavior switches do not enter the body. Categories go to the footer; behavior switches only affect the table of contents.
+
+## Lists
+
+- `*`, `#`, `;`, and `:` prefixes produce nested `<ul>`, `<ol>`, and `<dl>/<dt>/<dd>`.
+- Continuation lines join the current list item; blank lines, headings, tables, and block HTML end a list.
+- Definition lists support both `; term : definition` and `;term:definition`.
+- List scanning inside a table cell is bounded by the cell range and never consumes the next cell.
+
+## Tables
+
+- The output order is `<table><caption>…</caption><tbody>…`; cells are `<th>` / `<td>`.
+- Table, row, and cell attributes are kept through a whitelist; `style` keeps only a safe layout subset, while event attributes and `id` are always dropped.
+- Layout is computed on a logical grid: `colspan` / `rowspan` are clamped to the table bounds, and missing slots get filler cells (`wtr-table__cell--filler`).
+- When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
+- A wikitext table with unmatched `{|` / `|}` markers degrades to a source card. A nested wikitext table with matched markers and a nested HTML `<table>` render normally.
+- Tables allow safe `data-*` attributes but reject library-reserved names such as `data-node-id` and `data-wikitext`.
+
+## Links
+
+Default output for each link type, the protocol allowlist, and resolver usage are in [Links and images](./links-and-images.mdx). The parts that affect rendering here: an internal link becomes an `<a>` only when `resolveLink` returns an `href`, and unlabeled external links get `[N]` in document order, counted separately from references. External links default to `target="_blank"` and `rel="nofollow noopener noreferrer"`, adjustable through `policy.externalLinkTarget` or the resolver's `target`.
+
+## Files and images
+
+File nodes render as a placeholder by default:
+
+```html
+<figure class="wtr-file wtr-file--block mw-default-size">
+  <span class="wtr-file__label">File: Example.png</span>
+  <figcaption class="wtr-file__caption">Caption text</figcaption>
+</figure>
+```
+
+- Inline files use `<span class="wtr-file">`; block files use `<figure>`.
+- Captions come from the real subtree, so links and template placeholders inside them render recursively.
+- Only a `src` returned by `resolveImage` and validated as `http:` / `https:` produces `<img loading="lazy" decoding="async">`; dimensions are clamped to 1–4096.
+- The library never contacts `upload.wikimedia.org` or any image URL on its own.
+
+## Templates, functions, and arguments
+
+The default pipeline **does not evaluate** anything:
+
+- Templates render as a block `<details class="wtr-template">` or an inline badge listing their parameters, using `labels.templateNotExpanded`.
+- Parser functions render the same kind of placeholder and are explicitly marked as not evaluated.
+- Arguments `{{{name|default}}}` show the name and default value.
+- Magic words inside templates, functions, and arguments do not affect the table of contents or categories.
+
+Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preserved after a failed expansion continue to render as placeholders.
+
+## References
+
+- Each `<ref>` is numbered within its group and produces `<sup class="reference wtr-ref">` with a numbered link.
+- Reference content is collected into `<section class="wtr-references" role="doc-endnotes">`; named references reuse the same entry and groups number independently.
+- `<references/>` or `<references group="x"/>` places the matching group section; groups without a marker are appended after the body and before the category footer. Notes carry `a[role="doc-backlink"]` backlinks.
+- Duplicate definitions and empty references produce diagnostics; repeated uses get `cite_ref-N`, `cite_ref-N-2`, and so on.
+
+## Table of contents
+
+- Once a page has four headings, a table of contents is generated before the top-level block that contains the first heading (headings may live inside block HTML).
+- The `toc` prepare option adjusts `minHeadings`, `columns`, or disables the TOC.
+- `__TOC__` forces a table of contents at its marker; `__FORCETOC__` forces an automatic one; `__NOTOC__` disables it anywhere and takes precedence.
+- The table includes levels, numbers, text, and `#anchor` links. Fragment-sensitive characters are encoded as `.HH`; with `headingIdStrategy: "none"` it contains text only.
+- It has no scroll synchronization, collapse, or sticky behavior.
+
+## Categories and redirects
+
+- Categories stay out of the body and are collected in source order into `div.catlinks.wtr-categories` at the end. Namespace prefixes are removed, underscores become spaces, and sort keys are not displayed.
+- A first-line `#REDIRECT` renders a redirect banner and skips the rest of the body. It does not load the target page.
+
+## HTML
+
+Source HTML is never injected as raw HTML. The library handles categories:
+
+- Inline tags: `b`, `i`, `u`, `span`, `code`, `ruby`, `abbr`, and similar.
+- Block tags: `div`, `p`, `blockquote`, `center`, `pre`, lists, tables, headings, and similar.
+- Void tags: `br`, `wbr`, `hr`.
+- Dropped: `meta`, `link`.
+- Forbidden: `script`, `style`, `iframe`, `object`, `embed`, form controls, `svg`, HTML `math`, and similar. The default config does not parse these tags, so source stays escaped text; if configured as HTML, the whole pair is dropped and replaced with a readable hint.
+- Unknown but non-dangerous tags: rendered as source cards, not real elements.
+
+HTML attributes keep only `class`, `title`, `dir`, `lang`, safe `style`, and table-related attributes from the whitelist. `id` and event attributes never reach the DOM. See the [security model](./security.mdx).
+
+## Extension tags
+
+| Tag                                                                               | Current behavior                                              |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `<nowiki>`                                                                        | Plain text; links and templates are not parsed                |
+| `<pre>`                                                                           | Preserves original whitespace                                 |
+| `<ref>`                                                                           | Numbered reference + grouped endnotes                         |
+| `<references>`                                                                    | Marker; the matching group section is moved here              |
+| `<math>`                                                                          | `<code>` formula placeholder; no KaTeX                        |
+| `<syntaxhighlight>`                                                               | `<pre><code class="language-*">` source text; no highlighting |
+| `<poem>`                                                                          | Paragraphs split by blank lines, line breaks use `<br>`       |
+| `<gallery>`                                                                       | Images through `resolveImage`, otherwise file names           |
+| `<imagemap>`, `<templatestyles>`, `<chem>`, `<score>`, `<timeline>`, `<mapframe>` | Block-level source cards                                      |
+| Other unsupported extension tags                                                  | Source cards; block-level when they occupy their own line     |
+
+`semanticComponents.extension` can take over these structures by name. `<ref>` uses `semanticComponents.reference`, and `<references>` produces no component call.
+
+## Unknown structures and degradation
+
+Unrecognized semantic nodes, complex HTML that cannot be paired safely, and wikitext tables with unmatched markers render as source cards and record diagnostics. If one block fails to render, the error boundary replaces only that top-level block; the rest of the page continues. `onRenderError` reports the failing node.
+
+## Accessibility
+
+The library emits semantic structure, but it is not a complete accessibility layer:
+
+- The root container only sets the `lang` and `dir` you pass; otherwise it inherits from the host.
+- Headings use real `<h1>`–`<h6>` elements; see [Styling and components](./customization.mdx) for anchor strategies.
+- The TOC is a `nav` with `aria-label` text from `labels.toc`.
+- The reference section is `section[role="doc-endnotes"]`; reference links use an `aria-label` of the form "Reference N".
+- The category area uses `role="navigation"` with a visible label, and table `<th>` cells get `scope="col"` by default.
+- Image `alt` comes from `resolveImage`'s `alt`, the `alt=` parameter, or the caption text, falling back to the file name.
+- Some hints (blocked HTML, degraded tables, redirects) use `role="note"` text.
+- The library does not manage focus, provide skip links, or use live regions; pin `idPrefix` on pages with multiple instances.
+- There is no screen-reader test suite or accessibility certification; verify against your target standard.
+
+## Stable limitations
+
+These limits come from parser capabilities or project scope and will not disappear as development continues:
+
+| Limitation                              | Explanation                                                                                                           |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Templates and Lua are not executed      | The default pipeline only uses placeholders; `/expand` supports pure wikitext templates and selected parser functions |
+| Images are not loaded by default        | A host resolver must authorize them                                                                                   |
+| Unmatched nested wikitext table markers | The whole table degrades; matched nested tables and nested HTML `<table>` work                                        |
+| Reference groups and backlinks          | Named reuse, `group` grouping, and `<references/>` placement are supported                                            |
+| Duplicate reference definitions         | The first definition wins and a diagnostic is produced                                                                |
+| Leading spaces                          | Treated as normal text; no preformatted semantics                                                                     |
+| Limited table of contents               | No scroll synchronization, collapse, or sticky behavior                                                               |
+| Synchronous parse limits                | Dense 100 KB text can block the main thread; use a worker                                                             |
+| No editor SDK                           | No CodeMirror, editing transactions, bidirectional selection, or source rewriting                                     |
+| No virtualization                       | Large documents rely on host pagination or worker scheduling                                                          |
+
+If output differs from the default behavior, start with [Troubleshooting](./troubleshooting.mdx).

@@ -1,0 +1,179 @@
+---
+title: 错误与诊断
+description: 错误类、错误码、诊断字段与处理建议。
+---
+
+# 错误与诊断
+
+库区分两类信号：
+
+- **错误**（`Error`）：当前调用无法继续，抛出异常；需要调用方捕获。
+- **诊断**（`WikitextDiagnostic`）：单点问题或降级记录，写入快照，不中断整页渲染。
+
+## 错误类
+
+```ts
+class WikitextError extends Error {
+  readonly code: WikitextErrorCode;
+  cause?: unknown;
+}
+
+class WikitextParseError extends WikitextError {}
+
+class WikitextPrepareError extends WikitextError {
+  readonly stage: WikitextStage;
+}
+
+class WikitextExpandError extends WikitextError {
+  readonly templateTitle?: string;
+  readonly range?: WikitextRange;
+}
+```
+
+所有错误都带 `code`；`cause` 保留底层异常。`WikitextPrepareError.stage` 与诊断共用 `WikitextStage`，可能值为 `prepare`、`wikitext`、`rehype`、`finalize` 等。
+
+## 按入口导出
+
+四个错误类是同一份定义，所有功能入口与根入口都导出；宿主只需从常用的入口导入一次，`instanceof` 在任意入口之间通用。
+
+| 入口      | 额外导出的错误码                               |
+| --------- | ---------------------------------------------- |
+| `/parse`  | `WikitextErrorCode`                            |
+| `/expand` | `WikitextExpandErrorCode`                      |
+| `/hast`   | —                                              |
+| 根入口    | `WikitextErrorCode`、`WikitextExpandErrorCode` |
+
+## 错误码
+
+| 错误码                      | 阶段      | 触发条件                           |
+| --------------------------- | --------- | ---------------------------------- |
+| `SOURCE_TOO_LONG`           | 解析      | 归一化后的源码超过长度预算         |
+| `SOURCE_TOO_COMPLEX`        | 解析      | 语法树或语义树超过节点/深度预算    |
+| `INVALID_CONFIG`            | 解析      | 站点配置或预算字段非法             |
+| `PARSE_FAILED`              | 解析      | 上游解析或语义构建失败             |
+| `PARSER_UNAVAILABLE`        | 解析      | 默认浏览器包未初始化全局解析器     |
+| `PREPARE_FAILED`            | 准备      | 选项、插件、转换函数或预算校验失败 |
+| `ASYNC_PLUGIN_IN_SYNC_PATH` | 准备      | 同步入口遇到异步插件               |
+| `INVALID_DOCUMENT`          | 恢复/准备 | 快照结构、版本、根节点或预算不合法 |
+| `INVALID_EXPAND_OPTIONS`    | 展开      | 展开选项非法                       |
+| `INCOMPATIBLE_PARSER`       | 展开      | 注入的解析器不满足展开要求         |
+| `TEMPLATE_NOT_FOUND`        | 展开      | `strict` 模式下模板缺失            |
+| `TEMPLATE_RESOLVE_FAILED`   | 展开      | `strict` 模式下获取回调失败        |
+| `TEMPLATE_PARSE_FAILED`     | 展开      | `strict` 模式下模板源码解析失败    |
+| `TEMPLATE_LOOP`             | 展开      | `strict` 模式下检测到循环          |
+| `UNSUPPORTED_CALL`          | 展开      | `strict` 模式下遇到不支持的调用    |
+| `UNRESOLVED_DEPENDENCY`     | 展开      | `strict` 模式下依赖未解析          |
+| `EXPANSION_BUDGET_EXCEEDED` | 展开      | `strict` 模式下预算超限            |
+| `EXPANSION_TOO_LARGE`       | 展开      | 展开结果或保留源码超过长度上限     |
+| `FINAL_PARSE_FAILED`        | 展开      | `strict` 模式下最终解析失败        |
+| `ABORTED`                   | 展开      | 通过 `AbortSignal` 取消            |
+
+展开阶段在默认模式下会尽量保留调用并记录诊断；`strict: true` 时上述可恢复错误改为抛出。
+
+## 处理示例
+
+```ts
+import { WikitextParseError } from "react-wikitext/parse";
+
+try {
+  const document = parser.parse(source, { pageName: "Example" });
+  return document;
+} catch (error) {
+  if (error instanceof WikitextParseError) {
+    if (error.code === "SOURCE_TOO_LONG") {
+      return loadSourceInPages(source);
+    }
+    throw error;
+  }
+  throw error;
+}
+```
+
+```ts
+import { prepareWikitextAsync, WikitextPrepareError } from "react-wikitext/hast";
+
+try {
+  return await prepareWikitextAsync(document, { rehypePlugins });
+} catch (error) {
+  if (error instanceof WikitextPrepareError) {
+    report(error.code, error.stage, error.cause);
+  }
+  throw error;
+}
+```
+
+- 不要根据 `message` 文本分支；使用 `code`（必要时加上 `stage`）。
+- 解析与准备错误应在调用层捕获，并区分预算、配置与插件问题。
+- 视图渲染错误通过 `onRenderError` 上报；错误边界只替换失败的顶层块。
+- 恢复快照失败不应静默降级为重新解析；先确认版本与来源。
+
+## 诊断
+
+`KnownWikitextDiagnosticCode` 是库内固定诊断码，从 `/ast`、`/parse`、`/hast` 与根入口导出；`WikitextDiagnosticCode` 还接受插件传入的自定义字符串。
+
+```ts
+type KnownWikitextDiagnosticCode =
+  | "UNKNOWN_NODE"
+  | "EXTENSION_UNSUPPORTED"
+  | "NESTED_TABLE_UNSUPPORTED"
+  | "TABLE_FILLER_BUDGET_EXCEEDED"
+  | "FILE_PLACEHOLDER"
+  | "BEHAVIOR_SWITCH_IGNORED"
+  | "BLOCKED_HTML"
+  | "UNAUTHORIZED_IMAGE"
+  | "STYLE_DECLARATION_DROPPED"
+  | "REFERENCE_DUPLICATE_DEFINITION"
+  | "REFERENCE_MISSING_CONTENT"
+  | "UNSUPPORTED_CALL"
+  | "UNRESOLVED_DEPENDENCY"
+  | "TEMPLATE_NOT_FOUND"
+  | "TEMPLATE_LOOP"
+  | "TEMPLATE_RESOLVE_FAILED"
+  | "TEMPLATE_PARSE_FAILED"
+  | "DEPTH_BUDGET_EXCEEDED"
+  | "INVOCATION_BUDGET_EXCEEDED"
+  | "LENGTH_BUDGET_EXCEEDED"
+  | "EXPRESSION_ERROR"
+  | "FINAL_PARSE_FALLBACK";
+
+type WikitextDiagnosticCode = KnownWikitextDiagnosticCode | (string & {});
+
+interface WikitextDiagnostic {
+  readonly code: WikitextDiagnosticCode;
+  readonly stage: WikitextStage;
+  readonly severity: "error" | "warning" | "info";
+  readonly message: string;
+  readonly position?: WikitextPosition;
+  readonly origin?: WikitextOrigin;
+  readonly rule?: string;
+}
+```
+
+- `stage` 与错误共用 `WikitextStage`，包含 `parse`、`expand`、`prepare`、`wikitext`、`hast`、`rehype`、`sanitize`、`finalize`。
+- `severity` 表示内容受损程度，不表示调用失败：`error` 也可能是整页仍然成功返回的严重降级（例如 `FINAL_PARSE_FALLBACK`）。调用失败只会抛 `WikitextError`，不要用 `severity === "error"` 判断请求是否失败。
+- `position` 与 `origin` 基于归一化后的源码；生成内容可能没有来源。
+- `rule` 标识产生诊断的规则或插件。
+- 渲染快照的 `diagnostics` 合并了解析、准备与最终整理阶段的记录。
+- 单条诊断不会中断整页渲染；是否上报、是否阻断由宿主决定。`<Wikitext>` 用 `onPrepared` 读取这些记录。
+
+## 在组件中读取
+
+```tsx
+<Wikitext
+  source={source}
+  onPrepared={(document) => {
+    for (const diagnostic of document.diagnostics) {
+      reportDiagnostic(diagnostic);
+    }
+  }}
+  onError={(error) => reportFailure(error.code, error.cause)}
+/>
+```
+
+`onPrepared` 只在准备成功后调用；`onError` 只处理解析或准备失败，两者不会重复上报同一件事。
+
+## 相关
+
+- [故障排查](../guide/troubleshooting.mdx)：按症状定位问题。
+- [准备 `/hast`](./prepare.mdx)：准备阶段与插件错误。
+- [展开 `/expand`](./expand.mdx)：`strict` 模式与展开错误。

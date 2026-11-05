@@ -1,0 +1,138 @@
+---
+title: Server Rendering
+description: Prepare render snapshots on the server, transfer them, use Next.js App Router, and keep hydration stable.
+---
+
+# Server Rendering
+
+Parsing and preparation do not depend on React, so they can run on the server, at build time, or in a worker. The client only loads `react-wikitext/view` and restores a render snapshot.
+
+## Two deployment shapes
+
+| Shape                       | Server does               | Client loads                | Fits                           |
+| --------------------------- | ------------------------- | --------------------------- | ------------------------------ |
+| Render source on the client | Sends source text only    | Root entry (parser + React) | Small content, interactive     |
+| Prepare on the server       | Parse, prepare, serialize | `/view` + restore function  | Stable content, smaller client |
+
+The second shape keeps parsing cost on the server; the client no longer loads `wikiparser-node`.
+
+## Prepare on the server
+
+```tsx
+// server.tsx
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+
+const parser = createWikiparser();
+
+export function preparePayload(source: string, pageName: string) {
+  const document = parser.parse(source, { pageName });
+  const prepared = prepareWikitext(document);
+  return serializeWikitextRenderDocument(prepared);
+}
+```
+
+```tsx
+// client.tsx
+"use client";
+
+import { useMemo } from "react";
+import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+export function Article({ payload }: { payload: unknown }) {
+  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
+  return <WikitextView document={prepared} lang="en" />;
+}
+```
+
+`restoreWikitextRenderDocument` revalidates schema versions, the root, HAST structure, and the node budget, then reruns sanitization and finalization. It does not trust arbitrary third-party HAST; only restore snapshots from a trusted server or cache.
+
+:::note
+A snapshot contains the semantic tree, HAST, and source, so it is noticeably larger than plain HTML. Prepare large documents per page or per block, and budget the transfer.
+:::
+
+## Next.js App Router
+
+The root entry and `/view` create Context at module load and use React hooks, so they only run in Client Components. Both entries ship a `"use client"` directive, so the host does not need to create the boundary; the server only uses `/parse` and `/hast`.
+
+```tsx
+// app/wiki/[title]/page.tsx
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+import { ArticleView } from "./article-view";
+import { loadPageSource } from "@/lib/wiki";
+
+const parser = createWikiparser();
+
+export default async function Page({ params }: { params: Promise<{ title: string }> }) {
+  const { title } = await params;
+  const source = await loadPageSource(title);
+  const document = parser.parse(source, { pageName: title });
+  const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+
+  return <ArticleView payload={payload} lang="en" />;
+}
+```
+
+```tsx
+// app/wiki/[title]/article-view.tsx
+"use client";
+
+import { useMemo } from "react";
+import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+export function ArticleView({ payload, lang }: { payload: unknown; lang: string }) {
+  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
+  return <WikitextView document={prepared} lang={lang} />;
+}
+```
+
+```tsx
+// app/layout.tsx
+import "react-wikitext/styles.css";
+```
+
+- The server preparation step only calls `/parse` and `/hast`; neither entry loads React.
+- Client Components restore and render; they never parse again.
+- The root entry and `/view` ship `"use client"`, so Next.js treats them as client boundaries: they can be rendered from a Server Component, but parsing then happens on the client. When parsing must stay on the server, prepare the snapshot in the page component shown above.
+- In other SSR setups, use `renderToString` (from `react-dom/server` in React 18/19) to produce markup with hydration markers, then hydrate from the same snapshot on the client. `renderToStaticMarkup` output has no hydration markers and only suits static pages without interactivity.
+- The library does not depend on `react-dom`; install it in the host when you render or hydrate on the server. Its supported range matches `react`.
+
+## Vite and other SSR setups
+
+The idea is the same: prepare the snapshot on the server, send it as page data, and restore it on the client with `/view`.
+
+```ts
+// server entry
+const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+const html = template.replace("__WIKITEXT__", JSON.stringify(payload).replace(/</gu, "\\u003c"));
+```
+
+- Escape `<` when inlining JSON so `</script>` cannot terminate the script early.
+- If the page must expose content to crawlers, render `WikitextView` on the server too; if the client takes over, it must hydrate the same snapshot and tree.
+
+## Hydration and anchors
+
+- `headingIdStrategy: "instance"` uses a `useId` prefix; it matches when the server and client render the same tree.
+- If the trees differ, or a page has multiple instances, pass an explicit `idPrefix`.
+- Use `headingIdStrategy: "mediawiki"` when the host already links to bare anchors such as `#Section`; it assumes a single instance per page.
+- `headingIdStrategy: "none"` writes no ids and generates no TOC links, which suits embedded content without anchors.
+
+## Caching
+
+Render snapshots are cacheable, but the key must cover every input that affects output:
+
+- `AST_SCHEMA_VERSION`, `RENDER_SCHEMA_VERSION`, and the parser version.
+- Source, `pageName`, and parse budgets; `meta.limits` records the effective values.
+- Site config (`config`).
+- `prepareOptions`: resolvers, plugins, `policy`, `labels`, `headingIdStrategy`, `toc`, and `handlers`.
+
+Restore rejects snapshots with a mismatched version; invalidate the cache when upgrading the library or parser. Parse caching is covered in [Performance and budgets](./performance.mdx).
+
+## Related
+
+- [Basic usage](./usage.mdx): source component and explicit pipeline.
+- [Preparation `/hast`](../api/prepare.mdx): serialization, restore, and budgets.
+- [Security model](./security.mdx): the snapshot trust boundary.

@@ -1,0 +1,176 @@
+---
+title: 链接与图片
+description: 用 resolveLink 与 resolveImage 接入站内路由、外部链接和媒体服务。
+---
+
+# 链接与图片
+
+库默认不映射站点路由，也不加载图片。链接与媒体地址由宿主决定；库只做校验、清洗与渲染。
+
+## 链接
+
+### 默认行为
+
+| 链接类型                       | 默认输出                                               |
+| ------------------------------ | ------------------------------------------------------ |
+| 内部链接 `[[Page]]`            | 无法导航的 `<span class="wtr-link">`，`title` 为页面名 |
+| 带标签外链 `[https://… label]` | 经过安全校验的 `<a>`，标签为 `label`                   |
+| 裸外链 `https://…`             | `<a>`，标签为 URL 文本                                 |
+| 无标签外链 `[https://…]`       | `<a>`，标签按文档顺序生成 `[N]`                        |
+
+外链只允许 `http:`、`https:`、`mailto:`；无法安全解析的地址降级为被拦截的可读文本。绝对 HTTP(S) / mailto 外链默认带 `target="_blank"` 与 `rel="nofollow noopener noreferrer"`。
+
+### resolveLink
+
+```tsx
+import type { WikitextLinkResolver } from "react-wikitext/hast";
+
+const resolveLink: WikitextLinkResolver = (request) => {
+  if (request.kind === "internal") {
+    const page = request.page ?? request.target.replace(/^:/u, "");
+    return {
+      href: `/wiki/${encodeURIComponent(page)}${request.fragment ? `#${request.fragment}` : ""}`,
+      target: "_self",
+    };
+  }
+  return undefined;
+};
+```
+
+返回值语义：
+
+| 返回值                            | 行为                                      |
+| --------------------------------- | ----------------------------------------- |
+| `undefined`                       | 沿用默认行为；内部链接仍是无法导航的文本  |
+| `null`                            | 关闭导航                                  |
+| `{ href }`                        | 生成 `<a>`；`href` 仍会经过安全校验       |
+| `{ label }`                       | 替换纯文本标签；只有 `label` 时不生成链接 |
+| `{ target: "_blank" \| "_self" }` | 覆盖窗口目标                              |
+
+`request` 提供 `kind`、`target`，内部链接还可能有 `page` 与 `fragment`。`context` 提供原始解析快照 `document`、当前工作树 `ast` 与当前节点 `node`。
+
+:::note 说明
+解析回调只返回普通数据，不返回 React 元素。需要完全自定义链接外观与交互时，使用 [`semanticComponents.link`](../api/react.mdx#语义组件)。
+:::
+
+下面的示例为内部链接提供站内地址，外链沿用默认处理：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source="参见 [[Wikitext|本库]] 与 [https://example.com 示例站点]。"
+      lang="zh-CN"
+      prepareOptions={{
+        resolveLink: (request) =>
+          request.kind === "internal"
+            ? { href: "/zh/guide/quick-start", target: "_self" }
+            : undefined,
+      }}
+    />
+  );
+}
+```
+
+### 外部链接策略
+
+- `policy.allowRelativeLinks` 默认为 `true`，允许解析回调返回相对地址。
+- `policy.externalLinkTarget` 默认 `"_blank"`；设为 `null` 时外链不写 `target`。
+- 相对链接在 `_blank` 下会加上 `noopener noreferrer`；最终整理会删除非法的 target 与未知的 `rel` 值。
+
+## 图片
+
+### 默认行为
+
+文件节点默认渲染为占位加说明文字：占位由 `labels.filePlaceholder` 与文件名组成，说明文字仍然作为 `figcaption` 或 `span.wtr-file__caption` 输出。没有 `resolveImage` 时不会生成 `<img>`，库也不会请求任何图片地址。
+
+### resolveImage
+
+```tsx
+import type { WikitextImageResolver } from "react-wikitext/hast";
+
+const resolveImage: WikitextImageResolver = (request) => ({
+  src: `https://cdn.example.com/wiki/${encodeURIComponent(request.name)}`,
+  alt: request.alt ?? request.name,
+  ...(request.width === undefined ? {} : { width: request.width }),
+  ...(request.height === undefined ? {} : { height: request.height }),
+});
+```
+
+- 返回 `null` 或 `undefined` 保持占位；返回对象才授权图片资源。
+- `src` 只允许 `http:` / `https:`；需要相对图片时显式设置 `policy.allowRelativeImages: true`。
+- `request` 提供 `name`、`parameters`、解析出的 `width` / `height`、`alt` 与 `caption`。
+- 宽高最终限制在 1–4096；解析回调返回的值优先。
+- 生成的 `<img>` 固定带 `loading="lazy"` 与 `decoding="async"`，`alt` 缺省使用文件名。
+
+下面的示例并排展示默认占位与授权后的图片。预览用公开占位图服务演示出图，接入时换成你自己的 CDN 地址：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `[[File:Example.png|thumb|图片说明]]`;
+const pane = { flex: 1, minWidth: 0 };
+
+export default function Demo() {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+      <section style={pane}>
+        <p>默认：只显示占位</p>
+        <Wikitext source={source} lang="zh-CN" />
+      </section>
+      <section style={pane}>
+        <p>授权后：生成 img</p>
+        <Wikitext
+          source={source}
+          lang="zh-CN"
+          prepareOptions={{
+            resolveImage: () => ({
+              src: "https://placehold.co/240x120/png?text=Example.png",
+              alt: "示例图片",
+            }),
+          }}
+        />
+      </section>
+    </div>
+  );
+}
+```
+
+### 文件说明与链接
+
+- 说明优先取显式 `caption=`，否则取未命名说明；说明中的链接、模板占位会递归渲染。
+- 文件参数 `link=` 经 `sanitizeHref` 后生成链接；`class=` 作为附加类名。
+- 行内文件使用 `<span>`，块级文件使用 `<figure>`；外层保留 `mw-default-size`、`mw-halign-*` 等兼容类名。
+
+## 授权与安全
+
+准备阶段会记录解析回调实际返回并通过校验的图片地址。最终整理时：
+
+- 未授权的 `<img>` 会被删除；有 `alt` 时保留文本，并产生 `UNAUTHORIZED_IMAGE` 诊断。解析回调产物使用 `authorizedImages`，源码 HTML 使用 `policy.allowSourceImages`，插件产物使用 `policy.allowPluginImages`。
+- 插件不能通过插入任意 `<img>` 绕过默认不出图策略。
+- URL 在写入属性前会先进行实体解码、去除控制字符，再按协议白名单校验。
+
+需要预先处理 URL 时，可以使用 `/hast` 导出的 `sanitizeHref`、`sanitizeImageUrl` 与 `sanitizedAttributesToProps`。库在最终阶段仍会再次校验。
+
+## 策略与组件
+
+如果只需要调整默认策略，不需要接入解析回调：
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    policy: {
+      externalLinkTarget: null,
+    },
+  }}
+/>
+```
+
+`policy` 与默认值做单层浅合并；`extraTags`、`stripTags` 是整体替换，不会追加。需要保留默认数组时以 `DEFAULT_PREPARE_POLICY` 为基准展开。
+
+链接与文件的最终外观可以通过 [HTML 组件或语义组件](./customization.mdx#组件覆盖) 自定义。自定义组件属于可信代码，输出不再经过库清洗。

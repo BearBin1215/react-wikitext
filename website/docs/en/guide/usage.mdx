@@ -1,0 +1,164 @@
+---
+title: Basic Usage
+description: Source component, explicit pipeline, async plugins, and component overrides.
+---
+
+# Basic Usage
+
+There are two ways to use the library: the source component for direct rendering, and the explicit pipeline that separates parsing, preparation, and rendering for servers, caches, workers, and async work. See [How it works](./concepts.mdx) for how the outputs and entries relate.
+
+## Source component
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+export function Article({ source }: { source: string }) {
+  return (
+    <Wikitext
+      source={source}
+      parseOptions={{ pageName: "Example" }}
+      prepareOptions={{ headingIdStrategy: "instance" }}
+      lang="en"
+    />
+  );
+}
+```
+
+`Wikitext` performs the following synchronously:
+
+1. Parses the source with `parseWikitext` or the supplied `parser`.
+2. Clones the semantic tree, runs plugins, generates HAST, and sanitizes it with `prepareWikitext`.
+3. Renders with `WikitextView`.
+
+It uses two `useMemo` caches: parsing depends on `[parser, source, parseOptions]`, and preparation depends on the previous parse result plus `prepareOptions`. Changing only `prepareOptions` reuses the parse result, but a new `parseOptions` object on every render causes a reparse; keep options stable or wrap them in `useMemo`.
+
+:::warning
+The root entry only uses the synchronous prepare path. Async plugins in `wikitextPlugins` / `rehypePlugins` make `Wikitext` throw `ASYNC_PLUGIN_IN_SYNC_PATH`. Use the explicit pipeline for async plugins.
+
+Placeholders, blocks, and degradations do not make rendering fail; they are recorded as diagnostics on the snapshot. Pass `onPrepared` and read `document.diagnostics` to observe them; `onError` only handles parse or prepare failures.
+:::
+
+## Explicit pipeline
+
+```tsx
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const parser = createWikiparser();
+
+export function renderArticle(source: string) {
+  const document = parser.parse(source, { pageName: "Example" });
+  const prepared = prepareWikitext(document, {
+    headingIdStrategy: "instance",
+  });
+  return <WikitextView document={prepared} lang="en" />;
+}
+```
+
+Parsing and preparation can happen outside React. `prepareWikitext` does not modify the original parse snapshot; plugins run on a cloned semantic tree.
+
+Create the parser once at module scope and reuse it. Its config is fixed at creation; changing site config requires a new parser:
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { MEDIAWIKI_CONFIG } from "react-wikitext/configs";
+
+export const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+```
+
+## Reusing prepared output
+
+Preparation reruns plugins, HAST conversion, and sanitization. When only presentation components change, reuse the existing render snapshot:
+
+```tsx
+import type { WikitextRenderDocument } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+function Article({ prepared }: { prepared: WikitextRenderDocument }) {
+  return (
+    <WikitextView
+      document={prepared}
+      semanticComponents={{
+        template: ({ displayName }) => <span className="template-chip">{displayName}</span>,
+      }}
+    />
+  );
+}
+```
+
+- A parse cache key should include the source, `pageName`, and site config.
+- A render cache key also includes resolvers, plugins, `policy`, `labels`, and `headingIdStrategy`.
+- Caching and invalidation are covered in [Performance and budgets](./performance.mdx).
+
+## Async plugins
+
+The synchronous entry rejects async plugins. Use `prepareWikitextAsync` when a transformation is asynchronous:
+
+```tsx
+import { prepareWikitextAsync } from "react-wikitext/hast";
+
+const prepared = await prepareWikitextAsync(document, {
+  rehypePlugins: [
+    () => async (tree) => {
+      // Fetch data or rewrite HAST asynchronously
+      return tree;
+    },
+  ],
+});
+```
+
+Preparation must finish before React renders; `WikitextView` never waits for a Promise. For server scenarios, see [Server rendering](./server-rendering.mdx).
+
+## Component overrides
+
+`Wikitext` and `WikitextView` accept `components` (by HTML tag) and `semanticComponents` (by wiki semantic type). Overrides are trusted code and are the right place to integrate a design system:
+
+```tsx preview
+import type { ReactNode } from "react";
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `<blockquote>This quote uses a custom component.</blockquote>
+
+{{Infobox|title=Template badge}}`;
+
+function Quote({ children }: { children?: ReactNode }) {
+  return (
+    <blockquote style={{ borderLeft: "3px solid #0969da", margin: "8px 0", paddingLeft: 12 }}>
+      {children}
+    </blockquote>
+  );
+}
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source={source}
+      lang="en"
+      components={{ blockquote: Quote }}
+      semanticComponents={{
+        template: ({ displayName }) => (
+          <span style={{ background: "#ddf4ff", borderRadius: 999, padding: "2px 8px" }}>
+            {displayName}
+          </span>
+        ),
+      }}
+    />
+  );
+}
+```
+
+See the [React component API](../api/react.mdx) for the full mapping and props; styling, labels, and heading anchors are in [Styling and components](./customization.mdx).
+
+## Related
+
+- [Server rendering](./server-rendering.mdx): server preparation, serialization, Next.js, and hydration.
+- [Performance and budgets](./performance.mdx): budgets, workers, and caching.
+- [Troubleshooting](./troubleshooting.mdx): `ASYNC_PLUGIN_IN_SYNC_PATH` and other common errors.
+- [Contributing and feedback](../project/contributing.mdx): reporting issues and the site's plain-text entry points for AI tools.

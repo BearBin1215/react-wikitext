@@ -1,0 +1,133 @@
+---
+title: 性能与预算
+description: 解析与准备的成本、预算上限、Worker、缓存与按入口拆分打包。
+---
+
+# 性能与预算
+
+默认管线是同步的：解析与准备都在调用时完成。库不内置调度器、Worker 或虚拟列表；性能策略由宿主决定。本页给出可调的预算与常用的开销控制方式。
+
+## 成本在哪里
+
+| 阶段 | 主要成本                                    | 可以省掉吗                       |
+| ---- | ------------------------------------------- | -------------------------------- |
+| 解析 | 上游 token 化、源码语法树、语义归一化       | 不能；但可以缓存或放到 Worker    |
+| 准备 | 克隆语义树、插件、HAST 转换、清洗与最终整理 | 展示层变化时可以复用已有渲染快照 |
+| 渲染 | 建立语义/HAST 索引、逐顶层块渲染与错误边界  | 不能；大文档需要宿主分页         |
+
+`retainSyntax: true` 会把上游 token 语法树放进公共快照，显著增加内存与构建成本；它只用于检查上游 token。源码坐标、`getSourceText`、`findNodeAtOffset` 与语义节点的 `origin` 都不依赖它，不需要为了 offset 查询开启。
+
+## 预算
+
+### 解析
+
+| 选项               | 默认值  | 说明                  |
+| ------------------ | ------- | --------------------- |
+| `maxSourceLength`  | 100,000 | LF 归一化后的源码长度 |
+| `maxSyntaxNodes`   | 50,000  | 源码语法树节点数      |
+| `maxSemanticNodes` | 50,000  | 语义 AST 节点数       |
+| `maxDepth`         | 1,000   | 语法树与语义树深度    |
+
+单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。预算必须是正整数；`0`、负数、小数与非有限值统一抛 `INVALID_CONFIG`，超限抛 `SOURCE_TOO_LONG` 或 `SOURCE_TOO_COMPLEX`。实际生效值可以从 `parser.resolveOptions()` 或快照的 `meta.limits` 读取，缓存键应直接使用它。
+
+### 准备
+
+准备阶段的工作树与最终 HAST 使用固定预算，**不能**通过解析选项调整：
+
+| 预算           | 上限   |
+| -------------- | ------ |
+| 语义工作树节点 | 50,000 |
+| 语义工作树深度 | 1,000  |
+| HAST 节点      | 50,000 |
+| HAST 深度      | 1,000  |
+
+这些值是防护阈值，不是性能目标。触发时准备阶段直接失败；库产生的合法快照总能被 `restoreWikitextRenderDocument` 恢复。
+
+### 模板展开
+
+| 选项                | 默认值                            |
+| ------------------- | --------------------------------- |
+| `maxDepth`          | 40                                |
+| `maxInvocations`    | 1,000                             |
+| `maxExpandedLength` | 与原始页面长度上限相同（100,000） |
+
+## 把解析放到 Worker
+
+库不提供 Worker，但快照是普通数据，可以直接跨线程传递：
+
+```ts
+// worker.ts
+import { parseWikitext } from "react-wikitext/parse";
+import { serializeWikitextDocument } from "react-wikitext/ast";
+
+self.onmessage = (event: MessageEvent<string>) => {
+  const document = parseWikitext(event.data, { pageName: "Example" });
+  self.postMessage(serializeWikitextDocument(document));
+};
+```
+
+```ts
+// main.ts
+import { restoreWikitextDocument } from "react-wikitext/ast";
+import { prepareWikitext } from "react-wikitext/hast";
+
+const document = restoreWikitextDocument(payload);
+const prepared = prepareWikitext(document);
+```
+
+- 也可以把准备放进 Worker，传回渲染快照；渲染必须在主线程。
+- 传输前先确认快照版本；跨版本缓存应由恢复函数的校验结果判断是否可用。
+- 同一份源码重复发送时，缓存快照比重复解析更划算。
+
+## 缓存
+
+缓存键必须覆盖所有影响输出的输入：
+
+| 缓存     | 键                                                                                      |
+| -------- | --------------------------------------------------------------------------------------- |
+| 解析快照 | 源码、`pageName`、站点配置、解析选项（`meta.limits` 可直接作为预算部分）、解析器版本    |
+| 渲染快照 | 解析快照键 + 解析回调、插件、`policy`、`labels`、`headingIdStrategy`、`toc`、`handlers` |
+
+快照内的 `AST_SCHEMA_VERSION`、`SYNTAX_SCHEMA_VERSION` 与 `RENDER_SCHEMA_VERSION` 变化意味着结构不兼容，应让缓存整体失效。缓存与恢复的安全边界见[安全模型](./security.mdx)。
+
+## 避免重复工作
+
+- 把 `parseOptions` 与 `prepareOptions` 放在组件外，或用 `useMemo` 固定引用；内联的 `parseOptions` 会让 `Wikitext` 每次渲染都重新解析，内联的 `prepareOptions` 至少会重新准备。
+- 解析器创建一次并复用；默认共享解析器在首次解析时懒创建，配置变化时创建新解析器。
+- 只改组件或样式时复用渲染快照，不重新准备。
+- 不需要检查上游 token 时保持 `retainSyntax` 关闭。
+- 服务端准备、客户端只渲染，可以减少浏览器下载与执行；见[服务端与框架](./server-rendering.mdx)。
+
+## 按入口拆分打包
+
+| 入口      | 加载解析器 | 加载 React | 典型用途             |
+| --------- | ---------- | ---------- | -------------------- |
+| 根入口    | 是         | 是         | 客户端直接渲染       |
+| `/parse`  | 是         | 否         | 解析、Worker、构建期 |
+| `/expand` | 是         | 否         | 模板展开             |
+| `/view`   | 否         | 是         | 只渲染准备好的快照   |
+| `/hast`   | 否         | 否         | 准备、序列化         |
+| `/ast`    | 否         | 否         | AST 查询与数据处理   |
+
+只做展示时，客户端可以动态加载 `/view`，避免把解析器带进首屏包：
+
+```tsx
+async function loadViewer() {
+  const [{ WikitextView }, { restoreWikitextRenderDocument }] = await Promise.all([
+    import("react-wikitext/view"),
+    import("react-wikitext/hast"),
+  ]);
+  return { WikitextView, restoreWikitextRenderDocument };
+}
+```
+
+## 大文档
+
+- 100 KB 级别的密集文本可能阻塞主线程；优先放到 Worker，或按页拆请求。
+- 库没有虚拟列表；长页面由宿主分页、折叠或分段渲染。
+- 错误边界只隔离失败块，不减少整体渲染成本。
+- 目录、引用与分类是文档级结构，需要整份文档准备后才能生成。
+
+## 测量
+
+性能数字随源码、配置、浏览器与硬件变化，文档中不给固定值。需要对比改动前后的数据时，运行仓库提供的 `pnpm bench`，报告说明见[参与与反馈](../project/contributing.mdx)。

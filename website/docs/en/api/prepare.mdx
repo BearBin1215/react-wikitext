@@ -1,0 +1,268 @@
+---
+title: Preparation /hast
+description: Semantic tree plugins, resolvers, security policy, heading anchors, and render snapshots.
+---
+
+# Preparation `/hast`
+
+```ts
+import {
+  prepareWikitext,
+  prepareWikitextAsync,
+  DEFAULT_PREPARE_POLICY,
+  DEFAULT_WIKITEXT_LABELS,
+  sanitizeHref,
+  sanitizeImageUrl,
+  sanitizedAttributesToProps,
+  serializeWikitextRenderDocument,
+  restoreWikitextRenderDocument,
+} from "react-wikitext/hast";
+```
+
+`/hast` loads neither the parser nor React. It turns a parse snapshot into a sanitized render snapshot.
+
+## Basic usage
+
+```ts
+const prepared = prepareWikitext(document, {
+  resolveLink: (request) => {
+    if (request.kind === "internal") {
+      return { href: `/wiki/${request.page ?? request.target}` };
+    }
+    return undefined;
+  },
+  headingIdStrategy: "instance",
+  labels: { toc: "Contents" },
+});
+```
+
+```ts
+const prepared = await prepareWikitextAsync(document, {
+  rehypePlugins: [asyncPlugin],
+});
+```
+
+`prepareWikitext` accepts only a parse snapshot; passing a render snapshot throws `WikitextPrepareError("INVALID_DOCUMENT")` before any work starts.
+
+Preparation:
+
+1. Clones the semantic tree and runs `wikitextPlugins`.
+2. Validates the working tree structure, node count, and depth, reassigns path-style ids, and clears that root's query cache.
+3. Applies `resolveLink`, `resolveImage`, and `handlers`, converting the semantic tree to HAST.
+4. Runs `rehypePlugins`.
+5. Runs final sanitization and finalization, adding the TOC, references, category footer, and image authorization, and creates the `WikitextRenderDocument`.
+
+The original parse snapshot is never modified.
+
+## Options
+
+```ts
+interface WikitextPrepareOptions {
+  wikitextPlugins?: WikitextPluginList;
+  rehypePlugins?: WikitextPluginList;
+  resolveLink?: WikitextLinkResolver;
+  resolveImage?: WikitextImageResolver;
+  labels?: Partial<WikitextLabels>;
+  policy?: WikitextPreparePolicy;
+  headingIdStrategy?: WikitextHeadingIdStrategy;
+  toc?: false | WikitextTocOptions;
+  handlers?: WikitextHastHandlers;
+}
+
+interface WikitextTocOptions {
+  minHeadings?: number;
+  columns?: 1 | 2 | 3;
+}
+```
+
+| Option              | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| `wikitextPlugins`   | Run on the cloned semantic tree                         |
+| `rehypePlugins`     | Run after HAST conversion and before final sanitization |
+| `resolveLink`       | Decide link addresses and labels                        |
+| `resolveImage`      | Authorize image resources                               |
+| `labels`            | Override user-visible text                              |
+| `policy`            | Adjust URL, tag, and class whitelists                   |
+| `headingIdStrategy` | `instance` (default) / `mediawiki` / `none`             |
+| `toc`               | TOC threshold, columns, or `false` to disable           |
+| `handlers`          | HAST converters for custom semantic nodes               |
+
+Plugin lists are structured arrays. Elements can be plugin functions or `[plugin, options]` tuples and run in order. The signature follows unified's `(tree, file)`, where `file` is a VFile.
+
+- The synchronous API throws `WikitextPrepareError` with `ASYNC_PLUGIN_IN_SYNC_PATH` when it sees an async plugin.
+- The async API supports async plugins; preparation must finish before React renders.
+- The prepared working tree still has fixed budgets: 50,000 nodes and depth 1,000. These cannot be changed through parse options.
+- Nodes are renumbered after plugins; earlier `flattenNodes` results or id indexes are not updated automatically.
+- A handler returning `undefined` falls back to the built-in rule; `null` explicitly drops the node.
+
+## Resolvers
+
+### Links
+
+```ts
+type WikitextLinkResolver = (
+  request: WikitextLinkRequest,
+  context: WikitextResolverContext<WikitextLink>,
+) => WikitextResolvedLink | null | undefined;
+
+interface WikitextLinkRequest {
+  kind: "internal" | "external" | "bareExternal";
+  target: string;
+  page?: string;
+  fragment?: string;
+}
+
+interface WikitextResolvedLink {
+  href?: string;
+  label?: string;
+  target?: "_blank" | "_self";
+}
+```
+
+| Value        | Behavior                                                     |
+| ------------ | ------------------------------------------------------------ |
+| `undefined`  | Keep the default                                             |
+| `null`       | Disable navigation                                           |
+| `{ href }`   | Produce an `<a>`; the address is still sanitized             |
+| `{ label }`  | Replace the plain-text label; a label alone produces no link |
+| `{ target }` | Override the window target                                   |
+
+### Images
+
+```ts
+type WikitextImageResolver = (
+  request: WikitextImageRequest,
+  context: WikitextResolverContext<WikitextFile>,
+) => WikitextResolvedImage | null | undefined;
+
+interface WikitextResolvedImage {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+```
+
+- `null` and `undefined` both keep the placeholder; returning an object authorizes the resource. All three resolvers share one nullability rule: `undefined` means no opinion and falls back to built-in behavior; `null` means explicitly nothing.
+- `src` allows only `http:` / `https:`; relative images are disabled by default.
+- Dimensions are clamped to 1–4096 and the final `<img>` always has `loading="lazy"`.
+- `context.document` is the original parse snapshot; `context.ast` and `context.node` belong to the working tree.
+
+Resolvers return plain data, not React elements. To take over appearance, use the view's [`semanticComponents`](./react.mdx#semantic-components).
+
+## Security policy
+
+```ts
+interface WikitextPreparePolicy {
+  allowRelativeLinks?: boolean;
+  allowRelativeImages?: boolean;
+  allowPluginImages?: boolean;
+  allowSourceImages?: boolean;
+  externalLinkTarget?: "_blank" | "_self" | null;
+  extraTags?: readonly string[];
+  stripTags?: readonly string[];
+}
+```
+
+Defaults:
+
+```ts
+{
+  allowRelativeLinks: true,
+  allowRelativeImages: false,
+  allowPluginImages: false,
+  allowSourceImages: false,
+  externalLinkTarget: "_blank",
+  extraTags: [],
+  stripTags: [
+    "script", "style", "iframe", "object", "embed", "form", "input",
+    "button", "textarea", "select", "option", "svg", "math", "meta", "link",
+  ],
+}
+```
+
+- Shallow-merged with defaults.
+- Array fields are replaced wholesale; spread `DEFAULT_PREPARE_POLICY` to keep the defaults.
+- `class` is filtered by the `[A-Za-z0-9_-]` safe character set; there is no policy option to widen or narrow it.
+- `DEFAULT_PREPARE_POLICY` is frozen.
+- Invalid fields (policy field types, labels field types, `headingIdStrategy` values, `handlers` shape) throw `WikitextPrepareError("PREPARE_FAILED")` before any work starts.
+- The final HAST and restored snapshots share the same fixed budget (50,000 nodes, depth 1,000). Prepare fails when it is exceeded, so every snapshot the library produces can be restored.
+
+## Labels and headings
+
+- `labels` are shallow-merged with defaults during preparation and written to `meta.labels`.
+- Default fields are listed in the [customization guide](../guide/customization.mdx#labels).
+- `headingIdStrategy` controls how logical anchors map to DOM ids; `headings` stores `nodeId`, `level`, `text`, and optional `id`.
+- Anchors are generated from stripped heading text; semantic headings and source `h1`–`h6` both participate.
+
+## Render snapshot
+
+```ts
+interface WikitextRenderDocument {
+  source: string;
+  ast: WikitextRoot;
+  hast: import("hast").Root;
+  headings: readonly WikitextHeadingInfo[];
+  meta: WikitextRenderMeta;
+  diagnostics: readonly WikitextDiagnostic[];
+}
+```
+
+`meta` includes the effective policy, labels, heading strategy, and resolver-authorized image addresses. The table of contents, reference section, and category footer are already part of `hast`; they add no extra snapshot fields.
+
+## handlers
+
+`handlers` convert custom semantic nodes to HAST. A node without a handler produces a diagnostic and degrades to a source card.
+
+```ts
+type WikitextHastHandler<Node extends WikitextNode = WikitextNode> = (
+  node: Node,
+  context: WikitextToHastContext,
+) => import("hast").ElementContent | import("hast").ElementContent[] | null | undefined;
+
+type WikitextHastHandlers = {
+  [Type in WikitextNodeType]?: WikitextHastHandler<WikitextNodeMap[Type]>;
+} & {
+  [type: string]: unknown;
+};
+```
+
+Built-in keys infer their concrete node type from `WikitextNodeMap`; custom nodes get the same inference by augmenting `WikitextNodeMap`, while unregistered keys need explicit parameter types.
+
+`context` provides the original document, working tree, labels, policy, resolvers, handlers, read-only `authorizedImages` and `diagnostics`, plus `reportDiagnostic`, `convert`, and `convertChildren`. Handlers take precedence over built-in conversion, so registering a built-in type such as `heading` overrides the default. Results still go through rehype plugins and final sanitization; final link/image attributes, image authorization, and the table of contents are decided by the finalize stage.
+
+## URL and attribute utilities
+
+```ts
+sanitizeHref(value, { allowRelative? }): string | null
+sanitizeImageUrl(value, { allowRelative? }): string | null
+sanitizeStyleValue(value): { value?: string; dropped: readonly string[] }
+sanitizedAttributesToProps(attributes, tag?): Properties
+```
+
+- `sanitizeHref` allows `http:`, `https:`, and `mailto:`; `sanitizeImageUrl` allows only `http:` and `https:`.
+- `sanitizeStyleValue` parses inline styles and keeps only allowlisted properties with safe values; `dropped` lists the declarations it removed.
+- `allowRelative` is off by default.
+- `sanitizedAttributesToProps` filters by tag whitelist when `tag` is supplied; otherwise it returns the union of table-related attributes.
+- Library-reserved attributes such as `data-node-id`, `data-node-type`, and `data-wikitext` are removed from source HTML.
+
+## Serialization
+
+```ts
+const payload = serializeWikitextRenderDocument(prepared);
+const restored = restoreWikitextRenderDocument(payload);
+```
+
+Restore validates AST / render schema versions, the root, HAST structure, and the fixed node budget, then runs final sanitization and finalization again. It still does not make arbitrary third-party HAST safe to pass to the view.
+
+## Diagnostics
+
+Preparation diagnostics are merged into the render snapshot. Their `stage` may be:
+
+- `wikitext`: semantic tree plugins or conversion.
+- `hast`: HAST conversion.
+- `rehype`: rehype plugins.
+- `sanitize`: sanitization.
+- `finalize`: finalization.
+
+Use `diagnostics` with `meta` for debugging or reporting. A single diagnostic never stops the whole page from rendering.

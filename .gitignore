@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-*/
+website/doc_build/
 tests/consumer/view-only/snapshot.json
 coverage/
 playwright-report/

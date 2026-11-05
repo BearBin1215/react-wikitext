@@ -1,0 +1,134 @@
+---
+title: Syntax Support
+description: Status and default output for common wikitext constructs.
+---
+
+# Syntax Support
+
+This page lists what the default pipeline does with common constructs. **Render** means structured DOM output; **placeholder** means the position is kept but nothing is evaluated; **degrade** means a source card (a placeholder showing the original source text) plus a diagnostic; **blocked** means dangerous content is dropped with a readable hint; **ignore** means it never reaches the body.
+
+With `/expand`, resolvers, `handlers`, or component overrides, output changes. Refer to the dedicated pages for details.
+
+## Combined example
+
+The source below configures no resolvers and covers text, lists, a table, a reference, the default placeholders, a blocked address, and a degraded structure:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== Text and lists ==
+'''Bold''', ''italic'', and an [[internal link|internal link]] keep their structure.
+
+* First item
+* Second item
+
+== Table and reference ==
+{| class="wikitable"
+|-
+! Column A !! Column B
+|-
+| Cell || Content<ref>Example reference</ref>
+|}
+
+{{Infobox|title=Template placeholder}}
+[[File:Example.png|thumb|File placeholder]]
+
+[javascript:alert(1) blocked address]
+
+<chem>Example formula</chem>`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="en" />;
+}
+```
+
+Use the tables to look up a construct; use the example to check the overall output.
+
+## Text and blocks
+
+| Construct                         | Default output                    | Status | Notes                                                   |
+| --------------------------------- | --------------------------------- | ------ | ------------------------------------------------------- |
+| Paragraphs                        | `<p class="wtr-paragraph">`       | Render | Two or more blank lines split; single newlines collapse |
+| `'''bold'''`, `''italic''`        | `<b>`, `<i>`                      | Render | Both produce `<i><b>…</b></i>`                          |
+| `== Heading ==`, source `h1`–`h6` | `<h1>`–`<h6 class="wtr-heading">` | Render | Participates in anchors and the TOC                     |
+| `----`                            | `<hr class="wtr-hr">`             | Render |                                                         |
+| Leading spaces                    | Plain text                        | Render | No preformatted semantics                               |
+| `<!-- comment -->`                | No output                         | Ignore |                                                         |
+| `[[Category:…]]`                  | Category footer                   | Render | Not in the body; sort keys are hidden                   |
+| `__TOC__`, `__NOTOC__`            | TOC control                       | Render | Only affects the TOC                                    |
+| `#REDIRECT` on the first line     | Redirect banner                   | Render | Skips the body; does not load the target                |
+
+## Lists and tables
+
+| Construct                               | Default output                        | Status  | Notes                                                                          |
+| --------------------------------------- | ------------------------------------- | ------- | ------------------------------------------------------------------------------ |
+| `*`, `#`                                | Nested `<ul>` / `<ol>`                | Render  | Continuation lines join the current item                                       |
+| `;`, `:`                                | `<dl>` / `<dt>` / `<dd>`              | Render  | Supports `; term : definition` and compact forms                               |
+| `{\| … \|}`                             | `<table><caption>…</caption><tbody>…` | Render  | Cells use `<th>` / `<td>`                                                      |
+| Table, row, cell attributes             | Allowlisted attributes                | Render  | `style` keeps a safe subset; event attributes and `id` are dropped             |
+| `colspan`, `rowspan`                    | Logical grid plus filler cells        | Render  | Clamped to the table; fillers carry compat classes                             |
+| Unmatched nested wikitext table markers | Source card                           | Degrade | The whole table degrades; matched nested tables and nested HTML `<table>` work |
+| `data-*` on tables                      | Safe values kept                      | Render  | Reserved names such as `data-node-id` are rejected                             |
+
+## Links and media
+
+| Construct                     | Default output                          | Status      | Notes                                           |
+| ----------------------------- | --------------------------------------- | ----------- | ----------------------------------------------- |
+| `[[Page]]`                    | Non-navigable `<span class="wtr-link">` | Render      | Becomes `<a>` when `resolveLink` returns `href` |
+| `[[Page\|label]]`             | Same, label is `label`                  | Render      | Namespace prefixes follow the parse result      |
+| `[https://example.com label]` | `<a>` with `rel` and `target`           | Render      | Only `http:`, `https:`, `mailto:`               |
+| Bare `https://…`              | `<a>` labelled with the URL             | Render      |                                                 |
+| `[https://example.com]`       | `<a>` labelled `[N]`                    | Render      | Numbering is independent of references          |
+| `[[File:…]]`                  | `<span>` or `<figure>` placeholder      | Placeholder | `<img>` only after `resolveImage`               |
+| `<gallery>`                   | Placeholder set of file labels          | Placeholder | No images are loaded                            |
+| `<math>`                      | `<code>` formula source placeholder     | Placeholder | No KaTeX                                        |
+| `<imagemap>`                  | Block-level source card                 | Degrade     | No clickable hotspots                           |
+
+## Templates and functions
+
+| Construct                                      | Default output                                   | Status      | Notes                                                         |
+| ---------------------------------------------- | ------------------------------------------------ | ----------- | ------------------------------------------------------------- |
+| `{{Template\|…}}`                              | `<details class="wtr-template">` or inline badge | Placeholder | Lists arguments; text comes from `labels.templateNotExpanded` |
+| Parser function `{{#if:…}}`                    | Placeholder structure                            | Placeholder | Explicitly marked as not evaluated                            |
+| Argument `{{{name\|default}}}`                 | Name and default value                           | Placeholder |                                                               |
+| Templates and functions supported by `/expand` | Expanded source is reparsed                      | Render      | Calls kept after a failure still render as placeholders       |
+| `#invoke`, Lua, `subst`                        | Source preserved                                 | Placeholder | Not executed; a diagnostic is recorded                        |
+
+Magic words inside templates, functions, and arguments do not affect TOC or category detection.
+
+## HTML and extension tags
+
+| Construct                                         | Default output                                          | Status  | Notes                                                                                                          |
+| ------------------------------------------------- | ------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| Inline HTML (`b`, `i`, `u`, `span`, `code`, …)    | Corresponding elements                                  | Render  | Attributes are allowlisted                                                                                     |
+| Block-level HTML (`div`, `p`, `blockquote`, …)    | Corresponding elements                                  | Render  | May wrap headings; TOC position follows its block                                                              |
+| Void elements (`br`, `wbr`, `hr`)                 | Corresponding elements                                  | Render  |                                                                                                                |
+| `meta`, `link`                                    | No output                                               | Ignore  |                                                                                                                |
+| `script`, `style`, `iframe`, form controls, `svg` | Escaped text, or a readable hint when blocked           | Blocked | The default config does not parse these tags, so source stays text; if configured as HTML, the pair is dropped |
+| Unknown but not dangerous tags                    | Source card                                             | Degrade | Not rendered as real elements                                                                                  |
+| `<nowiki>`                                        | Plain text                                              | Render  | Links and templates are not parsed                                                                             |
+| `<pre>`                                           | Whitespace preserved                                    | Render  |                                                                                                                |
+| `<ref>`                                           | `<sup class="reference wtr-ref">` plus grouped endnotes | Render  | Named references are reused; `group` groups; duplicates produce diagnostics                                    |
+| `<references>`                                    | Marker                                                  | Render  | The matching group section is moved here; groups without markers stay at the end                               |
+| `<syntaxhighlight>`                               | `<pre><code class="language-*">` source                 | Render  | Emits a language class; no syntax highlighting                                                                 |
+| Other supported extensions                        | Handled per tag                                         | Render  | `semanticComponents.extension` can override                                                                    |
+
+## Page-level structure
+
+| Structure              | Behavior                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| Table of contents      | `toc` adjusts the threshold; `__TOC__` sets the position; `__FORCETOC__` forces; `__NOTOC__` wins |
+| Reference section      | After the body and before categories by default; `<references/>` sets a group position            |
+| Categories             | Collected into `div.catlinks.wtr-categories` at the end                                           |
+| Redirect               | First-line `#REDIRECT` renders a banner and skips the body                                        |
+| Unknown semantic nodes | Source card plus a diagnostic; the page keeps rendering                                           |
+
+## Verifying behavior
+
+1. Inspect `document.diagnostics` for `stage` and `code`.
+2. Use `flattenNodes` from `/ast` to inspect the semantic tree and compare it with the prepared HAST.
+3. Use `labels` to distinguish "not evaluated", "blocked", and "unknown structure".
+4. Treat `src/` and `tests/` as the source of truth; this page follows default behavior.
+
+See [Rendering behavior](./rendering.mdx) for details and rationale, and [Security model](./security.mdx) for blocking rules.

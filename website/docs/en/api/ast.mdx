@@ -1,0 +1,189 @@
+---
+title: AST /ast
+description: Semantic node model, query helpers, source normalization, and parse snapshot serialization.
+---
+
+# AST `/ast`
+
+```ts
+import {
+  AST_SCHEMA_VERSION,
+  SYNTAX_SCHEMA_VERSION,
+  RENDER_SCHEMA_VERSION,
+  flattenNodes,
+  findNodeById,
+  findNodeAtOffset,
+  getSourceText,
+  toPlainText,
+  isNodeType,
+  getTemplateParameters,
+  getFileParameters,
+  normalizeSource,
+  serializeWikitextDocument,
+  restoreWikitextDocument,
+  type KnownWikitextDiagnosticCode,
+  type WikitextNodeBase,
+} from "react-wikitext/ast";
+```
+
+`/ast` loads neither the parser nor React. It can be used on servers, in workers, or in data-processing scripts.
+
+## Node basics
+
+```ts
+interface WikitextNodeBase<TType extends string> {
+  readonly type: TType;
+  readonly id: string;
+  readonly position?: WikitextPosition;
+  readonly origin?: WikitextOrigin;
+  readonly data?: Readonly<Record<string, unknown>>;
+}
+```
+
+- `id` is unique within a snapshot and is not promised to be stable across edits.
+- `position` is 1-based line/column + 0-based offset; generated nodes omit it.
+- `origin` points at the original syntax node and range.
+- `data` holds extension data.
+- `WikitextNodeBase` is a public type; custom nodes can extend it and add their key to `WikitextNodeMap`, and `handlers` plus query helpers will infer the concrete node type.
+
+## Node types
+
+| Node                                                          | Key fields                                                                                             |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `root` / `paragraph` / `strong` / `emphasis`                  | `children`                                                                                             |
+| `text`                                                        | `value` (decoded semantic text)                                                                        |
+| `heading`                                                     | `level` 1–6, `children`                                                                                |
+| `thematicBreak`                                               | —                                                                                                      |
+| `link`                                                        | `kind: "internal" \| "external" \| "bareExternal"`, `target`, optional `page` / `fragment`, `children` |
+| `file`                                                        | `name`, `parameters`, `captionKind`, `attributes`, optional `block`, `children`                        |
+| `list`                                                        | `ordered`, `children`                                                                                  |
+| `listItem`                                                    | `children`                                                                                             |
+| `definitionList` / `definitionTerm` / `definitionDescription` | `children`                                                                                             |
+| `table` / `tableRow` / `tableCell`                            | `attributes`; cells also have `kind: "th" \| "td"`                                                     |
+| `tableCaption`                                                | `children`                                                                                             |
+| `template`                                                    | `name`, `displayName`, optional `block`, `children` (`templateParameter`)                              |
+| `templateParameter`                                           | `name`, `anonymous`, optional `index`, `children`                                                      |
+| `parserFunction`                                              | `name`, optional `block`, `children`                                                                   |
+| `argument`                                                    | `name`, `children` (default value)                                                                     |
+| `extension`                                                   | `name`, `attributes`, `selfClosing`, `block`, optional `raw`, `children`                               |
+| `reference`                                                   | optional `name` / `group`, `attributes`, optional `raw`, `children`                                    |
+| `category`                                                    | `target`, optional `sortKey`                                                                           |
+| `behaviorSwitch`                                              | `name`                                                                                                 |
+| `redirect`                                                    | `target`, optional `page` / `fragment`                                                                 |
+| `htmlElement`                                                 | `tag`, `attributes`, `selfClosing`, `block`, optional `blocked`, `children`                            |
+| `code`                                                        | `value`, optional `language`                                                                           |
+| `comment`                                                     | `value`                                                                                                |
+| `unknown`                                                     | `parserType`, `value`, `block`, optional `reason`                                                      |
+
+Extension tags without dedicated rendering still use `extension` nodes that retain the name and inner source; they never become `unknown`.
+
+Custom nodes require extending `WikitextNodeMap` and registering a handler during preparation. A node without a handler produces a diagnostic and degrades to a source card.
+
+## Source syntax tree
+
+With `retainSyntax: true`, the parse snapshot includes `syntax`:
+
+```ts
+interface WikitextSyntaxNode {
+  id: string; // path id, e.g. "0.0.1"
+  type: string; // upstream token type
+  range: WikitextRange; // [start, end)
+  position: WikitextPosition;
+  props: Readonly<Record<string, WikitextPrimitive>>;
+  attributes: readonly WikitextSyntaxAttribute[];
+  children: readonly WikitextSyntaxNode[];
+}
+```
+
+The syntax tree is a debugging view of upstream tokens: semantic node `position`, `origin.range`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand` always builds the syntax tree internally, so there the option only controls whether it is published.
+
+## Queries
+
+```ts
+interface SourceDocumentLike {
+  readonly source: string;
+  readonly ast: WikitextRoot;
+}
+```
+
+| Function                                       | Behavior                                                                                                         |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `flattenNodes(root)`                           | Depth-first list of all semantic nodes                                                                           |
+| `findNodeById(document, id)`                   | Find by id; returns `undefined` when absent                                                                      |
+| `findNodeAtOffset(document, offset, options?)` | Deepest node containing the offset; ranges are `[start, end)`; `offset === source.length` falls back to the root |
+| `getSourceText(document, node)`                | LF source slice for the node                                                                                     |
+| `toPlainText(node)`                            | Converted semantic text; does not decode entities again                                                          |
+| `isNodeType(node, type)`                       | Type narrowing in generic contexts                                                                               |
+
+- Zero-length nodes are excluded from `findNodeAtOffset` by default; use `includeZeroLength` to change that.
+- `getSourceText` returns an empty string for generated content without `origin`.
+- To index by id, build a `Map` from `flattenNodes`.
+- Preparation reassigns node ids. Arrays or id indexes from `flattenNodes` held by plugins before that are not updated automatically, so build them again.
+- Query transformed nodes with the render snapshot; do not use its ids against the original parse snapshot.
+
+## Structured helpers
+
+```ts
+getTemplateParameters(node): WikitextParameter[]
+getFileParameters(file): WikitextFileInfo
+```
+
+`getTemplateParameters` accepts both `template` and `parserFunction` and returns parameter nodes, names, anonymity, and 1-based indexes.
+
+`getFileParameters` derives:
+
+- `name`, `parameters`, `caption`, `captionNodes`.
+- `alt`, `link`, `lang`, `page`, `className`, `upright`.
+- `width` / `height` (supports `200`, `200px`, `200x100px`; render-clamped to 1–4096).
+- `format`, `alignment`, `verticalAlignment`, `border`.
+
+The caption prefers explicit `caption=`, otherwise the unnamed caption. Parameter keys never enter caption text.
+
+## Source normalization
+
+```ts
+interface NormalizedSource {
+  readonly source: string;
+  readonly normalized: boolean;
+  readonly originalLength: number;
+}
+
+const normalized = normalizeSource(raw, maxSourceLength);
+```
+
+- Only CRLF / CR → LF; no other character changes.
+- `DEFAULT_MAX_SOURCE_LENGTH` is 100,000; exceeding it throws `WikitextParseError("SOURCE_TOO_LONG")`.
+- All coordinates are based on normalized LF source. The library provides no mapping back to original offsets.
+
+## Serialization
+
+Parse snapshot:
+
+```ts
+const payload = serializeWikitextDocument(document);
+const restored = restoreWikitextDocument(payload);
+```
+
+Render snapshot:
+
+```ts
+import {
+  serializeWikitextRenderDocument,
+  restoreWikitextRenderDocument,
+} from "react-wikitext/hast";
+```
+
+Restore functions validate schema versions, the source string, the root, meta (including `limits`), `headings`, `diagnostics`, the full policy/labels shape, and the fixed node budget. Render snapshots are sanitized and finalized again. The snapshot's policy, labels, and `authorizedImages` belong to the trusted boundary; re-sanitizing only rebuilds derived structure. Invalid input throws:
+
+- Parse snapshot: `WikitextError("INVALID_DOCUMENT")`.
+- Render snapshot: `WikitextError("INVALID_DOCUMENT")` (same base class as parse snapshots, without a `stage` field).
+
+## Version constants
+
+| Constant                | Current value | Applies to         |
+| ----------------------- | ------------- | ------------------ |
+| `AST_SCHEMA_VERSION`    | `2`           | Semantic AST       |
+| `SYNTAX_SCHEMA_VERSION` | `1`           | Source syntax tree |
+| `RENDER_SCHEMA_VERSION` | `3`           | Render snapshot    |
+
+A version change means the snapshot shape is incompatible. Include it in cache keys when caching or transferring snapshots across processes.

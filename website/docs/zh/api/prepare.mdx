@@ -1,0 +1,270 @@
+---
+title: 准备 /hast
+description: 语义树插件、解析回调、安全策略、标题锚点与渲染快照。
+---
+
+# 准备 `/hast`
+
+```ts
+import {
+  prepareWikitext,
+  prepareWikitextAsync,
+  DEFAULT_PREPARE_POLICY,
+  DEFAULT_WIKITEXT_LABELS,
+  sanitizeHref,
+  sanitizeImageUrl,
+  sanitizedAttributesToProps,
+  serializeWikitextRenderDocument,
+  restoreWikitextRenderDocument,
+} from "react-wikitext/hast";
+```
+
+`/hast` 不加载解析器与 React。它把解析快照转换为已清洗的渲染快照。
+
+## 基本用法
+
+```ts
+const prepared = prepareWikitext(document, {
+  resolveLink: (request) => {
+    if (request.kind === "internal") {
+      return { href: `/wiki/${request.page ?? request.target}` };
+    }
+    return undefined;
+  },
+  headingIdStrategy: "instance",
+  labels: { toc: "目录" },
+});
+```
+
+```ts
+const prepared = await prepareWikitextAsync(document, {
+  rehypePlugins: [asyncPlugin],
+});
+```
+
+`prepareWikitext` 只接受解析快照；传入渲染快照会在开始处理前抛 `WikitextPrepareError("INVALID_DOCUMENT")`。
+
+准备阶段依次执行以下步骤：
+
+1. 克隆语义树，运行 `wikitextPlugins`。
+2. 校验工作树的结构、节点数与深度，重新分配路径式 id，并清除该 root 的查询缓存。
+3. 调用 `resolveLink`、`resolveImage` 与 `handlers`，把语义树转换为 HAST。
+4. 运行 `rehypePlugins`。
+5. 执行最终清洗与整理，写入目录、引用区、分类底栏与图片授权，生成 `WikitextRenderDocument`。
+
+原始解析快照不会被修改。
+
+## 选项
+
+```ts
+interface WikitextPrepareOptions {
+  wikitextPlugins?: WikitextPluginList;
+  rehypePlugins?: WikitextPluginList;
+  resolveLink?: WikitextLinkResolver;
+  resolveImage?: WikitextImageResolver;
+  labels?: Partial<WikitextLabels>;
+  policy?: WikitextPreparePolicy;
+  headingIdStrategy?: WikitextHeadingIdStrategy;
+  toc?: false | WikitextTocOptions;
+  handlers?: WikitextHastHandlers;
+}
+
+interface WikitextTocOptions {
+  minHeadings?: number;
+  columns?: 1 | 2 | 3;
+}
+```
+
+| 选项                | 说明                                     |
+| ------------------- | ---------------------------------------- |
+| `wikitextPlugins`   | 在克隆的语义树上运行                     |
+| `rehypePlugins`     | 在 HAST 转换后、最终清洗前运行           |
+| `resolveLink`       | 决定链接地址与标签                       |
+| `resolveImage`      | 授权图片资源                             |
+| `labels`            | 覆盖用户可见文案                         |
+| `policy`            | 调整 URL、标签与类名白名单               |
+| `headingIdStrategy` | `instance`（默认）/ `mediawiki` / `none` |
+| `toc`               | 目录阈值、列数，或 `false` 关闭目录      |
+| `handlers`          | 自定义语义节点的 HAST 转换器             |
+
+插件列表是结构化数组，元素可以是插件函数或 `[plugin, options]` 元组，按顺序执行。插件签名沿用 unified 的 `(tree, file)`，`file` 是 VFile。
+
+- 同步接口遇到异步插件抛 `WikitextPrepareError`，错误码 `ASYNC_PLUGIN_IN_SYNC_PATH`。
+- 异步接口支持异步插件；React 渲染前应完成准备。
+- 准备后的工作树仍受固定预算约束：50,000 节点、深度 1,000。该值不能通过解析选项修改。
+- 插件处理后的节点会重新编号；此前持有的 `flattenNodes` 结果或 id 索引不会自动更新。
+- `handlers` 返回 `undefined` 表示回退到内建规则，返回 `null` 表示显式丢弃节点。
+
+## 解析回调
+
+本节把 `resolveLink` 与 `resolveImage` 回调统称为解析回调。它们只把 wiki 地址换成站点地址，与 wikitext 的解析器函数（例如 `{{#if:…}}`）无关。
+
+### 链接
+
+```ts
+type WikitextLinkResolver = (
+  request: WikitextLinkRequest,
+  context: WikitextResolverContext<WikitextLink>,
+) => WikitextResolvedLink | null | undefined;
+
+interface WikitextLinkRequest {
+  kind: "internal" | "external" | "bareExternal";
+  target: string;
+  page?: string;
+  fragment?: string;
+}
+
+interface WikitextResolvedLink {
+  href?: string;
+  label?: string;
+  target?: "_blank" | "_self";
+}
+```
+
+| 返回值       | 行为                                      |
+| ------------ | ----------------------------------------- |
+| `undefined`  | 沿用默认行为                              |
+| `null`       | 关闭导航                                  |
+| `{ href }`   | 生成 `<a>`；地址仍会清洗                  |
+| `{ label }`  | 替换纯文本标签；只有 `label` 时不生成链接 |
+| `{ target }` | 覆盖窗口目标                              |
+
+### 图片
+
+```ts
+type WikitextImageResolver = (
+  request: WikitextImageRequest,
+  context: WikitextResolverContext<WikitextFile>,
+) => WikitextResolvedImage | null | undefined;
+
+interface WikitextResolvedImage {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+```
+
+- `null` 与 `undefined` 都保持占位；返回对象才授权资源。三个 resolver 共用同一条空值规则：`undefined` 表示没有意见，交给默认行为；`null` 表示明确不处理。
+- `src` 只允许 `http:` / `https:`；相对图片默认关闭。
+- 尺寸限制在 1–4096，最终 `<img>` 固定带 `loading="lazy"`。
+- `context.document` 是原始解析快照，`context.ast` 与 `context.node` 是本次工作树。
+
+解析回调只返回普通数据，不返回 React 元素。需要自定义外观时使用视图的 [`semanticComponents`](./react.mdx#语义组件)。
+
+## 安全策略
+
+```ts
+interface WikitextPreparePolicy {
+  allowRelativeLinks?: boolean;
+  allowRelativeImages?: boolean;
+  allowPluginImages?: boolean;
+  allowSourceImages?: boolean;
+  externalLinkTarget?: "_blank" | "_self" | null;
+  extraTags?: readonly string[];
+  stripTags?: readonly string[];
+}
+```
+
+默认值：
+
+```ts
+{
+  allowRelativeLinks: true,
+  allowRelativeImages: false,
+  allowPluginImages: false,
+  allowSourceImages: false,
+  externalLinkTarget: "_blank",
+  extraTags: [],
+  stripTags: [
+    "script", "style", "iframe", "object", "embed", "form", "input",
+    "button", "textarea", "select", "option", "svg", "math", "meta", "link",
+  ],
+}
+```
+
+- 与默认值做单层浅合并。
+- 数组字段整体替换；需要保留默认数组时以 `DEFAULT_PREPARE_POLICY` 为基准展开。
+- `class` 统一按 `[A-Za-z0-9_-]` 安全字符集过滤；不存在放宽或收窄 class 的 policy 选项。
+- `DEFAULT_PREPARE_POLICY` 已冻结。
+- 非法字段（policy 字段类型、labels 字段类型、`headingIdStrategy` 枚举、`handlers` 形状）在开始处理前抛 `WikitextPrepareError("PREPARE_FAILED")`。
+- 最终 HAST 与恢复快照共用同一组固定预算（50,000 节点、深度 1,000）；超限时准备阶段直接失败，库产生的合法快照总能被恢复。
+
+## 文案与标题
+
+- `labels` 由准备阶段与默认值浅合并，最终写入 `meta.labels`。
+- 默认文案与字段见[定制指南](../guide/customization.mdx#文案)。
+- `headingIdStrategy` 决定逻辑锚点与 DOM id 的映射；`headings` 保存 `nodeId`、`level`、`text` 与可选 `id`。
+- 锚点由移除标记后的标题文本生成；语义标题与源码 `h1`–`h6` 都参与。
+
+## 渲染快照
+
+```ts
+interface WikitextRenderDocument {
+  source: string;
+  ast: WikitextRoot;
+  hast: import("hast").Root;
+  headings: readonly WikitextHeadingInfo[];
+  meta: WikitextRenderMeta;
+  diagnostics: readonly WikitextDiagnostic[];
+}
+```
+
+`meta` 包含实际生效的策略、文案、标题策略与解析回调授权的图片地址。目录、引用区与分类底栏已经包含在 `hast` 中，不新增快照字段。
+
+## handlers
+
+`handlers` 把自定义语义节点转换为 HAST。未注册转换函数的节点会产生诊断并降级为源码卡片。
+
+```ts
+type WikitextHastHandler<Node extends WikitextNode = WikitextNode> = (
+  node: Node,
+  context: WikitextToHastContext,
+) => import("hast").ElementContent | import("hast").ElementContent[] | null | undefined;
+
+type WikitextHastHandlers = {
+  [Type in WikitextNodeType]?: WikitextHastHandler<WikitextNodeMap[Type]>;
+} & {
+  [type: string]: unknown;
+};
+```
+
+内建键会按 `WikitextNodeMap` 推导出具体的节点类型；自定义节点应通过模块扩展写入 `WikitextNodeMap`，即可获得同样的推导；未注册的键需要显式标注参数类型。
+
+`context` 提供原始文档、工作树、文案、策略、解析回调、转换函数、只读的 `authorizedImages` 与 `diagnostics`，以及 `reportDiagnostic`、`convert`、`convertChildren`。`handlers` 优先于内建转换，注册内建类型（例如 `heading`）会覆盖默认实现。转换结果仍会经过 rehype 插件与最终清洗；链接与图片的最终属性、图片授权和目录由整理阶段统一决定。
+
+## URL 与属性工具
+
+```ts
+sanitizeHref(value, { allowRelative? }): string | null
+sanitizeImageUrl(value, { allowRelative? }): string | null
+sanitizeStyleValue(value): { value?: string; dropped: readonly string[] }
+sanitizedAttributesToProps(attributes, tag?): Properties
+```
+
+- `sanitizeHref` 允许 `http:`、`https:`、`mailto:`；`sanitizeImageUrl` 只允许 `http:`、`https:`。
+- `sanitizeStyleValue` 解析内联样式并只保留白名单属性与安全值；`dropped` 列出被丢弃的声明。
+- `allowRelative` 默认关闭。
+- `sanitizedAttributesToProps` 传入 `tag` 时按标签白名单过滤；省略时返回表格相关属性的并集。
+- 源码 HTML 的 `data-node-id`、`data-node-type`、`data-wikitext` 等库保留属性会被移除。
+
+## 序列化
+
+```ts
+const payload = serializeWikitextRenderDocument(prepared);
+const restored = restoreWikitextRenderDocument(payload);
+```
+
+恢复函数校验 AST 与渲染快照的结构版本、根节点、HAST 结构与固定节点预算，并重新执行最终清洗与整理。仍不能把任意第三方 HAST 直接交给视图。
+
+## 诊断
+
+准备阶段的诊断会合并到渲染快照，`stage` 可能是：
+
+- `wikitext`：语义树插件或转换。
+- `hast`：HAST 转换。
+- `rehype`：rehype 插件。
+- `sanitize`：清洗。
+- `finalize`：最终整理。
+
+`diagnostics` 与 `meta` 一起可用于调试或上报；单条诊断不会中断整页渲染。

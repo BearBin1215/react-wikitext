@@ -1,0 +1,76 @@
+---
+title: 入口总览
+description: 子路径提供的功能、加载边界与解析/渲染快照的区别。
+---
+
+# 入口总览
+
+库按子路径提供功能，宿主可以只加载需要的部分。根入口是主入口；`react-wikitext/view` 是不加载解析器的精简入口。
+
+## 处理管线
+
+管线的阶段、可选展开与两种快照的关系见[工作原理](../guide/concepts.mdx)；各阶段使用的入口见下面的子路径表。
+
+## 子路径
+
+| 子路径                      | 内容                                                                                                | 加载解析器         | 加载 React |
+| --------------------------- | --------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
+| `react-wikitext`            | `Wikitext`、`WikitextView`、`WikitextFragment`、Context Hook、组件类型与精选语义类型                | 是                 | 是         |
+| `react-wikitext/ast`        | 语义模型、查询、辅助函数、纯解析器工厂、源码归一化、序列化                                          | 否                 | 否         |
+| `react-wikitext/parse`      | 默认解析器、`parseWikitext`、解析选项、解析错误                                                     | 是                 | 否         |
+| `react-wikitext/expand`     | `expandWikitext`、模板展开类型与错误                                                                | 是                 | 否         |
+| `react-wikitext/hast`       | `prepareWikitext`、`prepareWikitextAsync`、解析回调、策略、文案、标题策略、URL 工具、渲染快照序列化 | 否                 | 否         |
+| `react-wikitext/unified`    | `createWikitextProcessor`、进程内固定 finalize 的 unified 集成                                      | 否（需注入解析器） | 否         |
+| `react-wikitext/view`       | `WikitextView`、`WikitextFragment`、Context Hook、组件类型                                          | 否                 | 是         |
+| `react-wikitext/configs`    | `MEDIAWIKI_CONFIG`、`createMediaWikiConfig`、`ParserConfig`                                         | 否                 | 否         |
+| `react-wikitext/styles.css` | 页面渲染样式                                                                                        | —                  | —          |
+| `react-wikitext/tokens.css` | 主题变量；只覆盖变量时单独导入，避免重复样式                                                        | —                  | —          |
+
+根入口不导出 parse、expand、hast 与 unified 的功能。`/ast`、`/hast`、`/unified`、`/configs` 不加载默认解析器；`/parse` 与 `/expand` 会加载；`/view` 只加载 React 与已准备好的文档。
+
+## 解析快照与渲染快照
+
+- 解析快照 `WikitextDocument`：由 `/parse` 产生，字段定义见[解析 `/parse`](./parse.mdx)。
+- 渲染快照 `WikitextRenderDocument`：由 `/hast` 准备产生，字段定义见[准备 `/hast`](./prepare.mdx)。
+
+解析快照里的 `ast` 是原始归一化结果，准备阶段不会修改它；渲染快照里的 `ast` 是插件处理后的工作树，节点 id 已重新分配。渲染快照的 `hast` 已完成清洗与最终整理，包含目录、引用区与分类底栏；`WikitextView` 只接受渲染快照。
+
+查询转换后的节点时，必须使用渲染快照；不要用渲染快照里的 id 查原始解析快照。
+
+## 如何选择
+
+| 需求                     | 使用                          |
+| ------------------------ | ----------------------------- |
+| 客户端直接渲染源码       | 根入口 `Wikitext`             |
+| 服务端准备、客户端只渲染 | `/parse` + `/hast` + `/view`  |
+| 只做解析或 AST 分析      | `/parse` + `/ast`             |
+| 展开模板后再渲染         | `/expand` + `/hast` + `/view` |
+| 接入 unified 处理器      | `/unified`（显式注入解析器）  |
+| 只替换站点配置           | `/configs` + `/parse`         |
+
+## 类型与错误
+
+- 四个错误类（`WikitextError`、`WikitextParseError`、`WikitextExpandError`、`WikitextPrepareError`）在根入口与各自的功能入口导出，是同一份定义；宿主不需要为了 `instanceof` 从不同子路径分别导入。
+- `WikitextLabels` 类型可从 `/ast` 与 `/view` 导入；默认值 `DEFAULT_WIKITEXT_LABELS` 与 `DEFAULT_PREPARE_POLICY` 从 `/hast` 导出。
+- 完整节点子类型、`WikitextNodeBase`、`KnownWikitextDiagnosticCode` 与 `WikitextStage` 从 `/ast` 导入；根入口只导出视图组件会用到的精选语义类型。
+- 错误码、`stage` 与诊断字段见[错误与诊断](./errors.mdx)。
+
+## 参考页面
+
+| 子路径          | 页面                      |
+| --------------- | ------------------------- |
+| 根入口、`/view` | [React 组件](./react.mdx) |
+| `/parse`        | [解析](./parse.mdx)       |
+| `/ast`          | [AST](./ast.mdx)          |
+| `/hast`         | [准备](./prepare.mdx)     |
+| `/expand`       | [展开](./expand.mdx)      |
+| `/unified`      | [unified](./unified.mdx)  |
+| `/configs`      | [configs](./configs.mdx)  |
+
+## 下一步
+
+- [React 组件](./react.mdx)：源码组件、视图、Fragment 与 Context Hook。
+- [解析 `/parse`](./parse.mdx)：解析器、预算与自定义适配器。
+- [准备 `/hast`](./prepare.mdx)：插件、解析回调、策略与快照恢复。
+- [错误与诊断](./errors.mdx)：错误码与处理建议。
+- [状态与兼容性](../project/status.mdx)：版本、快照版本与运行时要求。

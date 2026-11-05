@@ -1,0 +1,79 @@
+---
+title: 概览
+description: react-wikitext 的定位、能力边界、适用场景与当前状态。
+---
+
+# 概览
+
+`react-wikitext` 把 MediaWiki 风格的 wikitext 渲染成 React 元素：源码先由解析器转换为强类型语义 AST，再转换为 HAST，最后交给 React。它不连接 MediaWiki API，不执行 Lua，也不接管站点路由。
+
+## 它解决什么问题
+
+在 React 应用里展示 wiki 内容时，常见做法是拿到 HTML 后用 `dangerouslySetInnerHTML` 注入，或者直接嵌入 `iframe`。前者绕过了 React，后者无法复用宿主样式与交互。
+
+`react-wikitext` 输出 React 元素而不是 HTML 字符串；渲染前会给出可查询的语义树与已清洗的 HAST；链接、图片和模板由宿主决定，库只负责校验与渲染。解析与准备可以放在服务端、Worker 或缓存层，客户端只接收快照。
+
+## 能力
+
+| 能力         | 说明                                                                       |
+| ------------ | -------------------------------------------------------------------------- |
+| 解析与渲染   | `wikiparser-node@1.48.1` 生成语法树；库归一化为语义 AST，再输出 React 元素 |
+| 快照与服务端 | 解析快照与渲染快照都是普通数据；服务端准备后，客户端只加载 `/view`         |
+| 模板展开     | 可选的 `/expand`，用宿主模板表或获取回调展开受支持的模板与纯 wikitext 函数 |
+| 定制与调试   | 组件覆盖、`handlers`、rehype 插件、CSS 变量、文案与诊断                    |
+| unified 接入 | `/unified` 提供固定顺序的处理器，清洗阶段由库内部追加                      |
+
+### 默认输出
+
+下面的示例没有配置解析回调。模板、图片占位与未配置路由的链接都是默认行为，不是渲染失败：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== 默认输出 ==
+这段文字包含 '''粗体'''、''斜体'' 和 [[尚未配置路由的链接]]。
+
+{{Infobox|title=模板默认不求值}}
+
+[[File:Example.png|thumb|图片默认只是占位]]`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="zh-CN" />;
+}
+```
+
+完整行为见[渲染行为](./rendering.mdx)与[支持矩阵](./syntax-support.mdx)。
+
+## 明确的边界
+
+默认管线不求值模板与解析器函数，也不执行 Lua；`/expand` 只覆盖受支持的子集。库不发起网络请求，图片默认不加载，内部链接默认不可导航。
+
+它不是 MediaWiki 实现，也不含编辑器或虚拟列表；站点 API、编辑流程、完整扩展语义与分页由宿主负责。完整边界见[渲染行为](./rendering.mdx)。
+
+## 适用场景
+
+适合只读的 wiki 镜像、存档与导出，也适合在知识库、文档站或后台中嵌入片段。需要在渲染前检查结构化数据、隔离单个块的渲染错误、把解析放到 Worker，或把链接、图片、模板接到自有路由、CDN 与后端时，也可以使用本库。
+
+以下场景更适合其他方案：
+
+| 场景                       | 更合适的做法                            |
+| -------------------------- | --------------------------------------- |
+| 内容本身就是 Markdown      | `react-markdown` 等 Markdown 渲染器     |
+| 需要完整的站点级 wiki 语义 | 使用 MediaWiki / Parsoid 提供的解析结果 |
+| 只需要隔离展示第三方页面   | `iframe`，代价是无法复用宿主样式与交互  |
+| 需要所见即所得编辑         | 使用编辑器方案；本库只负责只读渲染      |
+
+## 当前状态
+
+:::note 说明
+0.x 阶段遵循语义化版本约定：次版本可能包含破坏性变更，补丁版本只做兼容修复。运行时支持 React `>=18.2 <20`，构建或服务端运行需要 Node `>=18.18`；解析器固定为 `wikiparser-node@1.48.1`，许可为 GPL-3.0-or-later。
+:::
+
+兼容矩阵与版本策略见[状态与兼容性](../project/status.mdx)。
+
+## 从这里开始
+
+- [快速开始](./quick-start.mdx)：安装并渲染第一段源码。
+- [工作原理](./concepts.mdx)：理解管线、快照与入口的拆分。
+- [支持矩阵](./syntax-support.mdx)：确认某段语法会被渲染、占位还是降级。

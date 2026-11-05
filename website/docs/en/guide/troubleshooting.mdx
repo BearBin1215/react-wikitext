@@ -1,0 +1,79 @@
+---
+title: Troubleshooting
+description: Common display, build, and error-code issues, plus a fixed way to narrow them down.
+---
+
+# Troubleshooting
+
+Three checks usually locate the problem:
+
+1. Read the placeholder label: `labels` distinguishes "not evaluated", "blocked", and "unknown structure".
+2. Read `document.diagnostics`: each record has `stage`, `code`, and a source position.
+3. Reduce to the smallest source and options; remove custom plugins and components to reproduce.
+
+If you are unsure whether a placeholder is expected, compare it with the [default output in the overview](./introduction.mdx#default-output) and [syntax support](./syntax-support.mdx).
+
+## Display
+
+| Symptom                                        | Cause                                                                 | Fix                                                                                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------- |
+| Template area shows a placeholder              | The default pipeline does not evaluate templates                      | Use [`/expand`](./templates.mdx), or override `semanticComponents.template`                                                              |
+| Parser function shows a placeholder            | Same; not evaluated by default                                        | Supported pure wikitext functions work through `/expand`; others stay placeholders                                                       |
+| Image slot shows a placeholder plus caption    | No `resolveImage`, or it returned `null` / `undefined`                | The placeholder is `labels.filePlaceholder` plus the file name; return a validated `src`; enable `allowRelativeImages` for relative URLs |
+| Internal links are not clickable               | Default output is non-navigable text                                  | Return `href` from `resolveLink`                                                                                                         |
+| External links become plain text               | Protocol is not allowlisted                                           | Use `http:`, `https:`, or `mailto:`                                                                                                      |
+| HTML becomes a source card                     | Unknown or unbalanced tag                                             | Check support; custom semantic nodes need `handlers`                                                                                     |
+| Dangerous tags leave only a hint               | `script`, `iframe`, etc. are blocked                                  | Expected; do not relax `stripTags` just to display them                                                                                  |
+| A whole table becomes a source card            | A nested wikitext table has unmatched `{                              | `/`                                                                                                                                      | }` markers | Match the ` | }` markers; a properly paired nested table renders normally |
+| Paragraphs merge                               | A single newline collapses to a space                                 | Use two blank lines to split                                                                                                             |
+| No table of contents                           | Fewer than four headings, `__NOTOC__`, or `headingIdStrategy: "none"` | Check headings and behavior switches; use `__TOC__` to pin the position                                                                  |
+| The reference section is not at `<references>` | It is fixed after the body, before categories                         | Expected; the tag does not control its position                                                                                          |
+| Categories are missing from the body           | They are collected into the footer                                    | Expected; label text comes from `labels.categories`                                                                                      |
+| Heading anchors collide                        | Multiple instances share bare ids                                     | Use the default `instance` strategy, or pass `idPrefix`                                                                                  |
+
+See [Syntax support](./syntax-support.mdx) for the full default output.
+
+## Runtime and build
+
+| Symptom                                                 | Cause                                                                          | Fix                                                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `ASYNC_PLUGIN_IN_SYNC_PATH`                             | Async plugin on the sync path                                                  | Use `prepareWikitextAsync`, or prepare outside React                                                   |
+| Parsing happens on every render                         | Inline `parseOptions` / `prepareOptions` objects                               | Move them out of the component or stabilize with `useMemo`                                             |
+| `PARSER_UNAVAILABLE`                                    | The `wikiparser-node` browser bundle did not initialize `globalThis.Parser`    | Ensure the side-effect import runs; avoid duplicate copies or manual dependency pruning                |
+| `Cannot find module 'react-wikitext/styles.css'`        | CSS not handled by the bundler, or the build lacks `dist/styles.css`           | Let the bundler handle package CSS; confirm resolution to `dist/styles.css`                            |
+| Next.js Server Component throws a `createContext` error | A React entry was called from the server in an environment with RSC boundaries | Confirm the build ships `"use client"`; use [server preparation](./server-rendering.mdx) on the server |
+| Hydration mismatch or drifting anchors                  | Server and client trees differ, or no id prefix is fixed                       | Render the same tree; pass `idPrefix`; consider the `mediawiki` strategy                               |
+| `WikitextError("INVALID_DOCUMENT")`                     | A parse snapshot was passed to `prepare` or `WikitextView`                     | Call `prepareWikitext` first to obtain a render snapshot; the view rejects parse snapshots             |
+| CJS environment fails to load                           | Runtime too old, or bundler ignores `exports`                                  | Use Node `>=18.18` and a bundler that supports conditional exports                                     |
+
+## Error codes
+
+Errors carry `code`; prepare errors also carry `stage`. Never branch on `message` text.
+
+The full list of error codes, stages, and handling advice is in [Errors and diagnostics](../api/errors.mdx).
+
+## Reading diagnostics
+
+```ts
+for (const diagnostic of prepared.diagnostics) {
+  console.warn(diagnostic.stage, diagnostic.code, diagnostic.message);
+}
+```
+
+- `stage` shares `WikitextStage` with errors; common values are `wikitext`, `hast`, `rehype`, `sanitize`, and `finalize`.
+- `severity: "error"` means content was badly damaged, not that the call failed; the page may still render successfully.
+- A diagnostic never aborts the whole page; a render failure replaces only the affected top-level block.
+- View failures are reported through `onRenderError`; the placeholder title comes from `labels.renderFailed`.
+- `<Wikitext>` exposes diagnostics through `onPrepared`; the explicit pipeline reads `prepared.diagnostics` directly.
+- `meta` records the effective `policy`, `labels`, `headingIdStrategy`, authorized images, and parse budgets (`limits`), which helps confirm that config actually applied.
+
+## Still stuck
+
+When reporting, include:
+
+- The smallest wikitext source and `pageName`.
+- Entry, parse options, and prepare options (redacted if needed).
+- Library version, `parserVersion`, React, and bundler versions.
+- `document.diagnostics` plus the error `code`, `stage`, and `cause`.
+
+More channels are listed in [Contributing and feedback](../project/contributing.mdx).

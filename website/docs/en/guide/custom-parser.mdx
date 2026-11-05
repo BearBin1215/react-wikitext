@@ -1,0 +1,199 @@
+---
+title: Custom parsers
+description: Wire another parser through an adapter, create it from /ast, and reuse preparation and rendering.
+---
+
+# Custom parsers
+
+The default parser is `wikiparser-node@1.48.1`. If a host already has another wikitext parser, an adapter can convert its output into the source syntax tree this library defines, reusing the semantic AST, preparation, HAST, and React rendering.
+
+## Import the factory from `/ast`
+
+```ts
+import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
+```
+
+`/ast` loads neither the default parser nor React. `/parse` re-exports the same factory, but importing it initializes the default IIFE; do not import it when you only need a custom adapter.
+
+The adapter only maps source to the syntax tree. Source normalization, budget merging, semantic AST construction, diagnostics, and `meta` are handled by the factory.
+
+## Syntax tree shape
+
+The returned root is a `WikitextSyntaxRoot`; every node has:
+
+| Field        | Requirement                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `type`       | String; the semantic stage recognizes token types, and unknown types degrade to source cards                  |
+| `id`         | Unique string inside the snapshot; child ids usually extend the parent id with dots                           |
+| `range`      | `[start, end]` as **UTF-16** offsets into the **LF-normalized** source; `start <= end`                        |
+| `position`   | Required; `start`/`end` are 1-based line/column plus 0-based offset, and the offsets must equal `range`       |
+| `props`      | Plain object; text nodes keep their content in `data`, headings use `level`, extensions use `name`, and so on |
+| `attributes` | `{ name, value, range }[]`; use an empty array when there are none                                            |
+| `children`   | Child array; use an empty array when there are none                                                           |
+
+The factory validates the root, finite ranges, position consistency, and the node/depth budgets. An invalid tree throws `WikitextParseError`; adapter exceptions are wrapped as `PARSE_FAILED` with the original `cause`.
+
+The semantic stage reuses the default adapter's token vocabulary, for example:
+
+- `heading` + `heading-title` + `text`;
+- `link` + `link-target` / `link-text`;
+- `text`, `ext`, `template`, `magic-word`, `arg`, `file`, `table`, `list`, and so on.
+
+Syntax that is not represented with these tokens gets no semantic structure; that is the adapter's boundary, not syntax the library infers.
+
+## A limited syntax example
+
+The adapter below only recognizes `== Heading ==`, `[[Target|Label]]`, and plain paragraphs:
+
+```tsx preview
+import {
+  createWikitextParser,
+  type WikitextParserAdapter,
+  type WikitextPoint,
+  type WikitextSyntaxNode,
+  type WikitextSyntaxRoot,
+} from "react-wikitext/ast";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+function createLimitedAdapter(): WikitextParserAdapter {
+  let source = "";
+  let nextId = 0;
+  const point = (offset: number): WikitextPoint => {
+    const before = source.slice(0, offset);
+    const lastBreak = before.lastIndexOf("\n");
+    return { line: before.split("\n").length, column: offset - lastBreak, offset };
+  };
+  const node = (
+    type: string,
+    start: number,
+    end: number,
+    children: WikitextSyntaxNode[] = [],
+    props: Record<string, unknown> = {},
+  ): WikitextSyntaxNode => ({
+    id: String(nextId++),
+    type,
+    range: [start, end],
+    position: { start: point(start), end: point(end) },
+    props,
+    attributes: [],
+    children,
+  });
+  const text = (start: number, end: number) =>
+    node("text", start, end, [], { data: source.slice(start, end) });
+
+  // [[Target|Label]] inside a paragraph; everything else becomes text tokens.
+  const inline = (start: number, end: number): WikitextSyntaxNode[] => {
+    const slice = source.slice(start, end);
+    const output: WikitextSyntaxNode[] = [];
+    let cursor = 0;
+    const pattern = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/gu;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(slice))) {
+      if (match.index > cursor) {
+        output.push(text(start + cursor, start + match.index));
+      }
+      const linkStart = start + match.index;
+      const targetStart = linkStart + 2;
+      const targetEnd = targetStart + match[1]!.length;
+      const textStart = targetEnd + 1;
+      output.push(
+        node(
+          "link",
+          linkStart,
+          linkStart + match[0].length,
+          [
+            node("link-target", targetStart, targetEnd, [text(targetStart, targetEnd)]),
+            ...(match[2] === undefined
+              ? []
+              : [
+                  node("link-text", textStart, textStart + match[2].length, [
+                    text(textStart, textStart + match[2].length),
+                  ]),
+                ]),
+          ],
+          { target: match[1] },
+        ),
+      );
+      cursor = match.index + match[0].length;
+    }
+    if (cursor < slice.length) {
+      output.push(text(start + cursor, end));
+    }
+    return output;
+  };
+
+  return {
+    name: "limited-wikitext",
+    version: "1.0.0",
+    parse(input) {
+      source = input;
+      nextId = 0;
+      const children: WikitextSyntaxNode[] = [];
+      let paragraphStart = -1;
+      let offset = 0;
+      const flushParagraph = (end: number): void => {
+        if (paragraphStart >= 0) {
+          children.push(...inline(paragraphStart, end));
+          paragraphStart = -1;
+        }
+      };
+      for (const line of source.split("\n")) {
+        const lineStart = offset;
+        const lineEnd = offset + line.length;
+        const heading = /^(={1,6})\s*(.*?)\s*\1\s*$/u.exec(line);
+        if (heading) {
+          flushParagraph(lineStart);
+          const titleStart = lineStart + heading[1]!.length;
+          const title = heading[2] ?? "";
+          children.push(
+            node(
+              "heading",
+              lineStart,
+              lineEnd,
+              [
+                node("heading-title", titleStart, titleStart + title.length, [
+                  text(titleStart, titleStart + title.length),
+                ]),
+              ],
+              { level: heading[1]!.length },
+            ),
+          );
+        } else if (line.trim() === "") {
+          // The paragraph token covers the trailing blank line so normalization splits on "\n\n".
+          flushParagraph(lineEnd + 1);
+        } else if (paragraphStart < 0) {
+          paragraphStart = lineStart;
+        }
+        offset = lineEnd + 1;
+      }
+      flushParagraph(source.length);
+      return node("root", 0, source.length, children) as WikitextSyntaxRoot;
+    },
+  };
+}
+
+const parser = createWikitextParser(createLimitedAdapter());
+const document = parser.parse("== Demo ==\n\nPlain [[Target page|label]] text.", {
+  pageName: "Adapter demo",
+});
+const prepared = prepareWikitext(document);
+
+export default function Demo() {
+  return <WikitextView document={prepared} lang="en" />;
+}
+```
+
+## Parse, prepare, and render
+
+The preview above registers the adapter with `createWikitextParser` and passes its result through `prepareWikitext` to `WikitextView`. Preparation and rendering are shared with the default parser; `document.meta.parser` / `parserVersion` come from the adapter. When a server or worker only needs a custom adapter, import the factory from `/ast`; `/parse` executes the upstream IIFE.
+
+## Boundaries
+
+- The library does not promise that any syntax tree becomes full wikitext semantics; only the default adapter's token vocabulary is guaranteed.
+- Ranges must use the LF-normalized source. Do not convert CRLF early or return offsets from the original text.
+- Adapters are trusted code. Their nodes still go through sanitization, but they must not fabricate source positions.
+- To expand templates, pass the same parser to [`/expand`](../api/expand.mdx); the expanded result is still wikitext and is parsed again.
+
+Related: [`/ast` API](../api/ast.mdx), [`/parse` API](../api/parse.mdx), [How it works](./concepts.mdx).

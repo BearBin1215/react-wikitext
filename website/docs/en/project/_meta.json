@@ -1,0 +1,5 @@
+[
+  { "type": "section-header", "label": "Project" },
+  { "type": "file", "name": "status", "label": "Status and Compatibility" },
+  { "type": "file", "name": "contributing", "label": "Contributing and Feedback" }
+]

@@ -1,0 +1,79 @@
+---
+title: 故障排查
+description: 常见显示、构建与错误码问题，以及定位问题的固定步骤。
+---
+
+# 故障排查
+
+先做三件事，通常能直接定位问题：
+
+1. 看占位文案：`labels` 能区分“未求值”“已拦截”“未知结构”。
+2. 看 `document.diagnostics`：每条诊断带有 `stage`、`code` 与源码位置。
+3. 缩小到最小源码与最小选项；去掉自定义插件与组件后复现。
+
+不确定某个占位是否正常时，先对照[概览的默认输出](./introduction.mdx#默认输出)与[支持矩阵](./syntax-support.mdx)。
+
+## 内容显示
+
+| 症状                             | 原因                                                       | 处理                                                                                                 |
+| -------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------- | ------ | --------------------------------------------- |
+| 模板区域显示占位                 | 默认管线不求值模板                                         | 用 [`/expand`](./templates.mdx)；或自定义 `semanticComponents.template`                              |
+| 解析器函数显示占位               | 同上，默认不执行                                           | 受支持的纯 wikitext 函数可用 `/expand`；其余保留占位                                                 |
+| 图片位置显示占位与说明文字       | 没有 `resolveImage`，或返回了 `null` / `undefined`         | 占位由 `labels.filePlaceholder` 加文件名构成；返回通过校验的 `src`；相对图片需 `allowRelativeImages` |
+| 内部链接不可点击                 | 默认输出不可导航的文本                                     | 用 `resolveLink` 返回 `href`                                                                         |
+| 外链变成普通文本                 | 协议不在白名单                                             | 只使用 `http:`、`https:`、`mailto:`                                                                  |
+| HTML 变成源码卡片                | 标签未知或无法配对                                         | 确认标签是否受支持；自定义语义节点需要注册 `handlers`                                                |
+| 危险标签只剩提示                 | `script`、`iframe` 等被拦截                                | 预期行为；不要为了展示放宽 `stripTags`                                                               |
+| 整张表格变成源码卡片             | 嵌套 wikitext 表格的 `{                                    | `/`                                                                                                  | }` 标记不配对 | 补全 ` | }` 使标记配对；配对完整的嵌套表格可以正常渲染 |
+| 段落被合并                       | 单个换行会折叠为空格                                       | 用两个空行分段                                                                                       |
+| 目录没有出现                     | 标题少于 4 个、`__NOTOC__`、或 `headingIdStrategy: "none"` | 检查标题数量与行为开关；需要固定位置时用 `__TOC__`                                                   |
+| 引用区不在 `<references>` 的位置 | 引用区固定位于正文之后、分类之前                           | 预期行为；位置不可通过标签控制                                                                       |
+| 分类不在正文中                   | 分类汇总到文末底栏                                         | 预期行为；文案由 `labels.categories` 控制                                                            |
+| 同一页标题锚点冲突               | 多个实例共享裸 id                                          | 用默认 `instance` 策略，或显式传 `idPrefix`                                                          |
+
+更多默认输出见[支持矩阵](./syntax-support.mdx)。
+
+## 运行与构建
+
+| 症状                                             | 原因                                                     | 处理                                                                        |
+| ------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `ASYNC_PLUGIN_IN_SYNC_PATH`                      | 同步入口遇到异步插件                                     | 改用 `prepareWikitextAsync`，或在 React 外准备                              |
+| 每次渲染都重新解析                               | `parseOptions` / `prepareOptions` 是内联新对象           | 移到组件外或用 `useMemo` 固定引用                                           |
+| `PARSER_UNAVAILABLE`                             | `wikiparser-node` 浏览器包没有初始化 `globalThis.Parser` | 确认打包器执行了副作用导入；避免重复副本或手工裁剪依赖                      |
+| `Cannot find module 'react-wikitext/styles.css'` | 打包器未处理包内 CSS，或产物缺少 `dist/styles.css`       | 让打包器处理包内 CSS 导入；确认解析到 `dist/styles.css`                     |
+| Next.js Server Component 报 `createContext` 错误 | 在支持 RSC 边界的环境里由服务端调用了 React 入口         | 确认产物带有 `"use client"`；服务端改用[服务端准备](./server-rendering.mdx) |
+| Hydration 不一致或锚点不同                       | 服务端与客户端渲染了不同结构，或没有固定 id 前缀         | 保持同一棵树；显式传 `idPrefix`；必要时用 `mediawiki` 策略                  |
+| `WikitextError("INVALID_DOCUMENT")`              | 把解析快照交给了 `prepare` 或 `WikitextView`             | 先调用 `prepareWikitext` 得到渲染快照；视图不接受解析快照                   |
+| CJS 环境加载失败                                 | 运行时版本过低或打包器不支持 `exports`                   | 使用 Node `>=18.18` 与支持条件导出的打包器                                  |
+
+## 错误码
+
+错误对象带有 `code`；准备阶段错误还带 `stage`。不要根据 `message` 文本分支。
+
+完整错误码、阶段含义与处理建议见[错误与诊断](../api/errors.mdx)。
+
+## 诊断怎么读
+
+```ts
+for (const diagnostic of prepared.diagnostics) {
+  console.warn(diagnostic.stage, diagnostic.code, diagnostic.message);
+}
+```
+
+- `stage` 与错误共用 `WikitextStage`，常见值为 `wikitext`、`hast`、`rehype`、`sanitize` 与 `finalize`。
+- `severity: "error"` 表示内容受损严重，不代表调用失败；整页仍可能成功返回。
+- 单条诊断不会中断整页渲染；渲染失败会由错误边界替换对应顶层块。
+- 视图层失败通过 `onRenderError` 上报，占位文案来自 `labels.renderFailed`。
+- `<Wikitext>` 用 `onPrepared` 读取诊断；显式管线直接读取 `prepared.diagnostics`。
+- `meta` 记录实际生效的 `policy`、`labels`、`headingIdStrategy`、授权图片与解析预算 `limits`，适合排查“配置有没有生效”。
+
+## 还是无法定位
+
+报告问题时附上：
+
+- 最小 wikitext 源码与 `pageName`。
+- 使用的入口、解析与准备选项（可脱敏）。
+- 库版本、`parserVersion`、React 与打包器版本。
+- `document.diagnostics` 与完整错误对象的 `code`、`stage`、`cause`。
+
+更多渠道见[参与与反馈](../project/contributing.mdx)。

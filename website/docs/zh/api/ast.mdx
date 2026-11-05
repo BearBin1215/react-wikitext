@@ -1,0 +1,189 @@
+---
+title: AST /ast
+description: 语义节点模型、查询辅助函数、源码归一化与解析快照序列化。
+---
+
+# AST `/ast`
+
+```ts
+import {
+  AST_SCHEMA_VERSION,
+  SYNTAX_SCHEMA_VERSION,
+  RENDER_SCHEMA_VERSION,
+  flattenNodes,
+  findNodeById,
+  findNodeAtOffset,
+  getSourceText,
+  toPlainText,
+  isNodeType,
+  getTemplateParameters,
+  getFileParameters,
+  normalizeSource,
+  serializeWikitextDocument,
+  restoreWikitextDocument,
+  type KnownWikitextDiagnosticCode,
+  type WikitextNodeBase,
+} from "react-wikitext/ast";
+```
+
+`/ast` 不加载解析器与 React，可以在服务端、Worker 或纯数据处理脚本中使用。
+
+## 节点基础
+
+```ts
+interface WikitextNodeBase<TType extends string> {
+  readonly type: TType;
+  readonly id: string;
+  readonly position?: WikitextPosition;
+  readonly origin?: WikitextOrigin;
+  readonly data?: Readonly<Record<string, unknown>>;
+}
+```
+
+- `id` 在单个快照内唯一，不保证跨编辑稳定。
+- `position` 的行列从 1 开始，offset 从 0 开始；生成节点会省略该字段。
+- `origin` 指向原始源码语法节点与范围。
+- `data` 用于自定义扩展数据。
+- `WikitextNodeBase` 是公开类型；自定义节点可以扩展它，并把键写入 `WikitextNodeMap`，`handlers` 与查询函数会据此推导类型。
+
+## 节点类型
+
+| 节点                                                          | 关键字段                                                                                           |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `root` / `paragraph` / `strong` / `emphasis`                  | `children`                                                                                         |
+| `text`                                                        | `value`（已解码语义文本）                                                                          |
+| `heading`                                                     | `level` 1–6、`children`                                                                            |
+| `thematicBreak`                                               | —                                                                                                  |
+| `link`                                                        | `kind: "internal" \| "external" \| "bareExternal"`、`target`、可选 `page` / `fragment`、`children` |
+| `file`                                                        | `name`、`parameters`、`captionKind`、`attributes`、可选 `block`、`children`                        |
+| `list`                                                        | `ordered`、`children`                                                                              |
+| `listItem`                                                    | `children`                                                                                         |
+| `definitionList` / `definitionTerm` / `definitionDescription` | `children`                                                                                         |
+| `table` / `tableRow` / `tableCell`                            | `attributes`；单元格另有 `kind: "th" \| "td"`                                                      |
+| `tableCaption`                                                | `children`                                                                                         |
+| `template`                                                    | `name`、`displayName`、可选 `block`、`children`（`templateParameter`）                             |
+| `templateParameter`                                           | `name`、`anonymous`、可选 `index`、`children`                                                      |
+| `parserFunction`                                              | `name`、可选 `block`、`children`                                                                   |
+| `argument`                                                    | `name`、`children`（默认值）                                                                       |
+| `extension`                                                   | `name`、`attributes`、`selfClosing`、`block`、可选 `raw`、`children`                               |
+| `reference`                                                   | 可选 `name` / `group`、`attributes`、可选 `raw`、`children`                                        |
+| `category`                                                    | `target`、可选 `sortKey`                                                                           |
+| `behaviorSwitch`                                              | `name`                                                                                             |
+| `redirect`                                                    | `target`、可选 `page` / `fragment`                                                                 |
+| `htmlElement`                                                 | `tag`、`attributes`、`selfClosing`、`block`、可选 `blocked`、`children`                            |
+| `code`                                                        | `value`、可选 `language`                                                                           |
+| `comment`                                                     | `value`                                                                                            |
+| `unknown`                                                     | `parserType`、`value`、`block`、可选 `reason`                                                      |
+
+扩展标签即使没有专门的默认展示，也使用 `extension` 节点并保留名称与内部原文，不会进入 `unknown`。
+
+自定义节点需要同时扩展 `WikitextNodeMap` 并在准备阶段注册转换函数；未注册转换函数的节点会产生诊断并降级为源码卡片。
+
+## 源码语法树
+
+`retainSyntax: true` 时，解析快照会包含 `syntax`：
+
+```ts
+interface WikitextSyntaxNode {
+  id: string; // 路径式 id，例如 "0.0.1"
+  type: string; // 上游 token 类型
+  range: WikitextRange; // [start, end)
+  position: WikitextPosition;
+  props: Readonly<Record<string, WikitextPrimitive>>;
+  attributes: readonly WikitextSyntaxAttribute[];
+  children: readonly WikitextSyntaxNode[];
+}
+```
+
+源码语法树是上游 token 的调试视图：语义节点的 `position`、`origin.range`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部始终构建语法树，因此该选项在展开入口只控制是否公开。
+
+## 查询
+
+```ts
+interface SourceDocumentLike {
+  readonly source: string;
+  readonly ast: WikitextRoot;
+}
+```
+
+| 函数                                           | 行为                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `flattenNodes(root)`                           | 深度优先返回全部语义节点                                                                   |
+| `findNodeById(document, id)`                   | 按 id 查找节点；找不到时返回 `undefined`                                                   |
+| `findNodeAtOffset(document, offset, options?)` | 返回包含该 offset 的最深节点；范围为 `[start, end)`；`offset === source.length` 返回根节点 |
+| `getSourceText(document, node)`                | 返回节点对应的 LF 源码片段                                                                 |
+| `toPlainText(node)`                            | 返回已转换的语义文本，不再做实体解码                                                       |
+| `isNodeType(node, type)`                       | 泛型上下文中的类型收窄                                                                     |
+
+- 零长度节点默认不参与 `findNodeAtOffset` 的选择；可用 `includeZeroLength` 调整。
+- 生成内容没有 `origin` 时，`getSourceText` 返回空字符串。
+- 需要按 id 建索引时用 `flattenNodes` 自行生成 `Map`。
+- 准备阶段会重新分配节点 id；插件在此之前持有的 `flattenNodes` 数组或 id 索引不会自动更新，需要重新生成。
+- 查询转换后的节点时，必须使用渲染快照；不要用渲染快照里的 id 查原始解析快照。
+
+## 结构化辅助函数
+
+```ts
+getTemplateParameters(node): WikitextParameter[]
+getFileParameters(file): WikitextFileInfo
+```
+
+`getTemplateParameters` 同时接受 `template` 与 `parserFunction`，返回参数节点、名称、是否匿名与从 1 开始的序号。
+
+`getFileParameters` 派生：
+
+- `name`、`parameters`、`caption`、`captionNodes`。
+- `alt`、`link`、`lang`、`page`、`className`、`upright`。
+- `width` / `height`（支持 `200`、`200px`、`200x100px`，最终显示时限制在 1–4096）。
+- `format`、`alignment`、`verticalAlignment`、`border`。
+
+说明文字优先取显式 `caption=`，否则取未命名说明；键名不会进入说明文本。
+
+## 源码归一化
+
+```ts
+interface NormalizedSource {
+  readonly source: string;
+  readonly normalized: boolean;
+  readonly originalLength: number;
+}
+
+const normalized = normalizeSource(raw, maxSourceLength);
+```
+
+- 只做 CRLF / CR → LF，不改变其他字符。
+- `DEFAULT_MAX_SOURCE_LENGTH` 为 100,000；超过时抛 `WikitextParseError("SOURCE_TOO_LONG")`。
+- 所有坐标基于归一化后的 LF 源码；库不提供原源码的 offset 映射。
+
+## 序列化
+
+解析快照：
+
+```ts
+const payload = serializeWikitextDocument(document);
+const restored = restoreWikitextDocument(payload);
+```
+
+渲染快照：
+
+```ts
+import {
+  serializeWikitextRenderDocument,
+  restoreWikitextRenderDocument,
+} from "react-wikitext/hast";
+```
+
+恢复函数会校验结构版本、源码字符串、根节点、meta（含 `limits`）、`headings`、`diagnostics` 与 policy/labels 的完整形状，以及固定节点预算；渲染快照还会重新执行最终清洗与整理。快照内的 policy、labels 与 `authorizedImages` 属于可信边界，重新清洗只用于重建派生结构。不合法时抛：
+
+- 解析快照：`WikitextError("INVALID_DOCUMENT")`。
+- 渲染快照：`WikitextError("INVALID_DOCUMENT")`（与解析快照同一基类，不含 `stage` 字段）。
+
+## 版本常量
+
+| 常量                    | 当前值 | 适用       |
+| ----------------------- | ------ | ---------- |
+| `AST_SCHEMA_VERSION`    | `2`    | 语义 AST   |
+| `SYNTAX_SCHEMA_VERSION` | `1`    | 源码语法树 |
+| `RENDER_SCHEMA_VERSION` | `3`    | 渲染快照   |
+
+版本变化意味着快照结构不兼容；缓存或跨进程传输时应把版本写入缓存键。

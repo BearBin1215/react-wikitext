@@ -1,0 +1,179 @@
+---
+title: Errors and Diagnostics
+description: Error classes, codes, diagnostic fields, and handling advice.
+---
+
+# Errors and Diagnostics
+
+The library emits two kinds of signals:
+
+- **Errors** (`Error`) stop the current call and are thrown; the caller must handle them.
+- **Diagnostics** (`WikitextDiagnostic`) record a local problem or degradation on the snapshot without aborting the page.
+
+## Error classes
+
+```ts
+class WikitextError extends Error {
+  readonly code: WikitextErrorCode;
+  cause?: unknown;
+}
+
+class WikitextParseError extends WikitextError {}
+
+class WikitextPrepareError extends WikitextError {
+  readonly stage: WikitextStage;
+}
+
+class WikitextExpandError extends WikitextError {
+  readonly templateTitle?: string;
+  readonly range?: WikitextRange;
+}
+```
+
+Every error carries `code`; `cause` keeps the underlying error. `WikitextPrepareError.stage` shares `WikitextStage` with diagnostics and may be `prepare`, `wikitext`, `rehype`, `finalize`, and so on.
+
+## Exports by entry
+
+All four error classes are the same definitions and are exported from every feature entry as well as the root entry. `instanceof` works regardless of which entry you import from.
+
+| Entry     | Additional error code exports                  |
+| --------- | ---------------------------------------------- |
+| `/parse`  | `WikitextErrorCode`                            |
+| `/expand` | `WikitextExpandErrorCode`                      |
+| `/hast`   | —                                              |
+| Root      | `WikitextErrorCode`, `WikitextExpandErrorCode` |
+
+## Error codes
+
+| Code                        | Stage           | Trigger                                                 |
+| --------------------------- | --------------- | ------------------------------------------------------- |
+| `SOURCE_TOO_LONG`           | Parse           | Normalized source exceeds the length budget             |
+| `SOURCE_TOO_COMPLEX`        | Parse           | Syntax or semantic tree exceeds node/depth budget       |
+| `INVALID_CONFIG`            | Parse           | Site config or budget field is invalid                  |
+| `PARSE_FAILED`              | Parse           | Upstream parsing or semantic building failed            |
+| `PARSER_UNAVAILABLE`        | Parse           | Default browser bundle did not initialize               |
+| `PREPARE_FAILED`            | Prepare         | Options, plugin, handler, or budget check failed        |
+| `ASYNC_PLUGIN_IN_SYNC_PATH` | Prepare         | Async plugin on the sync path                           |
+| `INVALID_DOCUMENT`          | Restore/Prepare | Snapshot structure, version, root, or budget is invalid |
+| `INVALID_EXPAND_OPTIONS`    | Expand          | Expansion options are invalid                           |
+| `INCOMPATIBLE_PARSER`       | Expand          | Injected parser cannot support expansion                |
+| `TEMPLATE_NOT_FOUND`        | Expand          | Missing template under `strict`                         |
+| `TEMPLATE_RESOLVE_FAILED`   | Expand          | Template fetch callback failure under `strict`          |
+| `TEMPLATE_PARSE_FAILED`     | Expand          | Template source parse failure under `strict`            |
+| `TEMPLATE_LOOP`             | Expand          | Loop detected under `strict`                            |
+| `UNSUPPORTED_CALL`          | Expand          | Unsupported call under `strict`                         |
+| `UNRESOLVED_DEPENDENCY`     | Expand          | Unresolved dependency under `strict`                    |
+| `EXPANSION_BUDGET_EXCEEDED` | Expand          | Budget exceeded under `strict`                          |
+| `EXPANSION_TOO_LARGE`       | Expand          | Expanded output or preserved source is too large        |
+| `FINAL_PARSE_FAILED`        | Expand          | Final parse failure under `strict`                      |
+| `ABORTED`                   | Expand          | Cancelled through `AbortSignal`                         |
+
+In the default mode, expansion preserves calls and records diagnostics; with `strict: true`, recoverable failures above are thrown.
+
+## Handling examples
+
+```ts
+import { WikitextParseError } from "react-wikitext/parse";
+
+try {
+  const document = parser.parse(source, { pageName: "Example" });
+  return document;
+} catch (error) {
+  if (error instanceof WikitextParseError) {
+    if (error.code === "SOURCE_TOO_LONG") {
+      return loadSourceInPages(source);
+    }
+    throw error;
+  }
+  throw error;
+}
+```
+
+```ts
+import { prepareWikitextAsync, WikitextPrepareError } from "react-wikitext/hast";
+
+try {
+  return await prepareWikitextAsync(document, { rehypePlugins });
+} catch (error) {
+  if (error instanceof WikitextPrepareError) {
+    report(error.code, error.stage, error.cause);
+  }
+  throw error;
+}
+```
+
+- Never branch on `message` text; use `code` (and `stage` when relevant).
+- Catch parse and prepare errors at the call site and distinguish budgets, config, and plugins.
+- Report view failures through `onRenderError`; the error boundary replaces only the failed top-level block.
+- Do not silently fall back to reparsing when restoring a snapshot fails; check the version and the source first.
+
+## Diagnostics
+
+`KnownWikitextDiagnosticCode` lists the library's fixed codes and is exported from `/ast`, `/parse`, `/hast`, and the root entry; `WikitextDiagnosticCode` also accepts custom strings from plugins.
+
+```ts
+type KnownWikitextDiagnosticCode =
+  | "UNKNOWN_NODE"
+  | "EXTENSION_UNSUPPORTED"
+  | "NESTED_TABLE_UNSUPPORTED"
+  | "TABLE_FILLER_BUDGET_EXCEEDED"
+  | "FILE_PLACEHOLDER"
+  | "BEHAVIOR_SWITCH_IGNORED"
+  | "BLOCKED_HTML"
+  | "UNAUTHORIZED_IMAGE"
+  | "STYLE_DECLARATION_DROPPED"
+  | "REFERENCE_DUPLICATE_DEFINITION"
+  | "REFERENCE_MISSING_CONTENT"
+  | "UNSUPPORTED_CALL"
+  | "UNRESOLVED_DEPENDENCY"
+  | "TEMPLATE_NOT_FOUND"
+  | "TEMPLATE_LOOP"
+  | "TEMPLATE_RESOLVE_FAILED"
+  | "TEMPLATE_PARSE_FAILED"
+  | "DEPTH_BUDGET_EXCEEDED"
+  | "INVOCATION_BUDGET_EXCEEDED"
+  | "LENGTH_BUDGET_EXCEEDED"
+  | "EXPRESSION_ERROR"
+  | "FINAL_PARSE_FALLBACK";
+
+type WikitextDiagnosticCode = KnownWikitextDiagnosticCode | (string & {});
+
+interface WikitextDiagnostic {
+  readonly code: WikitextDiagnosticCode;
+  readonly stage: WikitextStage;
+  readonly severity: "error" | "warning" | "info";
+  readonly message: string;
+  readonly position?: WikitextPosition;
+  readonly origin?: WikitextOrigin;
+  readonly rule?: string;
+}
+```
+
+- `stage` shares `WikitextStage` with errors and includes `parse`, `expand`, `prepare`, `wikitext`, `hast`, `rehype`, `sanitize`, and `finalize`.
+- `severity` describes how much content was damaged, not whether the call failed: `error` can accompany a page that still renders successfully (for example `FINAL_PARSE_FALLBACK`). Call failures always throw `WikitextError`; do not use `severity === "error"` to decide whether the request failed.
+- `position` and `origin` refer to the normalized source; generated content may have no origin.
+- `rule` identifies the rule or plugin that produced the record.
+- Render snapshot diagnostics merge parse, preparation, and finalization records.
+- A single diagnostic never aborts the page; the host decides whether to report or block. `<Wikitext>` exposes them through `onPrepared`.
+
+## Reading them from the component
+
+```tsx
+<Wikitext
+  source={source}
+  onPrepared={(document) => {
+    for (const diagnostic of document.diagnostics) {
+      reportDiagnostic(diagnostic);
+    }
+  }}
+  onError={(error) => reportFailure(error.code, error.cause)}
+/>
+```
+
+`onPrepared` runs only after successful preparation; `onError` handles parse or prepare failures. They never report the same event twice.
+
+## Related
+
+- [Troubleshooting](../guide/troubleshooting.mdx): narrow down by symptom.
+- [Preparation `/hast`](./prepare.mdx): prepare-stage and plugin errors.
+- [Expansion `/expand`](./expand.mdx): `strict` mode and expansion errors.

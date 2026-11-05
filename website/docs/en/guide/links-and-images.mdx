@@ -1,0 +1,174 @@
+---
+title: Links and Images
+description: Connect resolveLink and resolveImage to your router and media service.
+---
+
+# Links and Images
+
+By default, the library does not map internal wiki links to your site's routes, and it does not load images. Links and media addresses are decided by the host; the library validates, sanitizes, and renders them.
+
+## Links
+
+### Default behavior
+
+| Link type                               | Default output                                         |
+| --------------------------------------- | ------------------------------------------------------ |
+| Internal `[[Page]]`                     | Non-navigable `<span class="wtr-link">` with a `title` |
+| External with label `[https://… label]` | Sanitized `<a>` whose label is `label`                 |
+| Bare external `https://…`               | `<a>` whose label is the URL text                      |
+| Unlabeled external `[https://…]`        | `<a>` with `[N]` in document order                     |
+
+External links allow only `http:`, `https:`, and `mailto:`; addresses that cannot be parsed safely degrade to blocked, readable text. Absolute HTTP(S) / mailto links default to `target="_blank"` and `rel="nofollow noopener noreferrer"`.
+
+### resolveLink
+
+```tsx
+import type { WikitextLinkResolver } from "react-wikitext/hast";
+
+const resolveLink: WikitextLinkResolver = (request) => {
+  if (request.kind === "internal") {
+    const page = request.page ?? request.target.replace(/^:/u, "");
+    return {
+      href: `/wiki/${encodeURIComponent(page)}${request.fragment ? `#${request.fragment}` : ""}`,
+      target: "_self",
+    };
+  }
+  return undefined;
+};
+```
+
+Return values:
+
+| Value                             | Behavior                                                     |
+| --------------------------------- | ------------------------------------------------------------ |
+| `undefined`                       | Keep the default; internal links remain non-navigable text   |
+| `null`                            | Disable navigation                                           |
+| `{ href }`                        | Produce an `<a>`; the href is still sanitized                |
+| `{ label }`                       | Replace the plain-text label; a label alone produces no link |
+| `{ target: "_blank" \| "_self" }` | Override the window target                                   |
+
+`request` provides `kind` and `target`; internal links may also have `page` and `fragment`. `context` provides the original parse snapshot `document`, the current working tree `ast`, and the current node.
+
+:::note
+Resolvers return plain data, never React elements. To fully take over link appearance and interaction, use [`semanticComponents.link`](../api/react.mdx#semantic-components).
+:::
+
+The example below gives internal links a site path while external links keep the default handling:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source="See [[Wikitext|this library]] and the [https://example.com example site]."
+      lang="en"
+      prepareOptions={{
+        resolveLink: (request) =>
+          request.kind === "internal" ? { href: "/guide/quick-start", target: "_self" } : undefined,
+      }}
+    />
+  );
+}
+```
+
+### External link policy
+
+- `policy.allowRelativeLinks` defaults to `true`, allowing resolver-returned relative addresses.
+- `policy.externalLinkTarget` defaults to `"_blank"`; set it to `null` to omit `target`.
+- Relative links opened with `_blank` gain `noopener noreferrer`; finalization removes invalid targets and unknown `rel` tokens.
+
+## Images
+
+### Default behavior
+
+File nodes render as a placeholder plus caption: the placeholder is `labels.filePlaceholder` plus the file name, and the caption is still emitted as a `figcaption` or `span.wtr-file__caption`. Without `resolveImage`, the library never produces `<img>` and never requests an image URL.
+
+### resolveImage
+
+```tsx
+import type { WikitextImageResolver } from "react-wikitext/hast";
+
+const resolveImage: WikitextImageResolver = (request) => ({
+  src: `https://cdn.example.com/wiki/${encodeURIComponent(request.name)}`,
+  alt: request.alt ?? request.name,
+  ...(request.width === undefined ? {} : { width: request.width }),
+  ...(request.height === undefined ? {} : { height: request.height }),
+});
+```
+
+- Returning `null` or `undefined` keeps the placeholder; returning an object authorizes the resource.
+- `src` allows only `http:` / `https:`; enable `policy.allowRelativeImages` for relative images.
+- `request` provides `name`, `parameters`, parsed `width` / `height`, `alt`, and `caption`.
+- Dimensions are clamped to 1–4096; resolver values take precedence.
+- The generated `<img>` always has `loading="lazy"` and `decoding="async"`; `alt` falls back to the file name.
+
+The preview below shows the default placeholder next to an authorized image. It uses a public placeholder image service; replace the address with your own CDN when integrating:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `[[File:Example.png|thumb|Image caption]]`;
+const pane = { flex: 1, minWidth: 0 };
+
+export default function Demo() {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+      <section style={pane}>
+        <p>Default: placeholder only</p>
+        <Wikitext source={source} lang="en" />
+      </section>
+      <section style={pane}>
+        <p>Authorized: an img element</p>
+        <Wikitext
+          source={source}
+          lang="en"
+          prepareOptions={{
+            resolveImage: () => ({
+              src: "https://placehold.co/240x120/png?text=Example.png",
+              alt: "Example image",
+            }),
+          }}
+        />
+      </section>
+    </div>
+  );
+}
+```
+
+### Captions and links
+
+- The caption prefers explicit `caption=`, otherwise the unnamed caption; links and template placeholders inside it render recursively.
+- The file parameter `link=` is sanitized and produces a link; `class=` becomes an extra class.
+- Inline files use `<span>`; block files use `<figure>`. Compatibility classes such as `mw-default-size` and `mw-halign-*` are preserved.
+
+## Authorization and security
+
+Preparation records the image addresses that a resolver actually returned and the library validated. During finalization:
+
+- An unauthorized `<img>` is removed. Its `alt` text is preserved when present, and an `UNAUTHORIZED_IMAGE` diagnostic is recorded. Resolver output uses `authorizedImages`, source HTML uses `policy.allowSourceImages`, and plugin output uses `policy.allowPluginImages`.
+- Plugins cannot bypass the default no-image policy by inserting arbitrary `<img>` elements.
+- URLs are entity-decoded, stripped of control characters, and validated against the protocol whitelist before becoming attributes.
+
+You can pre-process URLs with `sanitizeHref`, `sanitizeImageUrl`, and `sanitizedAttributesToProps` from `/hast`. The final stage validates again.
+
+## Policy and components
+
+To adjust defaults without a resolver:
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    policy: {
+      externalLinkTarget: null,
+    },
+  }}
+/>
+```
+
+`policy` is shallow-merged with defaults. `extraTags` and `stripTags` are replaced wholesale, not appended. Spread `DEFAULT_PREPARE_POLICY` when you want to keep the defaults.
+
+Final link and file appearance can be taken over with [HTML or semantic components](./customization.mdx#component-overrides). Custom components are trusted code; their output is not sanitized again.

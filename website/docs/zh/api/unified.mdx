@@ -1,0 +1,113 @@
+---
+title: unified
+description: 用 createWikitextProcessor 把 wikitext 处理接入 unified 生态；最终清洗由库内部固定。
+---
+
+# unified
+
+```ts
+import { createWikitextProcessor, getWikitextDocument } from "react-wikitext/unified";
+```
+
+`/unified` 不加载默认解析器，也不加载 React。它提供一个固定顺序的处理器，适合需要复用插件组合、逐步注册转换，或把 wikitext 处理嵌入已有 unified 风格的构建流程。
+
+## 为什么是处理器
+
+解析、语义树转换与 HAST 清洗必须按固定顺序执行。手写 `unified().use(...)` 时，运行时无法阻止插件被排在最终清洗之后：后续插件返回新树会让快照与实际输出分叉，原地修改则会把未清洗内容带进已标记完成的渲染快照。
+
+`createWikitextProcessor` 在内部追加最终阶段，宿主注册的插件永远在清洗之前运行，因此不需要、也无法把插件排在最终整理之后。`/unified` 不再导出单独的 parse / rehype / finalize 插件。
+
+## 基本用法
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { createWikitextProcessor } from "react-wikitext/unified";
+
+const parser = createWikiparser();
+
+const processor = createWikitextProcessor({
+  parser,
+  resolveLink: (request) => ({ href: `/wiki/${request.target}` }),
+  headingIdStrategy: "mediawiki",
+  wikitextPlugins: [semanticPlugin], // 语义树阶段
+  rehypePlugins: [rehypePlugin], // HAST 阶段，仍在清洗之前
+});
+
+const prepared = processor.runSync(source);
+const asyncPrepared = await processor.run(source);
+```
+
+返回值与 `prepareWikitext` 相同，是已完成清洗与最终整理的 `WikitextRenderDocument`。每次 `run` / `runSync` 都创建新的 VFile，运行之间不共享状态。
+
+## 选项
+
+```ts
+interface WikitextProcessorOptions extends Omit<
+  WikitextPrepareOptions,
+  "wikitextPlugins" | "rehypePlugins"
+> {
+  parser: WikitextParser;
+  parseOptions?: WikitextParseOptions;
+  wikitextPlugins?: readonly unknown[];
+  rehypePlugins?: readonly unknown[];
+}
+```
+
+除 `parser` 与 `parseOptions` 外，其余字段与 [`prepareWikitext`](./prepare.mdx) 的准备选项完全一致：解析回调、`policy`、`labels`、`headingIdStrategy`、`toc` 与 `handlers`。`toc` 只在准备设置中出现一次，不存在 finalize 覆盖入口。
+
+- 必须显式提供解析器；`/unified` 不会隐式加载 `wikiparser-node`。
+- 选项在创建时校验；非法值立即抛 `WikitextPrepareError("PREPARE_FAILED")`。
+- 插件列表是 unified 插件数组，元素可以是插件函数或 `[plugin, options]` 元组；空数组合法。
+
+## 分阶段追加插件
+
+```ts
+processor.useWikitext(pluginForSemanticTree).useHast(pluginForHastTree);
+```
+
+- `useWikitext`：在语义树转换为 HAST 之前运行，可以增删语义节点。
+- `useHast`：在 HAST 转换之后、清洗与最终整理之前运行。
+
+两个方法都返回处理器本身，便于链式注册；可以在多次运行之间继续追加。
+
+## 运行与错误
+
+```ts
+processor.runSync(source); // 同步；遇到异步插件抛 ASYNC_PLUGIN_IN_SYNC_PATH
+await processor.run(source); // 允许插件返回 Promise
+```
+
+- 插件抛出的异常会包成 `WikitextPrepareError`，`code` 为 `PREPARE_FAILED`，`stage` 为 `prepare`，原始异常保存在 `cause`。
+- 工作树的结构、节点数与深度在转换前重新校验；越界时 `stage` 为 `wikitext`。
+- 最终阶段固定执行清洗与整理；插件注入的危险标签、属性与未授权图片不会进入快照。
+
+## 在插件内读取快照
+
+```ts
+import { getWikitextDocument, getWikitextRenderDocument } from "react-wikitext/unified";
+
+processor.useWikitext(() => (tree, file) => {
+  const parsed = getWikitextDocument(file); // 解析快照；插件可以读取，但不能修改
+  void parsed;
+});
+```
+
+- `getWikitextDocument(file)` 返回本次运行的解析快照。
+- `getWikitextRenderDocument(file)` 返回渲染快照；它在最终阶段才写入，HAST 插件阶段读不到。
+
+## 与 prepareWikitext 的关系
+
+| 场景                     | 建议                                       |
+| ------------------------ | ------------------------------------------ |
+| 单次处理、选项固定       | `prepareWikitext` / `prepareWikitextAsync` |
+| 复用插件组合、逐步注册   | `createWikitextProcessor`                  |
+| 需要异步插件但不想跑两次 | 处理器的 `run()`                           |
+| 只需要语义树或 HAST 插件 | 处理器的两个 `use*` 方法                   |
+
+两种路径产生等价的渲染快照；处理器的差别只在插件注册方式与错误包装。
+
+## 相关
+
+- [准备 `/hast`](./prepare.mdx)：固定安全顺序、解析回调与策略。
+- [AST `/ast`](./ast.mdx)：语义节点与查询。
+- [错误与诊断](./errors.mdx)：`WikitextPrepareError` 的字段。

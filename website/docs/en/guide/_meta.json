@@ -1,0 +1,20 @@
+[
+  { "type": "section-header", "label": "Start" },
+  { "type": "file", "name": "introduction", "label": "Overview" },
+  { "type": "file", "name": "quick-start", "label": "Quick Start" },
+  { "type": "file", "name": "concepts", "label": "How It Works" },
+  { "type": "section-header", "label": "Using" },
+  { "type": "file", "name": "usage", "label": "Basic Usage" },
+  { "type": "file", "name": "server-rendering", "label": "Server Rendering" },
+  { "type": "file", "name": "rendering", "label": "Rendering Behavior" },
+  { "type": "file", "name": "syntax-support", "label": "Syntax Support" },
+  { "type": "file", "name": "links-and-images", "label": "Links and Images" },
+  { "type": "file", "name": "templates", "label": "Template Expansion" },
+  { "type": "file", "name": "customization", "label": "Styling and Components" },
+  { "type": "file", "name": "custom-parser", "label": "Custom Parsers" },
+  { "type": "section-header", "label": "Advanced" },
+  { "type": "file", "name": "performance", "label": "Performance and Budgets" },
+  { "type": "file", "name": "security", "label": "Security Model" },
+  { "type": "file", "name": "recipes", "label": "Recipes" },
+  { "type": "file", "name": "troubleshooting", "label": "Troubleshooting" }
+]

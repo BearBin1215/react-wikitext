@@ -1,0 +1,127 @@
+---
+title: 安全模型
+description: 默认安全边界、最终清洗顺序，以及宿主需要自行处理的部分。
+---
+
+# 安全模型
+
+wikitext 通常来自不可信用户。库的目标是：即使源码包含恶意 HTML、URL 或模板，也只输出经过清洗的 React 元素，不执行脚本，不加载未授权的媒体。
+
+## 库保证什么
+
+### 不注入 HTML
+
+- 库不使用 `dangerouslySetInnerHTML`，不把 wikitext 或解析器输出的 HTML 字符串直接交给 React。
+- 输出由已清洗的 HAST 转换为 React 元素。
+- 源码中的危险标签（`script`、`style`、`iframe`、表单控件、`svg`、HTML 版 `math` 等）默认作为纯文本转义；如果被配置纳入 HTML 解析，或被插件插入 HAST，则整对丢弃并显示可读提示，不执行其中的内容。
+
+下面的示例包含危险地址、脚本标签与事件属性，输出里没有脚本执行：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `[javascript:alert(1) 危险链接]
+
+<script>不会执行的脚本</script>
+
+<div onclick="alert(1)">事件属性会被移除</div>`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="zh-CN" />;
+}
+```
+
+`javascript:` 地址被拦截后显示为可读文本，`<script>` 按纯文本转义，`onclick` 不会进入 DOM。
+
+### 清洗顺序固定
+
+```text
+wikitextPlugins
+  → 语义 AST → HAST
+  → rehypePlugins
+  → sanitize（hast-util-sanitize + wiki schema）
+  → finalize（链接/图片属性、引用 id、标题锚点、目录）
+  → React
+```
+
+- 插件运行在最终清洗之前；插件不能绕过安全阶段。
+- 通过 `/unified` 接入时使用 `createWikitextProcessor`：最终阶段由库内部追加，宿主插件无法排在清洗之后；单独拼装 raw 插件不再是受支持的路径。
+- 原始解析快照只读；准备阶段在克隆的工作树上操作。
+- 最终整理会再次校验 `target`、`rel`、图片授权与 URL 协议。
+
+### 属性与 URL 白名单
+
+- 源码 HTML 只保留 `class`、`title`、`dir`、`lang` 与表格相关属性。
+- `style`、`id`、事件属性、`srcdoc` 不会进入 DOM。
+- `href` 只允许 `http:`、`https:`、`mailto:`；`src` 只允许 `http:`、`https:`。
+- 校验前会先解码实体，避免 `&#106;avascript:` 之类的绕过。
+- `class` 只经过 `[A-Za-z0-9_-]` 安全字符集过滤；`colspan` / `rowspan` 等有范围限制。
+
+### 图片授权
+
+- 没有 `resolveImage` 时不会生成 `<img>`。
+- 只有解析回调返回并通过 URL 校验的 `src` 会被授权；最终整理会删除未授权图片。
+- 授权图片带 `loading="lazy"` 与 `decoding="async"`。
+- 库不发起网络请求；图片由浏览器按普通 `<img>` 加载。
+
+### 模板展开仍按不可信内容处理
+
+- `expandWikitext` 只处理宿主提供的模板源码，不执行其中的 HTML 或脚本。
+- 不内置 Lua，不执行 `#invoke`。
+- 展开结果和模板源码都会经过正常的语义归一化、HAST 转换与最终清洗。
+
+### 错误隔离
+
+- 每个顶层块由错误边界包裹；一个块渲染失败不影响其他内容。
+- 失败时，占位内容显示节点类型与源码，并通过 `onRenderError` 上报。
+- 解析、准备错误属于调用阶段，不会由视图错误边界处理。
+
+## 宿主需要做什么
+
+### 可信代码
+
+`components`、`semanticComponents`、`handlers`、`wikitextPlugins`、`rehypePlugins`、`resolveLink`、`resolveImage` 都是宿主代码，属于可信边界。这些代码可以输出白名单之外的 DOM，或把输入插入危险属性；这些内容不再经过库清洗。请像对待普通 React 组件一样审查它们。
+
+### 路由与媒体地址
+
+解析回调返回的 URL 会经过协议校验，但是否指向正确页面、是否泄露私有资源由宿主决定。接入站内路由或媒体服务时应：
+
+- 使用受信任的映射表或经过验证的页面标题。
+- 不要把未经检查的用户输入插入可能执行 `javascript:` 的位置。
+- 图片 CDN 域名应写入 CSP 的 `img-src`。
+
+### 序列化快照
+
+`serializeWikitextRenderDocument` 生成普通数据；`restoreWikitextRenderDocument` 会校验结构版本、数据结构和节点预算，并重新清洗。仍应只恢复来自可信服务端或可信缓存的快照。不要把任意第三方 HAST 直接交给 `WikitextView`。
+
+### 策略调整
+
+`policy` 是安全边界的唯一可调项：
+
+- 放宽 `extraTags` 或减少 `stripTags` 会扩大可输出范围。
+- `allowRelativeLinks` / `allowRelativeImages` 会改变 URL 校验。
+- `allowPluginImages` 允许 rehype 插件插入图片，仍受协议校验限制。
+
+修改前请确认威胁模型；默认值面向不可信 wikitext。
+
+### CSP
+
+库不依赖 `eval`；内联样式只保留白名单声明（颜色、字体、对齐、宽高、边框、间距等），涉及 `url()`、`expression()`、`var()`、`@import`、`!important` 的声明整条丢弃并产生 `STYLE_DECLARATION_DROPPED` 诊断，因此不会借样式加载远程资源。CSP 禁止 `style-src` 内联样式时这些声明不生效，但不会执行脚本。如果宿主通过图片解析回调授权远程图片，需要允许对应 `img-src`；如果使用外部字体或样式，则由宿主自己的 CSP 决定。
+
+## 已知边界
+
+- 安全模型针对 DOM 与 URL，不阻止用户通过合法外链离开站点。
+- 引用、目录、分类等生成结构不携带源码 `id`，不会与宿主 DOM 冲突。
+- 自定义组件可以产生任意 React 输出，这属于宿主信任范围。
+- 解析器固定为 `wikiparser-node@1.48.1`；升级解析器需要重新审查渲染与安全基线。
+- 没有内置对清洗结果的审计或 CSP 报告；需要时由宿主接入。
+
+## 检查清单
+
+- [ ] 引入 `react-wikitext/styles.css`，并给容器设置正确的 `lang` / `dir`。
+- [ ] 只为确实需要的页面接入 `resolveLink` / `resolveImage`。
+- [ ] 审查所有组件覆盖与插件，把它们视为可信代码。
+- [ ] 只恢复可信来源的序列化快照。
+- [ ] 按站点需求设置 CSP 与图片域名白名单。
+- [ ] 对不可信输入保持默认策略，不要为了样式放宽清洗。

@@ -1,0 +1,80 @@
+---
+title: Quick Start
+description: Install react-wikitext and render a wikitext snippet as React elements.
+---
+
+# Quick Start
+
+This page renders a snippet. For pipeline, snapshot, and entry trade-offs, see [How it works](./concepts.mdx).
+
+## Requirements
+
+- React `>=18.2 <20` (peer dependency).
+- `react-dom` is an optional peer dependency with the same range; install it for server rendering or hydration.
+- Node `>=18.18` for builds or server execution.
+- ESM and CJS builds; consumer builds with Vite and webpack 5 are covered by tests.
+- No Wikimedia, font CDN, or external API dependency at runtime.
+
+## Installation
+
+| Package manager | Command                      |
+| --------------- | ---------------------------- |
+| pnpm            | `pnpm add react-wikitext`    |
+| npm             | `npm install react-wikitext` |
+| yarn            | `yarn add react-wikitext`    |
+
+The stylesheet is imported once:
+
+```ts
+import "react-wikitext/styles.css";
+```
+
+:::note
+The package's `files` field lists `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`; npm also includes the README and LICENSE automatically. See the [contributing guide](../project/contributing.mdx) for building from source and local debugging.
+:::
+
+## Minimal example
+
+The `Wikitext` component from the root entry handles parsing, preparation, and rendering. Import the stylesheet once:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== Hello, wikitext ==
+This paragraph mixes '''bold''', ''italic'', and an [[internal link|internal link]].
+
+* First item
+* Second item`;
+
+export default function Article() {
+  return <Wikitext source={source} lang="en" />;
+}
+```
+
+`Wikitext` renders a root `div.wtr-view`. `lang` and `dir` are written to that container for layout and assistive technology.
+
+:::warning
+`Wikitext` and `WikitextView` depend on React Context and only run in Client Components. The root entry and `/view` already ship a `"use client"` directive, so they can be used directly in Next.js App Router; the server should only call React-free entries such as `/parse` and `/hast`, as shown in [server preparation](./server-rendering.mdx).
+:::
+
+## What you get
+
+By default:
+
+- Headings, paragraphs, bold, italic, lists, definition lists, tables, code blocks, and references render as structured output.
+- Internal links are non-navigable and files are placeholders; see [Links and images](./links-and-images.mdx) for how to wire them up.
+- Templates, parser functions, and files render explicit placeholders; their content is not inferred.
+- A table of contents is generated automatically once a page has four headings; categories are collected into a footer.
+- Unknown structures degrade to source cards, so the page continues to render.
+
+See [Syntax support](./syntax-support.mdx) for per-construct status and [Rendering behavior](./rendering.mdx) for details.
+
+## Next steps
+
+- [How it works](./concepts.mdx): why parsing and preparation are separate, and when to use `/view`.
+- [Basic usage](./usage.mdx): explicit pipeline, async plugins, and component overrides.
+- [Links and images](./links-and-images.mdx): connect your router and media service.
+- [Server rendering](./server-rendering.mdx): server preparation, serialization, and hydration.
+- [Troubleshooting](./troubleshooting.mdx): placeholders, errors, and configuration issues.
+- [Entry points](../api/index.mdx): what each subpath exports.

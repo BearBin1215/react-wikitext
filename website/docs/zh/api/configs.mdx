@@ -1,0 +1,74 @@
+---
+title: configs
+description: MEDIAWIKI_CONFIG、createMediaWikiConfig 与 ParserConfig。
+---
+
+# configs
+
+```ts
+import { MEDIAWIKI_CONFIG, createMediaWikiConfig } from "react-wikitext/configs";
+import type { ParserConfig, ParserConfigOverrides } from "react-wikitext/configs";
+```
+
+`/configs` 只包含站点配置常量、构造器与类型，不加载解析器或 React。配置在创建解析器时固定；之后修改原对象不会影响解析器。
+
+## 常量与构造器
+
+| 导出                    | 说明                                                     |
+| ----------------------- | -------------------------------------------------------- |
+| `MEDIAWIKI_CONFIG`      | 默认配置，来源是 `wikiparser-node@1.48.1` 的站点配置快照 |
+| `createMediaWikiConfig` | 以默认配置为基线，深层合并覆盖字段并返回校验过的副本     |
+
+`MEDIAWIKI_CONFIG` 已被深冻结。修改它会在运行时失败，也不会影响已经创建或将要创建的解析器；需要调整站点配置时使用 `createMediaWikiConfig`。
+
+```ts
+type ParserConfig = ConfigData & { excludes?: string[] };
+```
+
+字段来自上游 `wikiparser-node`。库不导出归一化函数或来源常量；最小配置不属于公共 API，需要时应从上游包读取并自行承担退化行为。
+
+## 创建解析器
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { MEDIAWIKI_CONFIG } from "react-wikitext/configs";
+
+const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+```
+
+- 配置在工厂创建时深拷贝并归一化：补齐 `excludes`、归一化 `doubleUnderscore`，并做最小结构校验。
+- 非法配置抛 `WikitextParseError("INVALID_CONFIG")`。
+- 更换配置需要创建新的解析器，避免每次解析隐式修改共享配置。
+- `defaults` 是每次解析的默认选项，可以按调用覆盖；预算合并规则见[解析 `/parse`](./parse.mdx)。
+
+## 自定义站点配置
+
+需要站点差异时，用 `createMediaWikiConfig` 只写覆盖字段。对象字段（例如 `namespaces`、`nsid`）逐字段合并，数组与元组整体替换：
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { createMediaWikiConfig } from "react-wikitext/configs";
+
+const config = createMediaWikiConfig({
+  namespaces: { 3000: "Custom" },
+  nsid: { custom: 3000 },
+});
+
+const parser = createWikiparser({ config });
+```
+
+返回的是可独立修改的深拷贝，并且已经过 `normalizeConfig` 校验；非法字段抛 `WikitextParseError("INVALID_CONFIG")`。
+
+不要依赖上游的最小配置作为公共选项：它会让 `<ref>`、`<gallery>` 与文件参数静默退化，库不为它提供兼容承诺。确实需要最小识别时，可以从 `wikiparser-node/config/minimum.json` 读取并自行转换为 `ParserConfig`，但要先确认这些退化可接受。
+
+## 与预算的关系
+
+站点配置不包含解析预算。源码长度、节点数与深度上限属于解析选项：单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。实际生效值可通过 `parser.resolveOptions()` 或快照的 `meta.limits` 读取；见[性能与预算](../guide/performance.mdx)。
+
+## 相关
+
+- [解析 `/parse`](./parse.mdx)：`createWikiparser` 与解析选项。
+- [状态与兼容性](../project/status.mdx)：固定的上游版本。

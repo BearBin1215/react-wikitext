@@ -1,0 +1,291 @@
+---
+title: Styling and Components
+description: Theme variables, labels, heading anchors, plugins, and component overrides.
+---
+
+# Styling and Components
+
+The library emits stable `wtr-*` classes and a set of CSS variables. Page structure, labels, heading anchors, and component appearance can all be adjusted without patching the library.
+
+## Styles
+
+Import the page stylesheet once:
+
+```tsx
+import "react-wikitext/styles.css";
+```
+
+- The library sets no global element styles; page typography inherits from the host.
+- The root container is `div.wtr-view`; library classes start with `wtr-` and some MediaWiki compatibility classes are preserved.
+- Inline styles keep only whitelisted layout and appearance declarations; unsafe values are dropped whole. Under strict CSP, allow `style-src` as needed.
+
+### CSS variables
+
+| Variable               | Purpose                    |
+| ---------------------- | -------------------------- |
+| `--wtr-text`           | Body text                  |
+| `--wtr-muted`          | Secondary text             |
+| `--wtr-border`         | Borders and dividers       |
+| `--wtr-accent`         | Links and emphasis         |
+| `--wtr-accent-soft`    | Emphasis background        |
+| `--wtr-placeholder-bg` | Placeholder background     |
+| `--wtr-danger`         | Errors and blocked content |
+| `--wtr-font-mono`      | Monospace text             |
+
+Variables are defined on `:root` and can be overridden on any ancestor:
+
+```css
+.article-theme {
+  --wtr-text: #1f2328;
+  --wtr-accent: #0969da;
+  --wtr-border: #d0d7de;
+}
+```
+
+Dark themes can override the same variables through `[data-wtr-theme="dark"]` or the host's own selector.
+
+Variables are published separately in `react-wikitext/tokens.css`. When you need to inject them into another scope, or already load the full stylesheet elsewhere, import only that file instead of duplicating `styles.css`:
+
+```tsx
+import "react-wikitext/tokens.css"; // variables only
+// import "react-wikitext/styles.css"; // full styles, variables included
+```
+
+### Container props
+
+```tsx
+<Wikitext
+  source={source}
+  lang="en"
+  dir="ltr"
+  className="article"
+  containerProps={{ "data-page": "example" }}
+/>
+```
+
+`className` and `containerProps.className` merge with `wtr-view`. The `containerProps` type excludes `dangerouslySetInnerHTML`.
+
+## Labels
+
+All user-visible placeholders and notices come from `labels`. Prepare options accept `Partial<WikitextLabels>`; omitted fields keep the default English strings.
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    labels: {
+      templateNotExpanded: "Template not expanded",
+      parserFunctionNotEvaluated: "Parser function not evaluated",
+      filePlaceholder: "File",
+      reference: "Reference",
+      toc: "Contents",
+      categories: "Categories",
+      unknownNode: "Unsupported node",
+      redirectTo: "Redirect to",
+      blockedLink: "Blocked link",
+      blockedHtml: "Blocked HTML",
+      renderFailed: "Render failed",
+      nestedTableUnsupported: "Nested table not supported",
+    },
+  }}
+/>
+```
+
+| Field                        | Default                         |
+| ---------------------------- | ------------------------------- |
+| `templateNotExpanded`        | `Template not expanded`         |
+| `parserFunctionNotEvaluated` | `Parser function not evaluated` |
+| `filePlaceholder`            | `File`                          |
+| `reference`                  | `Reference`                     |
+| `toc`                        | `Contents`                      |
+| `categories`                 | `Categories`                    |
+| `unknownNode`                | `Unsupported node`              |
+| `redirectTo`                 | `Redirect to`                   |
+| `blockedLink`                | `Blocked link`                  |
+| `blockedHtml`                | `Blocked HTML`                  |
+| `renderFailed`               | `Render failed`                 |
+| `nestedTableUnsupported`     | `Nested table not supported`    |
+
+The effective labels are written to `WikitextRenderDocument.meta.labels`; the view and components read the same strings.
+
+The preview below overrides both theme variables and placeholder labels so you can see the effect:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `'''Bold text''' and {{Infobox|title=Template}}.
+
+[[File:Example.png|File placeholder]]`;
+
+export default function Demo() {
+  return (
+    <div className="labels-theme">
+      <Wikitext
+        source={source}
+        lang="en"
+        prepareOptions={{
+          labels: {
+            templateNotExpanded: "Template not expanded",
+            filePlaceholder: "File",
+          },
+        }}
+      />
+    </div>
+  );
+}
+```
+
+## Heading anchors
+
+```ts
+type WikitextHeadingIdStrategy = "instance" | "mediawiki" | "none";
+```
+
+| Strategy             | Behavior                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `instance` (default) | Preparation generates logical anchors; the view prefixes DOM ids per instance so multiple views do not conflict |
+| `mediawiki`          | Writes bare anchors and adds no prefix; suitable for a single page that matches host conventions                |
+| `none`               | Writes no ids and generates no table-of-contents links                                                          |
+
+- Anchors are generated from stripped heading text: whitespace becomes `_`, duplicate ids get `_2` / `_3` case-insensitively, and empty headings fall back to `section-{n}`.
+- Semantic headings and source `h1`–`h6` both participate.
+- `idPrefix` applies only to `instance`; without it, the view uses a React `useId` prefix.
+- The view maps heading `id`, in-document `#fragment` links, and table `headers` attributes.
+
+Read the final heading list from the render snapshot:
+
+```ts
+for (const heading of prepared.headings) {
+  console.log(heading.level, heading.text, heading.id);
+}
+```
+
+## Component overrides
+
+Overrides have the following precedence:
+
+1. `semanticComponents[type]` replaces the whole wiki semantic structure.
+2. `components[tag]` replaces an HTML tag inside the default HAST structure.
+3. Native elements.
+
+### HTML components
+
+```tsx
+<WikitextView
+  document={prepared}
+  components={{
+    blockquote: ({ children, className }) => (
+      <blockquote className={[className, "doc-quote"].filter(Boolean).join(" ")}>
+        {children}
+      </blockquote>
+    ),
+  }}
+/>
+```
+
+`components` maps by HAST tag name such as `p`, `table`, `img`, or `a`. Components receive sanitized DOM props, the HAST `node`, the `document`, and optionally the semantic `node` and `origin`. Do not spread non-DOM props onto native elements.
+
+### Semantic components
+
+```tsx
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside className="template-card">
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+```
+
+Available semantic types:
+
+| Type                          | Extra props                           |
+| ----------------------------- | ------------------------------------- |
+| `link`                        | `target`, `kind`, `href?`, `external` |
+| `template` / `parserFunction` | `displayName`                         |
+| `argument`                    | —                                     |
+| `file`                        | `name`                                |
+| `reference`                   | `number`                              |
+| `extension`                   | `name`, `block`                       |
+| `unknown`                     | `parsedType`, `block`                 |
+| `table`                       | —                                     |
+
+- `semanticComponents.extension` receives all extension nodes except `ref`; `ref` uses `reference`, and `<references>` produces no component call.
+- `semanticComponents.reference` replaces only the `<sup>`; the endnotes section is still generated by the library.
+- `WikitextFragment` must run inside the `WikitextView` context, and `nodes` must be the same node objects from the current render document. It is intended for children the default renderer does not output, such as template parameters, file captions, and `ref` content.
+
+:::warning
+`components` and `semanticComponents` are trusted code; HTML they emit is not sanitized again. Resolver URLs are validated during preparation, but components should still avoid putting untrusted input into dangerous attributes.
+:::
+
+### Read the context
+
+```tsx
+import { useWikitextIds, useWikitextLabels } from "react-wikitext/view";
+
+function SectionLink() {
+  const labels = useWikitextLabels();
+  const ids = useWikitextIds();
+  return <a href={ids.toHref("#section-1")}>{labels.toc}</a>;
+}
+```
+
+- `useWikitextContext()` provides `document`, indexes, component maps, `idPrefix`, `mapId`, `mapHref`, and `onRenderError`.
+- `useWikitextLabels()` reads labels from the current render snapshot.
+- `useWikitextIds()` provides `toDomId` and `toHref`.
+
+These hooks and `WikitextFragment` must be used inside `<WikitextView>`.
+
+## Plugins
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    wikitextPlugins: [
+      () => (tree, file) => {
+        // Runs on the cloned semantic AST
+        return tree;
+      },
+    ],
+    rehypePlugins: [
+      () => (tree) => {
+        for (const child of tree.children) {
+          if (child.type === "element" && child.tagName === "p") {
+            const classes = child.properties.className;
+            child.properties.className = [
+              "doc-paragraph",
+              ...(Array.isArray(classes) ? classes : []),
+            ];
+          }
+        }
+        return tree;
+      },
+    ],
+  }}
+/>
+```
+
+- `wikitextPlugins` run on the cloned semantic tree; `rehypePlugins` run after HAST conversion and before final sanitization.
+- The plugin signature follows unified's `(tree, file)`, where `file` is a VFile.
+- The original parse snapshot is not modified; preparation reassigns ids on the working tree.
+- The synchronous entry rejects async plugins; use `prepareWikitextAsync` for those.
+- Final sanitization always runs after rehype plugins; plugins cannot bypass whitelists or image authorization.
+
+Plugin lists are structured arrays. Elements can be plugin functions or `[plugin, options]` tuples and run in order.
+
+## Security policy
+
+`prepareOptions.policy` adjusts URL and tag whitelists. The full defaults and field descriptions are in the [prepare API](../api/prepare.mdx).
+
+`policy` is shallow-merged with defaults; array fields are replaced wholesale. `class` is filtered only by the `[A-Za-z0-9_-]` safe character set, with no option to widen or narrow it. For tags, attributes, or rich presentation outside the whitelist, prefer `/view` component overrides; do not loosen sanitization.
+
+## Custom semantic nodes
+
+Custom nodes require extending `WikitextNodeMap` and registering a HAST converter in `prepareOptions.handlers`. A node without a handler produces a diagnostic and degrades to a source card. Handler context, budgets, and conversion details are in the [prepare API](../api/prepare.mdx#handlers).

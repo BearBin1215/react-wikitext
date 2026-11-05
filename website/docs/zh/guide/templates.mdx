@@ -1,0 +1,235 @@
+---
+title: 模板展开
+description: 在解析前用宿主提供的模板表或获取回调展开受支持的模板与纯 wikitext 解析器函数。
+---
+
+# 模板展开
+
+默认管线不执行模板。需要模板结果时，可以用 `/expand` 在解析前展开受支持的模板与解析器函数。库不发起网络请求，模板源码由宿主提供：离线内容、随应用一起提供的源码或预加载的模板集合可以直接传模板表，需要按需获取时使用获取回调。
+
+## 基本用法
+
+```tsx
+import { expandWikitext } from "react-wikitext/expand";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const expanded = await expandWikitext("{{Note|离线内容}}{{Empty}}", {
+  pageName: "Example",
+  templates: {
+    "Template:Note": "'''{{{1|默认说明}}}'''",
+    "Template:Empty": "",
+  },
+});
+
+const prepared = prepareWikitext(expanded.document);
+const view = <WikitextView document={prepared} lang="zh-CN" />;
+```
+
+下面的预览对照默认管线与展开后的结果：左侧是尚未展开的模板占位，右侧是同一份源码经 `expandWikitext` 展开并重新准备后的渲染结果。
+
+```tsx preview
+import { useEffect, useState } from "react";
+import { expandWikitext } from "react-wikitext/expand";
+import { prepareWikitext, type WikitextRenderDocument } from "react-wikitext/hast";
+import { parseWikitext } from "react-wikitext/parse";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const source = `'''模板展开'''会把模板调用替换为模板源码，再重新解析。
+
+{{Note|模板参数}}
+
+{{List}}
+
+{{#if:1|条件为真|条件为假}}`;
+
+const templates = {
+  "Template:Note": "'''说明：'''{{{1|缺少参数}}}",
+  "Template:List": "* 第一项\n* 第二项",
+};
+
+const before = prepareWikitext(parseWikitext(source, { pageName: "Demo" }));
+const pane = { flex: 1, minWidth: 0 };
+const label = { margin: "0 0 8px", fontSize: 13, color: "#57606a" };
+
+export default function Demo() {
+  const [after, setAfter] = useState<WikitextRenderDocument | null>(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    expandWikitext(source, { templates, pageName: "Demo", signal: controller.signal })
+      .then((expanded) => {
+        if (!controller.signal.aborted) {
+          setAfter(prepareWikitext(expanded.document));
+          setStatus(
+            `状态 ${expanded.expansion.status}，${expanded.expansion.records.length} 条调用记录`,
+          );
+        }
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      });
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
+      <section style={pane}>
+        <p style={label}>默认管线：模板占位</p>
+        <WikitextView document={before} lang="zh-CN" />
+      </section>
+      <section style={pane}>
+        <p style={label}>{error ? error : after ? `展开后：${status}` : "展开中…"}</p>
+        {after ? <WikitextView document={after} lang="zh-CN" /> : null}
+      </section>
+    </div>
+  );
+}
+```
+
+`expandWikitext` 会：
+
+1. 解析原始源码，得到 `original` 快照。
+2. 按调用结构求值模板与函数，记录 `records`。
+3. 把展开后的源码重新解析为 `document`。
+4. 返回 `expansion.status`：`"complete"`、`"partial"` 或 `"fallback"`。
+
+展开结果已经是普通解析文档；**不需要再次解析**，直接交给 `prepareWikitext`。宿主仍可读取 `expansion.status`、`expansion.records` 与 `expansion.diagnostics`。
+
+## 模板表
+
+`templates` 接受对象模板表或 `ReadonlyMap`：
+
+```ts
+const fromObject = { "Template:Note": "说明" };
+const fromMap = new Map([["Template:Note", "说明"]]);
+```
+
+- 键是 parser 规范化后的页面标题。默认配置下，`{{Box}}` 请求 `Template:Box`；模板表中的 `Box`、`box` 不会被匹配到。其他命名空间的嵌入或自定义 parser 配置应使用实际请求的完整标题，不要求所有键都以 `Template:` 开头。
+- 值必须是字符串，空字符串是合法模板（展开为空）。库只按请求标题精确匹配，不做标题转换。
+- 每次展开开始时，库会在解析源码之前把模板表复制一份，供本次调用使用。调用开始后修改原集合不影响本次结果，下一次展开读取修改后的集合；库不提供跨调用缓存。
+- 排查未命中时，对照 `TEMPLATE_NOT_FOUND` 诊断中的 `templateTitle` 与模板表键；顶层模板调用还可以查看 `expansion.records[].name`。
+
+## 纯函数
+
+只展开 `#if` 等受支持的纯 wikitext 函数时，可以省略模板来源：
+
+```ts
+const expanded = await expandWikitext("{{#if:1|有值|空}}");
+```
+
+没有提供模板来源时，模板调用按缺失处理：默认保留调用并记录 `TEMPLATE_NOT_FOUND`，`strict: true` 时抛错。
+
+## 远程获取
+
+需要按需获取时提供 `resolveTemplate` 回调，只有模板表未命中才会调用：
+
+```tsx
+const expanded = await expandWikitext(source, {
+  pageName: "Example",
+  resolveTemplate: async ({ title, signal }) => {
+    const response = await fetch(`/api/templates/${encodeURIComponent(title)}`, { signal });
+    if (response.status === 404) {
+      return null; // 模板确实不存在
+    }
+    if (!response.ok) {
+      throw new Error(`模板获取失败：${response.status}`); // 记录 TEMPLATE_RESOLVE_FAILED
+    }
+    return await response.text();
+  },
+});
+```
+
+- 回调可以同步返回，也可以返回 Promise；把 `request.signal` 传给 `fetch`，取消展开时请求会被中断。
+- 返回 `null` / `undefined` 表示模板不存在；抛出异常或返回非字符串时会记录 `TEMPLATE_RESOLVE_FAILED`。区分这两种情况，可以避免把网络故障误报为模板缺失。
+- 同一个标题在一次展开中只获取一次源码，成功、缺失与失败都会被缓存；回调必须为同一 `title` 返回稳定源码。
+
+## 本地与远程混用
+
+同时提供模板表与回调时，模板表中的条目优先，只有表中没有的标题才会调用回调：
+
+```tsx
+const expanded = await expandWikitext(source, {
+  templates: { "Template:Note": "", "Template:Shared": "本地覆盖" },
+  resolveTemplate: fetchTemplate,
+});
+```
+
+- `"Template:Note": ""` 是空模板，不会触发回调。
+- 模板表中的源码解析失败时按现有失败路径处理（`TEMPLATE_PARSE_FAILED`），不会再尝试远程获取；只有表中缺失的标题才会交给获取回调。
+
+## 获取回调约定
+
+```ts
+type WikitextTemplateResolver = (
+  request: WikitextTemplateRequest,
+) => string | null | undefined | Promise<string | null | undefined>;
+```
+
+- `request.title` 是 parser 规范化后的模板标题。
+- `request.pageName` 是原始页面；`request.callerTitle` 是当前调用所属模板；在原始页面中调用时省略。
+- `request.invocation` 指向 `original.source` 中的顶层调用范围；嵌套请求复用所属顶层调用范围。
+- 库负责换行归一化、include 标签过滤与解析；回调只负责取回源码。
+
+## 支持的语法
+
+- 模板嵌入与参数替换，包括匿名参数、具名参数与参数默认值。
+- `noinclude` / `includeonly` / `onlyinclude`。
+- `#if`、`#ifeq`、`#switch`、`#iferror`。
+- `{{!}}` 与 `{{=}}`。
+- 模板与函数输出的隐式换行。
+
+按需计算：模板名、参数名与条件表达式只在所属作用域需要时求值。未选中的分支、未读取的参数与未使用的默认值不会查找模板来源，也不计入调用预算。
+
+以下调用默认保留原文并产生诊断：
+
+- `#invoke` 与 Lua。
+- `subst` 等嵌入修饰符。
+- 依赖站点状态或外部运行环境的函数，例如 `#ifexist`、`#time`。
+
+## 预算与错误
+
+各选项的默认值与说明见[展开 `/expand`](../api/expand.mdx)。
+
+- 单次调用超长时保留调用并记录 `LENGTH_BUDGET_EXCEEDED`。
+- 连保留源码都超过 `maxExpandedLength` 时抛 `EXPANSION_TOO_LARGE`。
+- `strict: true` 下预算超限抛 `EXPANSION_BUDGET_EXCEEDED`。
+- 默认模式下，最终源码解析失败会退回原始快照，`status` 为 `"fallback"`。
+- 通过 `AbortSignal` 取消展开，原始原因保存在错误的 `cause` 中。
+
+展开阶段自身产生的错误是 `WikitextExpandError`；原始解析与最终解析抛出的预算、解析错误仍是 `WikitextParseError`。常见错误码包括 `INVALID_EXPAND_OPTIONS`、`TEMPLATE_NOT_FOUND`、`TEMPLATE_LOOP`、`UNSUPPORTED_CALL`、`FINAL_PARSE_FAILED`、`ABORTED`。
+
+## 结果与诊断
+
+```ts
+const {
+  original, // 原始解析快照
+  document, // 展开后的解析快照
+  expansion, // status / records / diagnostics
+} = expanded;
+```
+
+- `expansion.records` 记录每次调用的 `kind`、名称、原始范围、展开范围与状态（`expanded` / `preserved`）。
+- `expansion.diagnostics` 的坐标基于 `original.source`。
+- `document.diagnostics` 合并最终解析诊断与换算到展开源码的展开诊断。
+- `prepareWikitext(document)` 会把诊断带入渲染结果。
+- 同一标题的模板源码只获取一次；模板缺失、获取失败与解析失败的诊断会记录在每个保留的调用点上。
+
+嵌套调用只映射到所属顶层记录，不提供模板内部的精确来源映射。
+
+## 未展开的调用如何显示
+
+展开失败保留的模板、函数与参数继续按[占位结构](./rendering.mdx#模板函数与参数)渲染，不会显示成已求值内容。模板源码与展开结果都按不可信 wikitext 处理，仍会经过语义归一化、HAST 转换与最终清洗。
+
+## 限制
+
+- include 标签过滤是对模板源码的单遍扫描；`includeonly` 内容中的嵌套 `noinclude` / `onlyinclude` 不会再次识别。
+- 不执行 Lua，不内置站点 API 客户端。
+- 不提供标题规范化选项，也不提供跨请求的模板缓存；需要时由宿主整理模板键或在回调中实现缓存。
+- 展开结果中的分类、引用、目录等仍按默认渲染规则处理。

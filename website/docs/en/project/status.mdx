@@ -1,0 +1,85 @@
+---
+title: Status and Compatibility
+description: Version status, runtime matrix, pinned upstream, snapshot versions, and licensing.
+---
+
+# Status and Compatibility
+
+## Version status
+
+| Item          | Current state                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------- |
+| Install       | npm package                                                                                               |
+| Stability     | 0.x releases follow semantic versioning; minor versions may break public APIs                             |
+| Changelog     | [GitHub Releases](https://github.com/BearBin1215/react-wikitext/releases)                                 |
+| Documentation | [react-wikitext.pages.dev](https://react-wikitext.pages.dev); tracks the main branch, no version switcher |
+
+Installation is covered in [Quick start](../guide/quick-start.mdx).
+
+## Runtime compatibility
+
+| Item                 | Supported range                                               |
+| -------------------- | ------------------------------------------------------------- |
+| React                | `>=18.2 <20` (peer dependency)                                |
+| React DOM            | `>=18.2 <20`; optional peer for server rendering or hydration |
+| Node                 | `>=18.18` at runtime                                          |
+| Module format        | ESM and CJS, both with type declarations                      |
+| Bundlers             | Vite and webpack 5 consumer builds are covered by tests       |
+| Browsers             | Output targets ES2022; IE and older browsers are unsupported  |
+| Runtime dependencies | No Wikimedia, font CDN, or external API dependency            |
+
+The package's `files` field lists `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`; npm also includes the README and LICENSE automatically. See the [contributing guide](./contributing.mdx) for building from source.
+
+## Pinned upstream
+
+| Item                | Value                                               |
+| ------------------- | --------------------------------------------------- |
+| Parser              | `wikiparser-node@1.48.1`                            |
+| Default site config | `MEDIAWIKI_CONFIG` from the same version's snapshot |
+
+Upgrading the parser changes AST shape, source ranges, and the rendering baseline. Re-run rendering and security review.
+
+## Snapshot versions
+
+| Constant                | Value | Applies to         |
+| ----------------------- | ----- | ------------------ |
+| `AST_SCHEMA_VERSION`    | `2`   | Semantic AST       |
+| `SYNTAX_SCHEMA_VERSION` | `1`   | Source syntax tree |
+| `RENDER_SCHEMA_VERSION` | `3`   | Render snapshot    |
+
+A version change is a structural break. Include versions in cache keys; restore rejects mismatched data.
+
+## Version and compatibility policy
+
+- During 0.x, breaking public changes move to a new minor series; compatible fixes stay in the current minor series.
+- From 1.x, published subpaths, exports, parameter meanings, and existing discriminated-union members remain compatible. Removing or renaming exports, narrowing types, changing field meaning, or making promised official snapshots unrestorable are breaking changes. New union members still require checking exhaustive consumers.
+- The schemas are maintained independently and only increment when structure or interpretation changes. A parser upgrade does not automatically bump them, but it does require snapshot and rendering regression tests.
+- The HAST node budget is fixed. When a semantic wiki table exceeds it, empty trailing library-generated fillers are omitted with a warning; HTML tables are excluded. This degradation does not change the schema and remains restorable within the same major version.
+- Within 1.x, official snapshots from the same major version with matching applicable schemas, produced normally by the library and coming from the trusted boundary, are accepted. Snapshots from other majors, unknown schemas, or third-party data are not promised.
+- Render snapshots are a rebuildable cache: when a render snapshot is invalid but the AST is still supported, prepare again; when the AST is also unsupported, reparse the retained source with its `pageName` and parser config.
+- Cache keys should include the package version, schemas, parser/config, source, `pageName`, and the policy, labels, resolver, plugin, and template-data versions that affect preparation. Functions themselves cannot be written into a cache key.
+- Custom semantic nodes and plugin-private data are owned by the host; the library does not guarantee migration.
+
+The repository has no published release yet, so there is no compatibility baseline built from release artifacts; unit tests cover snapshot restore, stable rejection, and the rebuild path for now.
+
+## Styling and security baseline
+
+- Styles live in `react-wikitext/styles.css` and must be imported explicitly; there are no global element styles.
+- Inline styles keep only whitelisted layout and appearance declarations; values using `url()`, `expression()`, or `!important` are dropped whole and reported as diagnostics. There is no `eval` dependency; under strict CSP, allow `style-src` as needed for them to apply.
+- No `dangerouslySetInnerHTML`; the final HAST comes from the sanitizer and wiki policy.
+- Images are not loaded by default; only authorized URLs (from a resolver, or an explicitly enabled plugin-image policy) become `<img>`.
+- React entries depend on Context and only run in Client Components; the root entry and `/view` ship a `"use client"` directive, so the host does not need to repeat it.
+
+See [Security model](../guide/security.mdx) and [Rendering behavior](../guide/rendering.mdx) for the full boundaries.
+
+## Verifying compatibility
+
+After upgrading React, the parser, or the bundler config, run `pnpm test` and `pnpm test:consumer`, then compare performance with `pnpm bench`.
+
+## License
+
+- The library is released under **GPL-3.0-or-later**.
+- `wikiparser-node@1.48.1` uses the same license.
+- Third-party notices are in `NOTICE` and `THIRD_PARTY_LICENSES` at the repository root.
+
+Check GPL-3.0-or-later compatibility before distributing builds that include this library.

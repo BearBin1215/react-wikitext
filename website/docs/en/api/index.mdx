@@ -1,0 +1,76 @@
+---
+title: Entry Points
+description: Subpath capabilities, loading boundaries, and the difference between parse and render snapshots.
+---
+
+# Entry Points
+
+Capabilities are split by subpath so hosts can load only what they need. The root entry is the main entry; `react-wikitext/view` is a lightweight entry that does not load the parser.
+
+## Pipeline
+
+See [How it works](../guide/concepts.mdx) for the stages, the optional expansion step, and the two snapshot types. The table below lists the entry for each stage.
+
+## Subpaths
+
+| Subpath                     | Contents                                                                                                                               | Loads parser                 | Loads React |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
+| `react-wikitext`            | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
+| `react-wikitext/ast`        | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
+| `react-wikitext/parse`      | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
+| `react-wikitext/expand`     | `expandWikitext`, expansion types and errors                                                                                           | Yes                          | No          |
+| `react-wikitext/hast`       | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
+| `react-wikitext/unified`    | `createWikitextProcessor`, a unified integration with a finalize stage owned by the library                                            | No (parser must be injected) | No          |
+| `react-wikitext/view`       | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
+| `react-wikitext/configs`    | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
+| `react-wikitext/styles.css` | Page rendering styles                                                                                                                  | —                            | —           |
+| `react-wikitext/tokens.css` | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
+
+The root entry does not export anything from the parse, expand, hast, or unified subpaths. `/ast`, `/hast`, `/unified`, and `/configs` do not load the default parser; `/parse` and `/expand` do; `/view` loads only React and an already prepared document.
+
+## Parse and render snapshots
+
+- Parse snapshot `WikitextDocument`: produced by `/parse`; field definitions are in [Parsing `/parse`](./parse.mdx).
+- Render snapshot `WikitextRenderDocument`: produced by `/hast` preparation; field definitions are in [Preparation `/hast`](./prepare.mdx).
+
+The `ast` in a parse snapshot is the original normalized result and is never mutated by preparation. The `ast` in a render snapshot is the working tree after plugins, with node ids reassigned. Its `hast` is sanitized and finalized, including the TOC, reference section, and category footer; `WikitextView` accepts only a render snapshot.
+
+Query transformed nodes with the render snapshot. Do not use ids from the render snapshot to look up the original parse snapshot.
+
+## How to choose
+
+| Need                                        | Use                                   |
+| ------------------------------------------- | ------------------------------------- |
+| Render source directly on the client        | Root `Wikitext`                       |
+| Prepare on the server, render on the client | `/parse` + `/hast` + `/view`          |
+| Parse only or inspect the AST               | `/parse` + `/ast`                     |
+| Expand templates, then render               | `/expand` + `/hast` + `/view`         |
+| Integrate with a unified processor          | `/unified` (inject parser explicitly) |
+| Swap site configuration only                | `/configs` + `/parse`                 |
+
+## Types and errors
+
+- All four error classes (`WikitextError`, `WikitextParseError`, `WikitextExpandError`, `WikitextPrepareError`) are exported from the root entry and from the relevant feature entries; they are the same definitions, so `instanceof` works across entries.
+- The `WikitextLabels` type is available from `/ast` and `/view`; `DEFAULT_WIKITEXT_LABELS` and `DEFAULT_PREPARE_POLICY` come from `/hast`.
+- Import the full set of node subtypes, `WikitextNodeBase`, `KnownWikitextDiagnosticCode`, and `WikitextStage` from `/ast`; the root entry exports only selected semantic types used by view props.
+- Error codes, `stage`, and diagnostic fields are documented in [Errors and diagnostics](./errors.mdx).
+
+## Reference pages
+
+| Subpath       | Page                            |
+| ------------- | ------------------------------- |
+| Root, `/view` | [React components](./react.mdx) |
+| `/parse`      | [Parsing](./parse.mdx)          |
+| `/ast`        | [AST](./ast.mdx)                |
+| `/hast`       | [Preparation](./prepare.mdx)    |
+| `/expand`     | [Expansion](./expand.mdx)       |
+| `/unified`    | [unified](./unified.mdx)        |
+| `/configs`    | [configs](./configs.mdx)        |
+
+## Next steps
+
+- [React components](./react.mdx): source component, view, Fragment, and context hooks.
+- [Parsing `/parse`](./parse.mdx): parsers, budgets, and custom adapters.
+- [Preparation `/hast`](./prepare.mdx): plugins, resolvers, policy, and snapshot restore.
+- [Errors and diagnostics](./errors.mdx): codes and handling advice.
+- [Status and compatibility](../project/status.mdx): versions, snapshot versions, and runtime requirements.

@@ -1,0 +1,121 @@
+.home-example {
+  --home-example-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  max-width: 72rem;
+  /* 特性卡片自带 2rem 下边距，这里再加一段，让示例与上方内容拉开层次。 */
+  margin: 1.5rem auto 4rem;
+  padding: 10px;
+}
+
+.home-example__card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--rp-c-divider-light);
+  border-radius: 1.5rem;
+  background: var(--rp-c-bg);
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.home-example__card:focus-within {
+  border-color: var(--rp-c-brand);
+}
+
+.home-example__pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.home-example__pane--input {
+  background: var(--rp-c-bg-soft);
+}
+
+.home-example__pane--preview {
+  border-top: 1px solid var(--rp-c-divider-light);
+}
+
+.home-example__label {
+  color: var(--rp-c-text-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-example__editor {
+  flex: 1;
+  display: block;
+  width: 100%;
+  min-height: 12rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--home-example-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  tab-size: 2;
+  resize: none;
+  caret-color: var(--rp-c-brand);
+  outline: none;
+}
+
+.home-example__preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+}
+
+.home-example__preview .wtr-view {
+  font-size: 15px;
+}
+
+.home-example__loading {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.35rem;
+}
+
+.home-example__loading span {
+  display: block;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: var(--rp-c-bg-soft);
+}
+
+.home-example__loading span:nth-child(1) {
+  width: 45%;
+  height: 1.1rem;
+}
+
+.home-example__loading span:nth-child(2) {
+  width: 92%;
+}
+
+.home-example__loading span:nth-child(3) {
+  width: 66%;
+}
+
+html.dark .home-example__preview .wtr-view {
+  --wtr-text: #e6edf3;
+  --wtr-muted: #8b949e;
+  --wtr-border: #30363d;
+  --wtr-accent: #58a6ff;
+  --wtr-accent-soft: #172a45;
+  --wtr-placeholder-bg: #161b22;
+  --wtr-danger: #ff7b72;
+}
+
+@media (min-width: 900px) {
+  .home-example__card {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .home-example__pane--preview {
+    border-top: 0;
+    border-left: 1px solid var(--rp-c-divider-light);
+  }
+}

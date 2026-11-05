@@ -1,0 +1,133 @@
+---
+title: Performance and Budgets
+description: Parsing and preparation costs, budgets, workers, caching, and entry-level bundling.
+---
+
+# Performance and Budgets
+
+The default pipeline is synchronous: parsing and preparation run during the call. The library ships no scheduler, worker, or virtual list; scheduling belongs to the host. This page lists the knobs that exist.
+
+## Where the cost goes
+
+| Stage       | Main cost                                                  | Can it be avoided?                                       |
+| ----------- | ---------------------------------------------------------- | -------------------------------------------------------- |
+| Parsing     | Upstream tokenization, syntax tree, semantic normalization | No; cache it or move it to a worker                      |
+| Preparation | Tree clone, plugins, HAST conversion, sanitize, finalize   | Reuse the render snapshot when only presentation changes |
+| Rendering   | Semantic/HAST indexes, per-block rendering and boundaries  | No; large documents need host pagination                 |
+
+`retainSyntax: true` publishes the upstream token syntax tree on the snapshot, which significantly increases memory and build cost; use it only to inspect upstream tokens. Source positions, `getSourceText`, `findNodeAtOffset`, and semantic `origin` do not depend on it, so never enable it just for offset lookups.
+
+## Budgets
+
+### Parsing
+
+| Option             | Default | Meaning                              |
+| ------------------ | ------- | ------------------------------------ |
+| `maxSourceLength`  | 100,000 | Source length after LF normalization |
+| `maxSyntaxNodes`   | 50,000  | Syntax tree node count               |
+| `maxSemanticNodes` | 50,000  | Semantic AST node count              |
+| `maxDepth`         | 1,000   | Syntax and semantic depth            |
+
+Per-call options override factory `defaults`, and `defaults` override the shared defaults. Budgets must be positive integers; `0`, negative numbers, fractions, and non-finite values all throw `INVALID_CONFIG`, while overflow throws `SOURCE_TOO_LONG` or `SOURCE_TOO_COMPLEX`. Read the effective values from `parser.resolveOptions()` or the snapshot's `meta.limits` and use them directly in cache keys.
+
+### Preparation
+
+The working tree and final HAST use fixed budgets. They **cannot** be changed through parse options:
+
+| Budget              | Limit  |
+| ------------------- | ------ |
+| Semantic work nodes | 50,000 |
+| Semantic work depth | 1,000  |
+| HAST nodes          | 50,000 |
+| HAST depth          | 1,000  |
+
+These are guardrails, not performance targets. Preparation fails when they are exceeded; any valid snapshot the library produces can be restored by `restoreWikitextRenderDocument`.
+
+### Template expansion
+
+| Option              | Default                            |
+| ------------------- | ---------------------------------- |
+| `maxDepth`          | 40                                 |
+| `maxInvocations`    | 1,000                              |
+| `maxExpandedLength` | Same as the source limit (100,000) |
+
+## Parse in a worker
+
+There is no built-in worker, but snapshots are plain data and can cross threads:
+
+```ts
+// worker.ts
+import { parseWikitext } from "react-wikitext/parse";
+import { serializeWikitextDocument } from "react-wikitext/ast";
+
+self.onmessage = (event: MessageEvent<string>) => {
+  const document = parseWikitext(event.data, { pageName: "Example" });
+  self.postMessage(serializeWikitextDocument(document));
+};
+```
+
+```ts
+// main.ts
+import { restoreWikitextDocument } from "react-wikitext/ast";
+import { prepareWikitext } from "react-wikitext/hast";
+
+const document = restoreWikitextDocument(payload);
+const prepared = prepareWikitext(document);
+```
+
+- Preparation can also run in the worker; rendering stays on the main thread.
+- Check snapshot versions before transferring; rely on restore validation after a version change.
+- When the same source is requested repeatedly, caching the snapshot is cheaper than parsing again.
+
+## Caching
+
+A cache key must cover every input that affects output:
+
+| Cache           | Key                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------- |
+| Parse snapshot  | Source, `pageName`, site config, parse options (`meta.limits` covers the budget part), parser version |
+| Render snapshot | Parse key + resolvers, plugins, `policy`, `labels`, `headingIdStrategy`, `toc`, `handlers`            |
+
+`AST_SCHEMA_VERSION`, `SYNTAX_SCHEMA_VERSION`, and `RENDER_SCHEMA_VERSION` changes are structural breaks; invalidate the whole cache. See [Security model](./security.mdx) for the restore trust boundary.
+
+## Avoid repeated work
+
+- Keep `parseOptions` and `prepareOptions` outside the component, or stabilize them with `useMemo`; inline `parseOptions` reparse on every render, and inline `prepareOptions` at least re-prepare.
+- Create and reuse the parser once; the shared default parser is created lazily on first parse. Create a new parser when the config changes.
+- Reuse the render snapshot when only components or styles change.
+- Keep `retainSyntax` off unless you need to inspect upstream tokens.
+- Prepare on the server and render on the client to cut browser download and execution; see [Server rendering](./server-rendering.mdx).
+
+## Bundle by entry
+
+| Entry      | Parser | React | Typical use                   |
+| ---------- | ------ | ----- | ----------------------------- |
+| Root entry | Yes    | Yes   | Client-side source rendering  |
+| `/parse`   | Yes    | No    | Parsing, workers, build time  |
+| `/expand`  | Yes    | No    | Template expansion            |
+| `/view`    | No     | Yes   | Render a prepared snapshot    |
+| `/hast`    | No     | No    | Preparation and serialization |
+| `/ast`     | No     | No    | AST queries and data work     |
+
+For display-only clients, load `/view` dynamically so the parser stays out of the initial bundle:
+
+```tsx
+async function loadViewer() {
+  const [{ WikitextView }, { restoreWikitextRenderDocument }] = await Promise.all([
+    import("react-wikitext/view"),
+    import("react-wikitext/hast"),
+  ]);
+  return { WikitextView, restoreWikitextRenderDocument };
+}
+```
+
+## Large documents
+
+- Dense text around 100 KB may block the main thread; prefer a worker or page-split requests.
+- There is no virtual list; paginate, collapse, or chunk in the host.
+- Error boundaries isolate failed blocks but do not reduce total rendering cost.
+- The TOC, references, and categories are document-level structures and require the whole document to be prepared.
+
+## Measuring
+
+Numbers vary with source, config, browser, and hardware, so this documentation does not pin them. To compare before/after results, run `pnpm bench` in the repository; see [Contributing and feedback](../project/contributing.mdx) for the report details.

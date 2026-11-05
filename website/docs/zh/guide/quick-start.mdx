@@ -1,0 +1,80 @@
+---
+title: 快速开始
+description: 安装 react-wikitext，并把一段 wikitext 渲染为 React 元素。
+---
+
+# 快速开始
+
+本页把一段 wikitext 渲染到页面上。管线、快照与入口的取舍见[工作原理](./concepts.mdx)。
+
+## 环境要求
+
+- React `>=18.2 <20`（peer dependency）。
+- `react-dom` 是可选的 peer dependency，范围与 React 相同；服务端渲染或 hydration 时需要安装。
+- 构建或服务端运行需要 Node `>=18.18`。
+- 支持 ESM 与 CJS；Vite 与 webpack 5 的消费者构建已有测试覆盖。
+- 运行时不依赖 Wikimedia、字体 CDN 或外部 API。
+
+## 安装
+
+| 包管理器 | 安装命令                     |
+| -------- | ---------------------------- |
+| pnpm     | `pnpm add react-wikitext`    |
+| npm      | `npm install react-wikitext` |
+| yarn     | `yarn add react-wikitext`    |
+
+页面样式单独引入一次：
+
+```ts
+import "react-wikitext/styles.css";
+```
+
+:::note 说明
+`package.json` 的 `files` 列出 `dist/`、`NOTICE` 与 `THIRD_PARTY_LICENSES`；npm 还会自动包含 README 与 LICENSE。从源码构建与本地调试流程见[贡献指南](../project/contributing.mdx)。
+:::
+
+## 最小示例
+
+根入口的 `Wikitext` 组件一次完成解析、准备与渲染。引入一次样式文件即可：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== 你好，wikitext ==
+这是一段 '''wikitext'''，包含 [[内部链接|链接]] 和 ''斜体''。
+
+* 第一项
+* 第二项`;
+
+export default function Article() {
+  return <Wikitext source={source} lang="zh-CN" />;
+}
+```
+
+`Wikitext` 渲染出的根节点是 `div.wtr-view`。`lang` 与 `dir` 会写入容器属性，用于排版与辅助技术。
+
+:::warning 警告
+`Wikitext` 与 `WikitextView` 依赖 React Context，只能在客户端组件中运行。根入口与 `/view` 的产物顶部已经带有 `"use client"` 指令，在 Next.js App Router 中直接使用即可；服务端只调用 `/parse`、`/hast` 等无 React 入口，链路见[服务端准备 + 客户端渲染](./server-rendering.mdx)。
+:::
+
+## 你会看到什么
+
+默认管线按下面的规则展示内容：
+
+- 标题、段落、粗体、斜体、列表、定义列表、表格、代码块与参考文献正常渲染。
+- 内部链接默认无法导航，图片默认只显示占位；接入方式见[链接与图片](./links-and-images.mdx)。
+- 模板、解析器函数与文件尚未求值时显示明确的占位，不推断内容。
+- 同页标题达到 4 个时自动生成目录；分类汇总到文末底栏。
+- 未知结构降级为源码卡片，不会导致整页渲染失败。
+
+逐项状态见[支持矩阵](./syntax-support.mdx)，细节见[渲染行为](./rendering.mdx)。
+
+## 下一步
+
+- [工作原理](./concepts.mdx)：为什么解析与准备要分开，什么时候用 `/view`。
+- [基本用法](./usage.mdx)：显式管线、异步插件与组件覆盖。
+- [链接与图片](./links-and-images.mdx)：接入站内路由与媒体服务。
+- [服务端与框架](./server-rendering.mdx)：服务端准备、序列化与 hydration。
+- [故障排查](./troubleshooting.mdx)：占位、报错与常见配置问题。
+- [入口总览](../api/index.mdx)：每个子路径导出的内容。

@@ -1,0 +1,16 @@
+[
+  { "type": "section-header", "label": "Overview" },
+  { "type": "file", "name": "index", "label": "Entry Points" },
+  { "type": "section-header", "label": "Rendering" },
+  { "type": "file", "name": "react", "label": "React Components" },
+  { "type": "section-header", "label": "Pipeline" },
+  { "type": "file", "name": "parse", "label": "Parsing /parse" },
+  { "type": "file", "name": "ast", "label": "AST /ast" },
+  { "type": "file", "name": "prepare", "label": "Preparation /hast" },
+  { "type": "file", "name": "expand", "label": "Expansion /expand" },
+  { "type": "section-header", "label": "Extended entries" },
+  { "type": "file", "name": "unified", "label": "unified" },
+  { "type": "file", "name": "configs", "label": "configs" },
+  { "type": "section-header", "label": "Errors" },
+  { "type": "file", "name": "errors", "label": "Errors and Diagnostics" }
+]

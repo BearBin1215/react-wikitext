@@ -1,0 +1,63 @@
+/* 在内置搜索的 Ctrl K 两个按键之间添加间距 */
+.rp-search-button .rp-search-button__hotkey {
+  display: flex;
+  gap: 4px;
+  padding: 0;
+  background: none;
+}
+
+.rp-search-button .rp-search-button__hotkey span {
+  background-color: var(--rp-c-bg-soft);
+  border-radius: var(--rp-radius-small);
+  padding: 0 6px;
+}
+
+/* 可运行预览使用的局部样式，避免在预览里注入 style 标签 */
+.recipe-theme {
+  --wtr-text: #1f2328;
+  --wtr-muted: #57606a;
+  --wtr-border: #d0d7de;
+  --wtr-accent: #0969da;
+  --wtr-accent-soft: #ddf4ff;
+  --wtr-placeholder-bg: #f6f8fa;
+  padding: 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.recipe-theme--dark {
+  --wtr-text: #e6edf3;
+  --wtr-muted: #8b949e;
+  --wtr-border: #30363d;
+  --wtr-accent: #58a6ff;
+  --wtr-accent-soft: #172a45;
+  --wtr-placeholder-bg: #161b22;
+  border-color: #30363d;
+  background: #0d1117;
+}
+
+.recipe-theme + .recipe-theme {
+  margin-top: 12px;
+}
+
+.labels-theme {
+  --wtr-text: #1f2328;
+  --wtr-accent: #0969da;
+  --wtr-border: #d0d7de;
+  --wtr-placeholder-bg: #f6f8fa;
+  padding: 12px;
+  border: 1px solid var(--wtr-border);
+  border-radius: 8px;
+}
+
+.article-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.article-layout nav {
+  min-width: 140px;
+  font-size: 14px;
+}

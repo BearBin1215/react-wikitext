@@ -1,0 +1,164 @@
+---
+title: 基本用法
+description: 源码组件、显式管线、异步插件与组件覆盖。
+---
+
+# 基本用法
+
+库提供两种用法：源码组件适合直接渲染，显式管线把解析、准备与视图拆开，适合服务端、缓存、Worker 与异步处理。两者的产物与入口关系见[工作原理](./concepts.mdx)。
+
+## 源码组件
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+export function Article({ source }: { source: string }) {
+  return (
+    <Wikitext
+      source={source}
+      parseOptions={{ pageName: "Example" }}
+      prepareOptions={{ headingIdStrategy: "instance" }}
+      lang="zh-CN"
+    />
+  );
+}
+```
+
+`Wikitext` 在组件内同步完成：
+
+1. 用 `parseWikitext` 或传入的 `parser` 解析源码。
+2. 用 `prepareWikitext` 克隆语义树、运行插件、生成 HAST 并清洗。
+3. 用 `WikitextView` 渲染。
+
+它用两个 `useMemo` 分别缓存解析与准备结果：解析依赖 `[parser, source, parseOptions]`，准备依赖上一次的解析结果与 `prepareOptions`。只改 `prepareOptions` 时不会重新解析；但每次渲染都传入新的 `parseOptions` 对象会重新解析，请把选项放在组件外或用 `useMemo` 固定。
+
+:::warning 警告
+根入口只走同步准备。`wikitextPlugins` / `rehypePlugins` 中出现异步插件时，`Wikitext` 会抛出 `ASYNC_PLUGIN_IN_SYNC_PATH`。需要异步插件时改用显式管线。
+
+占位、拦截与降级不会让渲染失败：它们以诊断形式写入快照。需要观测这些情况时传 `onPrepared`，读取 `document.diagnostics`；`onError` 只处理解析或准备失败。
+:::
+
+## 显式管线
+
+```tsx
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const parser = createWikiparser();
+
+export function renderArticle(source: string) {
+  const document = parser.parse(source, { pageName: "Example" });
+  const prepared = prepareWikitext(document, {
+    headingIdStrategy: "instance",
+  });
+  return <WikitextView document={prepared} lang="zh-CN" />;
+}
+```
+
+解析与准备都可以在 React 之外完成。`prepareWikitext` 不修改原始解析快照；插件在克隆的语义树上运行。
+
+解析器可以在模块加载时创建一次并复用。配置在创建时固定，更换站点配置需要创建新的解析器：
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { MEDIAWIKI_CONFIG } from "react-wikitext/configs";
+
+export const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+```
+
+## 复用准备结果
+
+准备阶段会重跑插件、HAST 转换与清洗。同一份源码只改了展示组件时，不需要重新准备：
+
+```tsx
+import type { WikitextRenderDocument } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+function Article({ prepared }: { prepared: WikitextRenderDocument }) {
+  return (
+    <WikitextView
+      document={prepared}
+      semanticComponents={{
+        template: ({ displayName }) => <span className="template-chip">{displayName}</span>,
+      }}
+    />
+  );
+}
+```
+
+- 解析结果的缓存键至少包含源码、`pageName` 与站点配置。
+- 准备结果的缓存键还要包含解析回调、插件、`policy`、`labels` 与 `headingIdStrategy`。
+- 缓存与失效策略见[性能与预算](./performance.mdx)。
+
+## 异步插件
+
+同步入口遇到异步插件会抛错。需要异步转换时使用 `prepareWikitextAsync`：
+
+```tsx
+import { prepareWikitextAsync } from "react-wikitext/hast";
+
+const prepared = await prepareWikitextAsync(document, {
+  rehypePlugins: [
+    () => async (tree) => {
+      // 异步补数据或改写 HAST
+      return tree;
+    },
+  ],
+});
+```
+
+React 渲染前必须完成准备；`WikitextView` 不会等待 Promise。服务端场景见[服务端与框架](./server-rendering.mdx)。
+
+## 组件覆盖
+
+`Wikitext` 与 `WikitextView` 都接受 `components`（按 HTML 标签）与 `semanticComponents`（按 wiki 语义类型）。覆盖点属于可信代码，适合接入设计系统：
+
+```tsx preview
+import type { ReactNode } from "react";
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `<blockquote>这段引用由自定义组件渲染。</blockquote>
+
+{{Infobox|title=模板徽标}}`;
+
+function Quote({ children }: { children?: ReactNode }) {
+  return (
+    <blockquote style={{ borderLeft: "3px solid #0969da", margin: "8px 0", paddingLeft: 12 }}>
+      {children}
+    </blockquote>
+  );
+}
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source={source}
+      lang="zh-CN"
+      components={{ blockquote: Quote }}
+      semanticComponents={{
+        template: ({ displayName }) => (
+          <span style={{ background: "#ddf4ff", borderRadius: 999, padding: "2px 8px" }}>
+            {displayName}
+          </span>
+        ),
+      }}
+    />
+  );
+}
+```
+
+完整映射与属性见 [React 组件 API](../api/react.mdx)，样式、文案与标题锚点见[样式与组件](./customization.mdx)。
+
+## 相关
+
+- [服务端与框架](./server-rendering.mdx)：服务端准备、序列化、Next.js 与 hydration。
+- [性能与预算](./performance.mdx)：预算、Worker 与缓存。
+- [故障排查](./troubleshooting.mdx)：`ASYNC_PLUGIN_IN_SYNC_PATH` 等常见错误。
+- [参与与反馈](../project/contributing.mdx)：报告问题，以及文档站供 AI 工具读取的纯文本入口。

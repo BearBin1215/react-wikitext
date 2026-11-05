@@ -1,0 +1,74 @@
+---
+title: configs
+description: MEDIAWIKI_CONFIG, createMediaWikiConfig, and ParserConfig.
+---
+
+# configs
+
+```ts
+import { MEDIAWIKI_CONFIG, createMediaWikiConfig } from "react-wikitext/configs";
+import type { ParserConfig, ParserConfigOverrides } from "react-wikitext/configs";
+```
+
+`/configs` contains site config constants, a builder, and types only; it loads neither the parser nor React. Config is fixed when the parser is created; mutating the original object afterwards has no effect.
+
+## Constants and builder
+
+| Export                  | Description                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| `MEDIAWIKI_CONFIG`      | Default config from the `wikiparser-node@1.48.1` site snapshot      |
+| `createMediaWikiConfig` | Deep-merges overrides over the default and returns a validated copy |
+
+`MEDIAWIKI_CONFIG` is deeply frozen. Mutating it fails at runtime and affects neither existing nor future parsers; use `createMediaWikiConfig` to adjust site config.
+
+```ts
+type ParserConfig = ConfigData & { excludes?: string[] };
+```
+
+Fields come from upstream `wikiparser-node`. The library exports neither a normalization function nor source constants; the minimum config is not part of the public API. Read it from the upstream package yourself if you need it and accept the degraded behavior.
+
+## Creating a parser
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { MEDIAWIKI_CONFIG } from "react-wikitext/configs";
+
+const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+```
+
+- The factory deep-copies and normalizes config: it fills `excludes`, normalizes `doubleUnderscore`, and performs a minimal shape check.
+- Invalid config throws `WikitextParseError("INVALID_CONFIG")`.
+- Changing config requires a new parser, so parsing never mutates shared config implicitly.
+- `defaults` are per-parser defaults that each call can override; budget merging is described in [Parsing `/parse`](./parse.mdx).
+
+## Custom site config
+
+For site differences, use `createMediaWikiConfig` and write only the overrides. Object fields such as `namespaces` and `nsid` merge per key; arrays and tuples are replaced wholesale:
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { createMediaWikiConfig } from "react-wikitext/configs";
+
+const config = createMediaWikiConfig({
+  namespaces: { 3000: "Custom" },
+  nsid: { custom: 3000 },
+});
+
+const parser = createWikiparser({ config });
+```
+
+The result is an independent deep copy that has passed `normalizeConfig`; invalid fields throw `WikitextParseError("INVALID_CONFIG")`.
+
+Do not rely on the upstream minimum config as a public option: it silently degrades `<ref>`, `<gallery>`, and file parameters, and the library makes no compatibility promise for it. If you genuinely need minimal recognition, read `wikiparser-node/config/minimum.json` and convert it to `ParserConfig` yourself after confirming those degradations are acceptable.
+
+## Relation to budgets
+
+Site config does not contain parse budgets. Source length, node counts, and depth are parse options: per-call options override factory `defaults`, and `defaults` override the shared defaults. Read the effective values from `parser.resolveOptions()` or the snapshot's `meta.limits`; see [Performance and budgets](../guide/performance.mdx).
+
+## Related
+
+- [Parsing `/parse`](./parse.mdx): `createWikiparser` and parse options.
+- [Status and compatibility](../project/status.mdx): pinned upstream versions.

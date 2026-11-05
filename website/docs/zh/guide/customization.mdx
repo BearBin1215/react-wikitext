@@ -1,0 +1,291 @@
+---
+title: 样式与组件定制
+description: 主题变量、文案、标题锚点、插件与组件覆盖点。
+---
+
+# 样式与组件定制
+
+库输出稳定的 `wtr-*` 类名与一组 CSS 变量。页面结构、文案、标题锚点和组件外观都可以在不改源码的情况下调整。
+
+## 样式
+
+引入一次页面样式：
+
+```tsx
+import "react-wikitext/styles.css";
+```
+
+- 库不设置全局元素样式，页面字体默认继承自宿主。
+- 根容器是 `div.wtr-view`；自有类名以 `wtr-` 前缀开头，同时保留一部分 MediaWiki 兼容类名。
+- 内联样式只保留白名单内的排版与外观声明，危险值整条丢弃；严格 CSP 下可按需放行 `style-src`。
+
+### CSS 变量
+
+| 变量                   | 用途           |
+| ---------------------- | -------------- |
+| `--wtr-text`           | 正文颜色       |
+| `--wtr-muted`          | 次要文本       |
+| `--wtr-border`         | 边框与分隔线   |
+| `--wtr-accent`         | 链接与强调色   |
+| `--wtr-accent-soft`    | 强调背景       |
+| `--wtr-placeholder-bg` | 占位背景       |
+| `--wtr-danger`         | 错误与阻止提示 |
+| `--wtr-font-mono`      | 等宽文本       |
+
+变量定义在 `:root`，可以在任意祖先覆盖：
+
+```css
+.article-theme {
+  --wtr-text: #1f2328;
+  --wtr-accent: #0969da;
+  --wtr-border: #d0d7de;
+}
+```
+
+深色主题可以通过 `[data-wtr-theme="dark"]` 或宿主自己的选择器覆盖同一组变量。
+
+变量单独发布在 `react-wikitext/tokens.css`。需要把变量注入到其他样式作用域、或已经在别处加载完整样式时，可以只导入这一份，避免重复引入 `styles.css`：
+
+```tsx
+import "react-wikitext/tokens.css"; // 只有变量
+// import "react-wikitext/styles.css"; // 完整样式，已经包含变量
+```
+
+### 容器属性
+
+```tsx
+<Wikitext
+  source={source}
+  lang="zh-CN"
+  dir="ltr"
+  className="article"
+  containerProps={{ "data-page": "example" }}
+/>
+```
+
+`className` 与 `containerProps.className` 会和 `wtr-view` 合并。`containerProps` 在类型层排除了 `dangerouslySetInnerHTML`。
+
+## 文案
+
+所有用户可见的占位与提示都来自 `labels`。准备选项接受 `Partial<WikitextLabels>`，未提供的字段沿用默认英文文案。
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    labels: {
+      templateNotExpanded: "模板未展开",
+      parserFunctionNotEvaluated: "解析器函数未求值",
+      filePlaceholder: "文件",
+      reference: "引用",
+      toc: "目录",
+      categories: "分类",
+      unknownNode: "不支持的结构",
+      redirectTo: "重定向至",
+      blockedLink: "链接已拦截",
+      blockedHtml: "HTML 已拦截",
+      renderFailed: "渲染失败",
+      nestedTableUnsupported: "不支持嵌套表格",
+    },
+  }}
+/>
+```
+
+| 字段                         | 默认值                          |
+| ---------------------------- | ------------------------------- |
+| `templateNotExpanded`        | `Template not expanded`         |
+| `parserFunctionNotEvaluated` | `Parser function not evaluated` |
+| `filePlaceholder`            | `File`                          |
+| `reference`                  | `Reference`                     |
+| `toc`                        | `Contents`                      |
+| `categories`                 | `Categories`                    |
+| `unknownNode`                | `Unsupported node`              |
+| `redirectTo`                 | `Redirect to`                   |
+| `blockedLink`                | `Blocked link`                  |
+| `blockedHtml`                | `Blocked HTML`                  |
+| `renderFailed`               | `Render failed`                 |
+| `nestedTableUnsupported`     | `Nested table not supported`    |
+
+实际生效的文案会写入 `WikitextRenderDocument.meta.labels`，视图与组件读取同一份文案。
+
+下面的示例同时覆盖主题变量与占位文案，可以直接看到两者对输出的影响：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `'''粗体'''与 {{Infobox|title=模板}}。
+
+[[File:Example.png|图片占位]]`;
+
+export default function Demo() {
+  return (
+    <div className="labels-theme">
+      <Wikitext
+        source={source}
+        lang="zh-CN"
+        prepareOptions={{
+          labels: {
+            templateNotExpanded: "模板未展开",
+            filePlaceholder: "文件",
+          },
+        }}
+      />
+    </div>
+  );
+}
+```
+
+## 标题锚点
+
+```ts
+type WikitextHeadingIdStrategy = "instance" | "mediawiki" | "none";
+```
+
+| 策略               | 行为                                                          |
+| ------------------ | ------------------------------------------------------------- |
+| `instance`（默认） | 准备阶段生成逻辑锚点；视图按实例前缀映射 DOM id，多实例不冲突 |
+| `mediawiki`        | 写入裸锚点，视图不追加前缀；适合与宿主约定一致的单实例页面    |
+| `none`             | 不写 id，也不生成目录链接                                     |
+
+- 锚点由移除标记后的标题文本生成：空白转为 `_`，重复 id 按大小写不敏感追加 `_2`、`_3`，空标题使用 `section-{n}`。
+- 语义标题与源码 `h1`–`h6` 都参与锚点生成。
+- `idPrefix` 只在 `instance` 下生效；未传时使用 React `useId` 生成的实例前缀。
+- 视图同时映射标题 `id`、文档内 `#fragment` 链接和表格 `headers` 属性。
+
+标题列表直接读取渲染快照：
+
+```ts
+for (const heading of prepared.headings) {
+  console.log(heading.level, heading.text, heading.id);
+}
+```
+
+## 组件覆盖
+
+覆盖点按优先级从高到低排列：
+
+1. `semanticComponents[type]`：替换整个 wiki 语义结构。
+2. `components[tag]`：替换默认 HAST 结构内部的 HTML 标签。
+3. 原生元素。
+
+### HTML 组件
+
+```tsx
+<WikitextView
+  document={prepared}
+  components={{
+    blockquote: ({ children, className }) => (
+      <blockquote className={[className, "doc-quote"].filter(Boolean).join(" ")}>
+        {children}
+      </blockquote>
+    ),
+  }}
+/>
+```
+
+`components` 按 HAST 标签名映射，键可以是 `p`、`table`、`img`、`a` 等。组件会收到经过安全校验的属性、`node`（HAST 元素）、`document`、可选的 `semantic` 节点与 `origin`。不要把非 DOM 属性直接展开到原生元素上。
+
+### 语义组件
+
+```tsx
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside className="template-card">
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+```
+
+可覆盖的语义类型：
+
+| 类型                          | 属性中的额外字段                      |
+| ----------------------------- | ------------------------------------- |
+| `link`                        | `target`、`kind`、`href?`、`external` |
+| `template` / `parserFunction` | `displayName`                         |
+| `argument`                    | —                                     |
+| `file`                        | `name`                                |
+| `reference`                   | `number`                              |
+| `extension`                   | `name`、`block`                       |
+| `unknown`                     | `parsedType`、`block`                 |
+| `table`                       | —                                     |
+
+- `semanticComponents.extension` 会收到除 `ref` 外的扩展节点；`ref` 使用 `reference`，`<references>` 不产生组件调用。
+- `semanticComponents.reference` 只替换 `<sup>`，文末引用区仍由库生成。
+- `WikitextFragment` 必须在 `WikitextView` 的 Context 内使用，`nodes` 必须是当前渲染文档中的同一批节点对象。它适合渲染默认转换函数不会输出的子内容，例如模板参数、文件说明和 `ref` 内容。
+
+:::warning 警告
+`components` 与 `semanticComponents` 属于可信代码；组件输出的 HTML 不再经过库清洗。解析回调返回的 URL 已在准备阶段校验，但组件仍应避免把未经验证的输入插入危险属性。
+:::
+
+### 读取上下文
+
+```tsx
+import { useWikitextIds, useWikitextLabels } from "react-wikitext/view";
+
+function SectionLink() {
+  const labels = useWikitextLabels();
+  const ids = useWikitextIds();
+  return <a href={ids.toHref("#section-1")}>{labels.toc}</a>;
+}
+```
+
+- `useWikitextContext()` 提供 `document`、索引、组件表、`idPrefix`、`mapId`、`mapHref` 与 `onRenderError`。
+- `useWikitextLabels()` 读取当前渲染快照的文案。
+- `useWikitextIds()` 提供 `toDomId` 与 `toHref`。
+
+这些 Hook 与 `WikitextFragment` 必须在 `<WikitextView>` 内使用。
+
+## 插件
+
+```tsx
+<Wikitext
+  source={source}
+  prepareOptions={{
+    wikitextPlugins: [
+      () => (tree, file) => {
+        // 在克隆的语义 AST 上运行
+        return tree;
+      },
+    ],
+    rehypePlugins: [
+      () => (tree) => {
+        for (const child of tree.children) {
+          if (child.type === "element" && child.tagName === "p") {
+            const classes = child.properties.className;
+            child.properties.className = [
+              "doc-paragraph",
+              ...(Array.isArray(classes) ? classes : []),
+            ];
+          }
+        }
+        return tree;
+      },
+    ],
+  }}
+/>
+```
+
+- `wikitextPlugins` 在克隆的语义树上运行；`rehypePlugins` 在 HAST 转换后、最终清洗前运行。
+- 插件签名沿用 unified 的 `(tree, file)`，其中 `file` 是 VFile。
+- 原始解析快照不会被修改；准备后会对工作树重新分配 id。
+- 同步入口不接受异步插件，异步插件需要 `prepareWikitextAsync`。
+- 最终安全清洗始终在 rehype 插件之后执行，插件不能绕过白名单与图片授权。
+
+插件列表是结构化数组，元素可以是插件函数或 `[plugin, options]` 元组，按顺序执行。
+
+## 安全策略
+
+`prepareOptions.policy` 可以调整 URL 与标签白名单。完整默认值与字段说明见[准备 API](../api/prepare.mdx)。
+
+`policy` 与默认值单层浅合并；数组字段整体替换。`class` 只按 `[A-Za-z0-9_-]` 安全字符集过滤，不提供放宽或收窄选项。需要白名单之外的标签、属性或富展示时，优先通过 `/view` 的组件覆盖实现，不要放宽清洗规则。
+
+## 自定义语义节点
+
+自定义节点需要同时扩展 `WikitextNodeMap` 并在 `prepareOptions.handlers` 注册对应的 HAST 转换函数。未注册转换函数的节点会产生诊断并降级为源码卡片。转换函数的上下文、预算与转换细节见[准备 API](../api/prepare.mdx#handlers)。

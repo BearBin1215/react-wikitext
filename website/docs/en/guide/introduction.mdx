@@ -1,0 +1,79 @@
+---
+title: Overview
+description: What react-wikitext is for, what it deliberately does not do, and when to use it.
+---
+
+# Overview
+
+`react-wikitext` renders MediaWiki-style wikitext as React elements. Source text is parsed into a typed semantic AST, converted to HAST, and handed to React. It does not talk to the MediaWiki API, execute Lua, or own your routes.
+
+## What it solves
+
+A common shortcut is to inject pre-rendered HTML with `dangerouslySetInnerHTML`, or to embed a wiki page in an `iframe`. Neither composes well: the first bypasses React, and the second cannot reuse your styles or interactions.
+
+`react-wikitext` outputs React elements instead of HTML strings. It exposes an inspectable semantic tree and a sanitized HAST before rendering, leaves links, images, and templates to the host, and can parse and prepare on the server, in a worker, or behind a cache while the client receives a snapshot.
+
+## Capabilities
+
+| Capability                  | Description                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Parse and render            | `wikiparser-node@1.48.1` produces a syntax tree; the library normalizes it into a typed AST and renders React |
+| Snapshots and server        | Parse and render snapshots are plain data; prepare on the server and ship only `/view`                        |
+| Template expansion          | Optional `/expand` with a host template table or fetch callback for supported templates and pure functions    |
+| Customization and debugging | Component overrides, `handlers`, rehype plugins, CSS variables, labels, and diagnostics                       |
+| unified                     | `/unified` exposes a fixed-order processor; the final sanitize stage is appended by the library               |
+
+### Default output
+
+The example below configures no resolvers. Template and file placeholders and non-navigable links are expected defaults, not render failures:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== Default output ==
+This paragraph mixes '''bold''', ''italic'', and an [[internal link|internal link]].
+
+{{Infobox|title=Templates are not evaluated by default}}
+
+[[File:Example.png|thumb|Files are placeholders by default]]`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="en" />;
+}
+```
+
+See [Rendering behavior](./rendering.mdx) and [Syntax support](./syntax-support.mdx) for the full boundaries.
+
+## Deliberate limits
+
+The default pipeline does not evaluate templates or parser functions, and it never runs Lua; `/expand` covers a supported subset only. The library makes no network requests, does not load images by default, and leaves internal links non-navigable.
+
+It is not a MediaWiki implementation and includes no editor or virtual list. The site API, editing, full extension semantics, and pagination belong to the host. See [Rendering behavior](./rendering.mdx) for details.
+
+## When it fits
+
+It suits read-only wiki mirrors, archives, and exports, and wiki snippets embedded in knowledge bases, documentation sites, or admin consoles. It also fits cases that need structured content before rendering, per-block fault isolation, parsing in a worker, or links, images, and templates wired to your own router, CDN, and backend.
+
+Other tools fit better in these cases:
+
+| Case                                        | Better fit                                               |
+| ------------------------------------------- | -------------------------------------------------------- |
+| The content is already Markdown             | A Markdown renderer such as `react-markdown`             |
+| You need full site-level wiki semantics     | Parse output from MediaWiki / Parsoid                    |
+| You only need to isolate a third-party page | An `iframe`, at the cost of host styling and interaction |
+| You need WYSIWYG editing                    | An editor; this library only renders read-only content   |
+
+## Current status
+
+:::note
+Releases in the 0.x range follow semantic versioning: minor versions may contain breaking changes, and patch versions only carry compatible fixes. React `>=18.2 <20`; Node `>=18.18` for builds or server execution. The parser is pinned to `wikiparser-node@1.48.1`; the license is GPL-3.0-or-later.
+:::
+
+See [Status and compatibility](../project/status.mdx) for the full matrix.
+
+## Next steps
+
+- [Quick start](./quick-start.mdx): install and render a first snippet.
+- [How it works](./concepts.mdx): the pipeline, snapshots, and entry boundaries.
+- [Syntax support](./syntax-support.mdx): whether a construct renders, becomes a placeholder, or degrades.

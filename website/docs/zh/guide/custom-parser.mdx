@@ -1,0 +1,199 @@
+---
+title: 自定义解析器
+description: 通过 adapter 接入其他解析器，从 /ast 创建 parser 并进入准备与渲染。
+---
+
+# 自定义解析器
+
+默认解析器是 `wikiparser-node@1.48.1`。如果宿主已经有别的 wikitext 解析器，可以通过 adapter 把它的输出转换成库定义的源码语法树，再复用语义 AST、准备、HAST 与 React 渲染。
+
+## 从 `/ast` 导入工厂
+
+```ts
+import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
+```
+
+`/ast` 不加载默认解析器，也不加载 React。`/parse` 也导出同一个工厂，但导入 `/parse` 会初始化默认 IIFE；只想使用自定义 adapter 时不要从那里导入。
+
+adapter 只负责把源码转换为源码语法树；源码归一化、预算合并、语义 AST 构建、诊断与 `meta` 由工厂完成。
+
+## 语法树格式
+
+返回值的根节点是 `WikitextSyntaxRoot`，每个节点包含：
+
+| 字段         | 要求                                                                             |
+| ------------ | -------------------------------------------------------------------------------- |
+| `type`       | 字符串；语义阶段按类型识别，未识别的类型会降级为源码卡片                         |
+| `id`         | 快照内唯一的字符串，子节点 id 通常由父 id 加点号组成                             |
+| `range`      | `[start, end]`，基于 **LF 归一化后**源码的 **UTF-16** 偏移；`start <= end`       |
+| `position`   | 必需；`start`/`end` 为 1 基行列 + 0 基 offset，且 offset 必须与 `range` 完全一致 |
+| `props`      | 普通对象；文本节点用 `data` 保存文本，标题用 `level`，扩展标签用 `name` 等       |
+| `attributes` | `{ name, value, range }[]`；没有属性时写空数组                                   |
+| `children`   | 子节点数组；没有子节点时写空数组                                                 |
+
+工厂会校验根节点、range 有限性、position 一致性、节点数与深度预算。返回非法树时抛 `WikitextParseError`；adapter 抛出的异常会包成 `PARSE_FAILED` 并保留 `cause`。
+
+语义阶段直接复用默认适配器的 token 词汇，例如：
+
+- `heading` + `heading-title` + `text`；
+- `link` + `link-target` / `link-text`；
+- `text`、`ext`、`template`、`magic-word`、`arg`、`file`、`table`、`list` 等。
+
+不输出这些类型时，对应语法不会得到语义结构；这是 adapter 的能力边界，不是库自动推断的语法支持。
+
+## 有限语法示例
+
+下面的 adapter 只识别 `== 标题 ==`、`[[目标|标签]]` 与普通段落：
+
+```tsx preview
+import {
+  createWikitextParser,
+  type WikitextParserAdapter,
+  type WikitextPoint,
+  type WikitextSyntaxNode,
+  type WikitextSyntaxRoot,
+} from "react-wikitext/ast";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+function createLimitedAdapter(): WikitextParserAdapter {
+  let source = "";
+  let nextId = 0;
+  const point = (offset: number): WikitextPoint => {
+    const before = source.slice(0, offset);
+    const lastBreak = before.lastIndexOf("\n");
+    return { line: before.split("\n").length, column: offset - lastBreak, offset };
+  };
+  const node = (
+    type: string,
+    start: number,
+    end: number,
+    children: WikitextSyntaxNode[] = [],
+    props: Record<string, unknown> = {},
+  ): WikitextSyntaxNode => ({
+    id: String(nextId++),
+    type,
+    range: [start, end],
+    position: { start: point(start), end: point(end) },
+    props,
+    attributes: [],
+    children,
+  });
+  const text = (start: number, end: number) =>
+    node("text", start, end, [], { data: source.slice(start, end) });
+
+  // 段落内的 [[目标|标签]]；其余内容作为文本 token。
+  const inline = (start: number, end: number): WikitextSyntaxNode[] => {
+    const slice = source.slice(start, end);
+    const output: WikitextSyntaxNode[] = [];
+    let cursor = 0;
+    const pattern = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/gu;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(slice))) {
+      if (match.index > cursor) {
+        output.push(text(start + cursor, start + match.index));
+      }
+      const linkStart = start + match.index;
+      const targetStart = linkStart + 2;
+      const targetEnd = targetStart + match[1]!.length;
+      const textStart = targetEnd + 1;
+      output.push(
+        node(
+          "link",
+          linkStart,
+          linkStart + match[0].length,
+          [
+            node("link-target", targetStart, targetEnd, [text(targetStart, targetEnd)]),
+            ...(match[2] === undefined
+              ? []
+              : [
+                  node("link-text", textStart, textStart + match[2].length, [
+                    text(textStart, textStart + match[2].length),
+                  ]),
+                ]),
+          ],
+          { target: match[1] },
+        ),
+      );
+      cursor = match.index + match[0].length;
+    }
+    if (cursor < slice.length) {
+      output.push(text(start + cursor, end));
+    }
+    return output;
+  };
+
+  return {
+    name: "limited-wikitext",
+    version: "1.0.0",
+    parse(input) {
+      source = input;
+      nextId = 0;
+      const children: WikitextSyntaxNode[] = [];
+      let paragraphStart = -1;
+      let offset = 0;
+      const flushParagraph = (end: number): void => {
+        if (paragraphStart >= 0) {
+          children.push(...inline(paragraphStart, end));
+          paragraphStart = -1;
+        }
+      };
+      for (const line of source.split("\n")) {
+        const lineStart = offset;
+        const lineEnd = offset + line.length;
+        const heading = /^(={1,6})\s*(.*?)\s*\1\s*$/u.exec(line);
+        if (heading) {
+          flushParagraph(lineStart);
+          const titleStart = lineStart + heading[1]!.length;
+          const title = heading[2] ?? "";
+          children.push(
+            node(
+              "heading",
+              lineStart,
+              lineEnd,
+              [
+                node("heading-title", titleStart, titleStart + title.length, [
+                  text(titleStart, titleStart + title.length),
+                ]),
+              ],
+              { level: heading[1]!.length },
+            ),
+          );
+        } else if (line.trim() === "") {
+          // 段落 token 覆盖末尾空行，让归一化按 "\n\n" 切分段落。
+          flushParagraph(lineEnd + 1);
+        } else if (paragraphStart < 0) {
+          paragraphStart = lineStart;
+        }
+        offset = lineEnd + 1;
+      }
+      flushParagraph(source.length);
+      return node("root", 0, source.length, children) as WikitextSyntaxRoot;
+    },
+  };
+}
+
+const parser = createWikitextParser(createLimitedAdapter());
+const document = parser.parse("== Demo ==\n\nPlain [[Target page|label]] text.", {
+  pageName: "Adapter demo",
+});
+const prepared = prepareWikitext(document);
+
+export default function Demo() {
+  return <WikitextView document={prepared} lang="zh-CN" />;
+}
+```
+
+## 解析、准备与渲染
+
+上面的预览把 adapter 注册给 `createWikitextParser`，再依次交给 `prepareWikitext` 与 `WikitextView`。准备和渲染与默认 parser 完全共用；`document.meta.parser` / `parserVersion` 来自 adapter。服务端或 Worker 只需要自定义 adapter 时，直接从 `/ast` 导入工厂；`/parse` 会执行上游 IIFE。
+
+## 边界
+
+- 库不提供“任意语法树都能变成完整 wikitext 语义”的承诺；只保证默认适配器使用的 token 词汇。
+- 返回的语法树必须使用 LF 归一化后的源码坐标；不要在 adapter 内提前做 CRLF 转换或返回原源码 offset。
+- adapter 是可信代码；它构造的节点会进入后续清洗，但不应伪造源码位置。
+- 需要模板展开时，把同一个 parser 传给 [`/expand`](../api/expand.mdx)；展开结果仍是 wikitext，会重新解析。
+
+相关参考：[`/ast` API](../api/ast.mdx)、[`/parse` API](../api/parse.mdx)、[工作原理](./concepts.mdx)。

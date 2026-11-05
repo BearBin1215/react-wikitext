@@ -43,7 +43,9 @@
     "vitest.bench.config.ts",
     "playwright.config.ts",
     "playwright.consumer.config.ts",
-    "tsdown.config.ts"
+    "tsdown.config.ts",
+    "website/rspress.config.ts",
+    "website/theme"
   ],
   "exclude": ["dist", "node_modules", "tests/consumer/types", "tests/consumer/vite"]
 }

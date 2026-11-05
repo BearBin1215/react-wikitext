@@ -1,0 +1,16 @@
+[
+  { "type": "section-header", "label": "总览" },
+  { "type": "file", "name": "index", "label": "入口总览" },
+  { "type": "section-header", "label": "渲染" },
+  { "type": "file", "name": "react", "label": "React 组件" },
+  { "type": "section-header", "label": "处理管线" },
+  { "type": "file", "name": "parse", "label": "解析 /parse" },
+  { "type": "file", "name": "ast", "label": "AST /ast" },
+  { "type": "file", "name": "prepare", "label": "准备 /hast" },
+  { "type": "file", "name": "expand", "label": "展开 /expand" },
+  { "type": "section-header", "label": "扩展入口" },
+  { "type": "file", "name": "unified", "label": "unified" },
+  { "type": "file", "name": "configs", "label": "configs" },
+  { "type": "section-header", "label": "错误" },
+  { "type": "file", "name": "errors", "label": "错误与诊断" }
+]

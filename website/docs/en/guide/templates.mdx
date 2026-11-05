@@ -1,0 +1,235 @@
+---
+title: Template Expansion
+description: Expand supported templates and pure wikitext parser functions before parsing with a host-provided template table or fetch callback.
+---
+
+# Template Expansion
+
+The default pipeline does not execute templates. When you need template output, use `/expand` to expand supported templates and parser functions before parsing. The library makes no network requests; the host supplies template source. Offline content, bundled source, and preloaded template sets can be passed as a template table, while on-demand sources use a fetch callback.
+
+## Basic usage
+
+```tsx
+import { expandWikitext } from "react-wikitext/expand";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const expanded = await expandWikitext("{{Note|offline content}}{{Empty}}", {
+  pageName: "Example",
+  templates: {
+    "Template:Note": "'''{{{1|default note}}}'''",
+    "Template:Empty": "",
+  },
+});
+
+const prepared = prepareWikitext(expanded.document);
+const view = <WikitextView document={prepared} lang="en" />;
+```
+
+The preview below compares the default pipeline with the expanded result: the left pane keeps template calls as placeholders, and the right pane shows the same source after expansion and preparation.
+
+```tsx preview
+import { useEffect, useState } from "react";
+import { expandWikitext } from "react-wikitext/expand";
+import { prepareWikitext, type WikitextRenderDocument } from "react-wikitext/hast";
+import { parseWikitext } from "react-wikitext/parse";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const source = `'''Expansion''' replaces template calls with template source, then re-parses.
+
+{{Note|template argument}}
+
+{{List}}
+
+{{#if:1|condition is true|condition is false}}`;
+
+const templates = {
+  "Template:Note": "'''Note:''' {{{1|missing argument}}}",
+  "Template:List": "* First item\n* Second item",
+};
+
+const before = prepareWikitext(parseWikitext(source, { pageName: "Demo" }));
+const pane = { flex: 1, minWidth: 0 };
+const label = { margin: "0 0 8px", fontSize: 13, color: "#57606a" };
+
+export default function Demo() {
+  const [after, setAfter] = useState<WikitextRenderDocument | null>(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    expandWikitext(source, { templates, pageName: "Demo", signal: controller.signal })
+      .then((expanded) => {
+        if (!controller.signal.aborted) {
+          setAfter(prepareWikitext(expanded.document));
+          setStatus(
+            `${expanded.expansion.status}, ${expanded.expansion.records.length} call records`,
+          );
+        }
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      });
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
+      <section style={pane}>
+        <p style={label}>Default pipeline: template placeholders</p>
+        <WikitextView document={before} lang="en" />
+      </section>
+      <section style={pane}>
+        <p style={label}>{error ? error : after ? `Expanded: ${status}` : "Expanding…"}</p>
+        {after ? <WikitextView document={after} lang="en" /> : null}
+      </section>
+    </div>
+  );
+}
+```
+
+`expandWikitext`:
+
+1. Parses the original source into `original`.
+2. Evaluates templates and functions by call structure and records `records`.
+3. Parses the expanded source into `document`.
+4. Returns `expansion.status`: `"complete"`, `"partial"`, or `"fallback"`.
+
+The expanded document is already parsed. **Do not parse it again**; pass it directly to `prepareWikitext`. The host can still read `expansion.status`, `expansion.records`, and `expansion.diagnostics`.
+
+## Template tables
+
+`templates` accepts a record or a `ReadonlyMap`:
+
+```ts
+const fromObject = { "Template:Note": "note" };
+const fromMap = new Map([["Template:Note", "note"]]);
+```
+
+- Keys are page titles normalized by the parser. With the default config, `{{Box}}` requests `Template:Box`; `Box` and `box` do not match. Transclusions in other namespaces or custom parser configs should use the full requested title; keys do not have to start with `Template:`.
+- Values must be strings; an empty string is a valid template that expands to nothing. Lookup is an exact match on the requested title with no title conversion.
+- Each expansion copies the table before parsing the source. Mutating the original collection after the call starts does not affect that call; the next expansion reads the updated collection. There is no cross-call cache.
+- When a lookup misses, compare the `templateTitle` on the `TEMPLATE_NOT_FOUND` diagnostic with your keys; for top-level template calls you can also inspect `expansion.records[].name`.
+
+## Pure functions
+
+When you only expand supported pure wikitext functions such as `#if`, template sources can be omitted:
+
+```ts
+const expanded = await expandWikitext("{{#if:1|value|empty}}");
+```
+
+Template calls without any source are treated as missing: by default the call is preserved with a `TEMPLATE_NOT_FOUND` diagnostic, and `strict: true` throws instead.
+
+## Remote fetching
+
+Provide a `resolveTemplate` callback for on-demand sources. It is only called when the table misses:
+
+```tsx
+const expanded = await expandWikitext(source, {
+  pageName: "Example",
+  resolveTemplate: async ({ title, signal }) => {
+    const response = await fetch(`/api/templates/${encodeURIComponent(title)}`, { signal });
+    if (response.status === 404) {
+      return null; // the template really does not exist
+    }
+    if (!response.ok) {
+      throw new Error(`Template fetch failed: ${response.status}`); // records TEMPLATE_RESOLVE_FAILED
+    }
+    return await response.text();
+  },
+});
+```
+
+- The callback may return a value synchronously or a Promise; pass `request.signal` to `fetch` so cancellation aborts the request.
+- `null` / `undefined` means the template is missing; throwing or returning a non-string value records `TEMPLATE_RESOLVE_FAILED`. Keeping these cases distinct avoids reporting network failures as missing templates.
+- A title is fetched once per expansion. Success, misses, and failures are cached; the callback must return stable source for the same `title`.
+
+## Mixing local and remote sources
+
+With both a table and a callback, table entries win and the callback only serves titles missing from the table:
+
+```tsx
+const expanded = await expandWikitext(source, {
+  templates: { "Template:Note": "", "Template:Shared": "local override" },
+  resolveTemplate: fetchTemplate,
+});
+```
+
+- `"Template:Note": ""` is an empty template and never calls the callback.
+- If a template table entry fails to parse, the existing failure path applies (`TEMPLATE_PARSE_FAILED`) and there is no remote fallback. The callback is only consulted for titles missing from the table.
+
+## Fetch callback contract
+
+```ts
+type WikitextTemplateResolver = (
+  request: WikitextTemplateRequest,
+) => string | null | undefined | Promise<string | null | undefined>;
+```
+
+- `request.title` is the template title normalized by the parser.
+- `request.pageName` is the original page; `request.callerTitle` is the template that contains the current call and is omitted for calls on the original page.
+- `request.invocation` points at the top-level call range in `original.source`; nested requests reuse that top-level range.
+- The library handles newline normalization, include filtering, and parsing; the resolver only fetches source.
+
+## Supported syntax
+
+- Template transclusion and parameter substitution, including anonymous, named, and default values.
+- `noinclude` / `includeonly` / `onlyinclude`.
+- `#if`, `#ifeq`, `#switch`, `#iferror`.
+- `{{!}}` and `{{=}}`.
+- Implicit newlines around template and function output.
+
+Values are computed only when needed: template names, parameter names, and conditions are evaluated in their own scope. Unselected branches, unread parameters, and unused defaults never look up template source and do not count toward the invocation budget.
+
+The following calls are preserved with diagnostics by default:
+
+- `#invoke` and Lua.
+- Transclusion modifiers such as `subst`.
+- Functions that depend on site state or an external runtime, such as `#ifexist` and `#time`.
+
+## Budgets and errors
+
+Defaults and descriptions for every option are in [Expansion `/expand`](../api/expand.mdx).
+
+- A single over-long call is preserved with `LENGTH_BUDGET_EXCEEDED`.
+- If even the preserved source exceeds `maxExpandedLength`, the library throws `EXPANSION_TOO_LARGE`.
+- With `strict: true`, budget overruns throw `EXPANSION_BUDGET_EXCEEDED`.
+- By default, a final parse failure returns the original snapshot with `status: "fallback"`.
+- Cancellation is delivered through `AbortSignal`; the original reason is stored in `cause`.
+
+Errors raised by the expansion stage are `WikitextExpandError`; budget and parse errors from the original or final source remain `WikitextParseError`. Common expansion codes include `INVALID_EXPAND_OPTIONS`, `TEMPLATE_NOT_FOUND`, `TEMPLATE_LOOP`, `UNSUPPORTED_CALL`, `FINAL_PARSE_FAILED`, and `ABORTED`.
+
+## Results and diagnostics
+
+```ts
+const {
+  original, // original parse snapshot
+  document, // expanded parse snapshot
+  expansion, // status / records / diagnostics
+} = expanded;
+```
+
+- `expansion.records` records each call's `kind`, name, original range, expanded range, and status (`expanded` / `preserved`).
+- `expansion.diagnostics` coordinates are based on `original.source`.
+- `document.diagnostics` merges final parse diagnostics with expansion diagnostics mapped onto the expanded source.
+- `prepareWikitext(document)` carries these diagnostics into the render result.
+- Template source is fetched once per title; missing, fetch-failure, and parse-failure diagnostics are recorded for each preserved call site.
+
+Nested calls map only to their top-level record; there is no precise source mapping inside templates.
+
+## How preserved calls render
+
+Templates, functions, and arguments preserved after a failed expansion continue to render as [placeholders](./rendering.mdx#templates-functions-and-arguments). They are never presented as evaluated content. Template source and expansion results are treated as untrusted wikitext and still go through semantic normalization, HAST conversion, and final sanitization.
+
+## Limitations
+
+- Include filtering is a single pass; nested `noinclude` / `onlyinclude` inside `includeonly` content is not recognized again.
+- Lua is not executed and no site API client is built in.
+- There is no title normalization option and no cross-request template cache; arrange keys yourself or cache in the callback.
+- Categories, references, and tables of contents in expanded output follow the normal rendering rules.

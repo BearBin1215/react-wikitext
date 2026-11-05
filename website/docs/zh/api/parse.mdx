@@ -1,0 +1,163 @@
+---
+title: 解析 /parse
+description: 默认解析器、解析选项、预算、自定义适配器与解析错误。
+---
+
+# 解析 `/parse`
+
+```ts
+import {
+  createWikiparser,
+  parseWikitext,
+  WikitextParseError,
+  DEFAULT_MAX_SOURCE_LENGTH,
+} from "react-wikitext/parse";
+```
+
+`/parse` 在模块加载时执行 `wikiparser-node@1.48.1` 浏览器包并捕获全局解析器，不加载 React。默认解析器实例在首次解析时才创建。解析是同步的。
+
+## parseWikitext
+
+```ts
+const document = parseWikitext(source, {
+  pageName: "Example",
+  retainSyntax: false,
+});
+```
+
+使用默认配置的共享解析器，适合一次性解析或简单场景。
+
+## createWikiparser
+
+```ts
+const parser = createWikiparser({
+  config: MEDIAWIKI_CONFIG,
+  defaults: { pageName: "Example" },
+});
+
+const document = parser.parse(source, { maxSourceLength: 50_000 });
+const effective = parser.resolveOptions({ maxSourceLength: 50_000 });
+```
+
+- 默认配置为 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.1` 的站点配置快照；该常量已深冻结。
+- 配置在工厂创建时深拷贝并归一化；之后修改原对象不会影响解析器。
+- 更换配置需要创建新的解析器；需要局部覆盖时用 `/configs` 的 `createMediaWikiConfig`。
+- 库不导出最小配置；需要自定义时以默认配置为基础复制并调整字段。
+
+## 解析选项
+
+```ts
+interface WikitextParseOptions {
+  pageName?: string;
+  maxSourceLength?: number; // 默认 100_000
+  maxSyntaxNodes?: number; // 默认 50_000
+  maxSemanticNodes?: number; // 默认 50_000
+  maxDepth?: number; // 默认 1_000
+  retainSyntax?: boolean; // 默认 false
+}
+```
+
+| 选项               | 说明                                                   |
+| ------------------ | ------------------------------------------------------ |
+| `pageName`         | 页面上下文（例如模板或魔术字中的页面名）；库不自动生成 |
+| `maxSourceLength`  | LF 归一化后的源码长度上限                              |
+| `maxSyntaxNodes`   | 源码语法树节点上限                                     |
+| `maxSemanticNodes` | 语义 AST 节点上限                                      |
+| `maxDepth`         | 语法树深度上限                                         |
+| `retainSyntax`     | 是否在文档中保留上游 token 语法树（调试用）            |
+
+有效预算按优先级合并：单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。解析前统一把 CRLF / CR 归一化为 LF，预算在归一化后检查。预算必须是正整数；`0`、负数、小数、`NaN` 与 `Infinity` 都会抛 `INVALID_CONFIG`。
+
+`retainSyntax` 只决定上游 token 语法树是否放进公共快照，会显著增加内存与构建成本。源码文本、语义节点的 `position` 与 `origin.range` 始终存在，查询函数也不读取语法树；只有需要检查上游 token 时才开启。
+
+### resolveOptions
+
+```ts
+parser.resolveOptions(options?): WikitextResolvedParseOptions
+```
+
+返回本次解析实际生效的预算、`pageName` 与 `retainSyntax`，不会解析源码。缓存键需要覆盖这些字段时直接使用它的结果，不要自行复刻合并规则。`parse()` 生成的 `meta.limits` 与它是同一份值。
+
+## 返回的文档
+
+```ts
+interface WikitextDocument {
+  source: string;
+  ast: WikitextRoot;
+  syntax?: WikitextSyntaxRoot;
+  meta: WikitextDocumentMeta;
+  diagnostics: WikitextDiagnostic[];
+}
+```
+
+`meta` 包含：
+
+- `parser` / `parserVersion`。
+- `pageName`。
+- `astSchemaVersion` 与可选的 `syntaxSchemaVersion`。
+- `sourceNormalized`、`originalLength`、`retainSyntax`。
+- `limits`：本次实际生效的 `maxSourceLength`、`maxSyntaxNodes`、`maxSemanticNodes` 与 `maxDepth`。
+
+同一份源码使用不同配置或 `pageName` 时，可能得到不同的 AST；它们属于解析输入，不属于渲染选项。
+
+## 自定义适配器
+
+接入其他解析器时从 [`/ast`](./ast.mdx) 导入 `createWikitextParser`：该入口不加载默认 IIFE，也不加载 React。`/parse` 也导出同一个工厂，但导入它会执行上游 IIFE，不适合只想使用自定义 adapter 的场景。
+
+```ts
+import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
+
+const adapter: WikitextParserAdapter = {
+  name: "my-parser",
+  version: "1.0.0",
+  parse(source, context) {
+    // 必须返回符合 WikitextSyntaxRoot 的普通对象；
+    // range 基于 LF 归一化后的源码，行列从 1 开始，offset 从 0 开始。
+    return buildSyntaxRoot(source, context);
+  },
+};
+
+const parser = createWikitextParser(adapter, {
+  defaults: { pageName: "Example" },
+});
+```
+
+- 适配器只把输入转换为源码语法树；归一化、预算合并、语义 AST 构建、诊断与 meta 由工厂完成。
+- `context.limits` 提供有效的 `maxSyntaxNodes` 与 `maxDepth`，适配器可以据此提前停止。
+- 适配器返回后，工厂仍会校验结构、源码范围与预算。
+- 适配器的 `name` / `version` 会写入文档 meta。
+- `WikitextParser` 接口还包含 `resolveOptions()`；通过 `createWikitextParser` 创建时自动提供，手写该接口的宿主需要自行补齐。
+
+## 错误
+
+```ts
+class WikitextParseError extends WikitextError {
+  constructor(
+    code:
+      | "SOURCE_TOO_LONG"
+      | "SOURCE_TOO_COMPLEX"
+      | "INVALID_CONFIG"
+      | "PARSE_FAILED"
+      | "PARSER_UNAVAILABLE",
+    message: string,
+    options?: { cause?: unknown },
+  );
+}
+```
+
+| 错误码               | 触发条件                     |
+| -------------------- | ---------------------------- |
+| `SOURCE_TOO_LONG`    | 归一化后的源码超过长度预算   |
+| `SOURCE_TOO_COMPLEX` | 节点数或深度超过预算         |
+| `INVALID_CONFIG`     | 站点配置缺少必需字段         |
+| `PARSE_FAILED`       | 上游解析或语义构建失败       |
+| `PARSER_UNAVAILABLE` | 默认 IIFE 未初始化全局解析器 |
+
+节点数与深度上限见[性能与预算](../guide/performance.mdx)；触发错误时 `error.message` 会给出实际生效值。
+
+## 相关
+
+- 解析结果的查询、序列化与 AST 节点类型见 [`/ast`](./ast.mdx)。
+- 完整的 adapter 接入流程与语法树格式见[自定义解析器](../guide/custom-parser.mdx)。
+- 配置常量见 [`/configs`](./configs.mdx)。
+- 需要缓存，或需要避免阻塞主线程时，把解析放到 Worker 中执行，序列化后传回主线程。

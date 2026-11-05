@@ -1,0 +1,62 @@
+---
+title: Contributing and Feedback
+description: Report issues, run the documentation site, edit docs, and run pre-submit checks.
+---
+
+# Contributing and Feedback
+
+## Reporting issues
+
+An issue that includes the following is much faster to triage:
+
+- The smallest wikitext source and its `pageName`.
+- The entry and relevant options (`parseOptions`, `prepareOptions`, `policy`, `labels`).
+- Library version, `parserVersion`, React, and bundler versions.
+- The error `code`, `stage`, and `cause`, plus `document.diagnostics`.
+- Expected versus actual output; for styling, a screenshot or DOM fragment.
+
+First confirm the behavior is not already covered by [known limitations](../guide/rendering.mdx) or [syntax support](../guide/syntax-support.mdx).
+
+## Running the docs site
+
+The documentation uses Rspress and lives in `website/`:
+
+```bash
+pnpm install
+pnpm docs:dev     # local preview
+pnpm docs:build   # build into website/doc_build/
+pnpm docs:preview # preview the build
+```
+
+- Chinese content is in `website/docs/zh/`, English in `website/docs/en/`; add both when creating a page.
+- Navigation comes from each directory's `_meta.json` and the top-level `_nav.json`.
+- Runnable guide examples use ` ```tsx preview ` blocks; they import through public package entries and are rendered by `@rspress/plugin-preview`.
+- The home page example is loaded on the client by `website/theme/HomeExample.tsx`.
+
+## AI entry points for this site
+
+Each build publishes plain-text files for AI tools:
+
+- [llms.txt](/llms.txt): an index with descriptions and links for every page.
+- [llms-full.txt](/llms-full.txt): all pages of this language merged into one file.
+
+The Chinese site publishes the same files under `/zh/`. Appending `.md` to a page URL returns that page as Markdown, and each page title also offers copy-Markdown and related actions. Combine these paths with the site domain before handing them to an AI tool.
+
+## Editing docs
+
+- Behavior, defaults, and exports follow `src/` and `tests/`; do not copy full test inventories or fixed performance numbers into the docs.
+- Guides answer "how", reference answers "what"; state a fact once and link to it elsewhere.
+- Snippets should stand alone; call out trusted code and untrusted input around security boundaries.
+- Keep Chinese and English sections in one-to-one correspondence, and keep terminology stable: parse snapshot, render snapshot, resolver, policy, labels.
+
+## Pre-submit checks
+
+Run `pnpm test`, `pnpm run typecheck`, and `pnpm run lint` before submitting. For documentation changes, also run `pnpm docs:build` to confirm that pages and links build.
+
+## Performance measurements
+
+`pnpm bench` writes samples, medians, and IQR into `test-results/bench/report.json` and `summary.md`. When comparing before/after results, record the input, parser version, and environment; timing changes are not an absolute gate.
+
+## License
+
+Contributions are distributed under the repository's GPL-3.0-or-later license. New third-party code or assets must update `NOTICE` and `THIRD_PARTY_LICENSES`.

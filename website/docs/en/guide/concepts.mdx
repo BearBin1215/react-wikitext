@@ -1,0 +1,114 @@
+---
+title: How It Works
+description: The pipeline, the two snapshot types, entry loading boundaries, and semantic normalization.
+---
+
+# How It Works
+
+The library splits rendering into stages that can be deployed separately. Understanding the pipeline and the two snapshots makes it obvious when to use the root entry and when to parse on the server.
+
+## Pipeline
+
+```text
+source
+  │
+  ├─ (optional) /expand ─▶ expanded source
+  │
+  ▼
+/parse ─▶ WikitextDocument (parse snapshot)
+  │
+  ▼
+/hast prepare ─▶ WikitextRenderDocument (render snapshot)
+  │
+  ▼
+/view ─▶ React
+```
+
+| Stage       | Entry               | Input                         | Output                   | Required         |
+| ----------- | ------------------- | ----------------------------- | ------------------------ | ---------------- |
+| Expansion   | `/expand`           | Source and host template data | Expanded parse document  | Optional         |
+| Parsing     | `/parse`, `/ast`    | Source                        | `WikitextDocument`       | Yes              |
+| Preparation | `/hast`             | Parse snapshot                | `WikitextRenderDocument` | Before rendering |
+| Rendering   | `/view`, root entry | Render snapshot               | React elements           | To render        |
+
+The result of `/expand` is already a parse document. Do not parse it again; pass it to `prepareWikitext`.
+
+## Two snapshots
+
+### Parse snapshot `WikitextDocument`
+
+Field definitions are in [Parsing `/parse`](../api/parse.mdx).
+
+- `ast` is the normalized semantic tree; preparation never mutates it.
+- `syntax` exists only with `retainSyntax: true` and is a debugging view of upstream tokens; semantic node `position`, `origin.range`, and query helpers do not depend on it.
+- The same source with a different site config or `pageName` can produce a different AST.
+
+### Render snapshot `WikitextRenderDocument`
+
+Field definitions are in [Preparation `/hast`](../api/prepare.mdx).
+
+- `hast` already contains the TOC, reference section, and category footer.
+- `ast` is the working tree after plugins; node ids have been reassigned.
+- `meta` records the effective policy, labels, heading strategy, and authorized images.
+- `WikitextView` accepts only a render snapshot, never source text.
+
+Queries must use the right snapshot: do not look up ids from a render snapshot in the original parse snapshot.
+
+## Why two stages
+
+Parsing is expensive, while preparation options change often. Cache the parse snapshot and prepare it again with different resolvers, images, labels, or plugins instead of reparsing. Server preparation and client rendering use the same snapshot: the client loads no parser and reruns no plugins.
+
+Preparation works on a cloned tree, so the parse snapshot stays read-only. Snapshots are plain data: they can be cached, sent through a worker, or transferred over the network, and restore functions revalidate structure and budgets.
+
+:::note
+Preparation is not an optional "touch-up" step. It determines the final HAST content and the security boundary; handing unprocessed HAST to the view is unsupported.
+:::
+
+## Semantic normalization
+
+The upstream parser returns a syntax tree, which the library normalizes into the semantic AST.
+
+Structures that cannot be represented safely or correctly degrade to a source card and a diagnostic; the library does not guess. Templates, parser functions, arguments, and files render explicit placeholders, so "not evaluated" is never mistaken for "evaluated".
+
+Source HTML is handled by category: allowlisted tags render, forbidden tags are dropped with a readable hint, and unknown tags degrade. Links and images are validated again during finalization: protocol, `target`, `rel`, and image authorization.
+
+Each output can be traced back to its source, which makes issues easier to debug and audit. Layout will differ from Wikipedia itself.
+
+## Entry boundaries
+
+| Entry      | Loads parser | Loads React | Typical use                                   |
+| ---------- | ------------ | ----------- | --------------------------------------------- |
+| Root entry | Yes          | Yes         | Render source on the client                   |
+| `/view`    | No           | Yes         | Render a prepared snapshot                    |
+| `/parse`   | Yes          | No          | Server, worker, cache                         |
+| `/expand`  | Yes          | No          | Expand templates before parse                 |
+| `/hast`    | No           | No          | Prepare, serialize, restore                   |
+| `/ast`     | No           | No          | AST queries and data pipelines                |
+| `/unified` | No           | No          | Fixed-order processor with an injected parser |
+| `/configs` | No           | No          | Site config constants and override builder    |
+
+[Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, read the exports of each `src/` entry; `tests/api/exports.test.ts` pins the main runtime exports.
+
+:::warning
+React entries create Context at module load and use `useId` / `useMemo`, so they only run in Client Components. The root entry and `/view` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse` and `/hast`.
+:::
+
+## Glossary
+
+| Term            | Meaning                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| wikitext        | MediaWiki-style page source                                                                          |
+| Parse snapshot  | The semantic result of source plus site config (`WikitextDocument`)                                  |
+| Render snapshot | The result after plugins, HAST conversion, sanitization, and finalization (`WikitextRenderDocument`) |
+| Resolver        | Host callbacks such as `resolveLink` and `resolveImage`                                              |
+| Template table  | The `/expand` `templates` input that maps titles to template source                                  |
+| Fetch callback  | The `/expand` `resolveTemplate` callback used when the table misses                                  |
+| Handler         | A `prepareOptions.handlers` function converting a custom semantic node to HAST                       |
+| Policy          | URL, tag, and class rules in `prepareOptions.policy`                                                 |
+| Labels          | `prepareOptions.labels`, every user-visible placeholder and hint                                     |
+
+## Next steps
+
+- [Basic usage](./usage.mdx): source component and explicit pipeline.
+- [Server rendering](./server-rendering.mdx): snapshot serialization, Next.js, and hydration.
+- [Preparation `/hast`](../api/prepare.mdx): plugins, resolvers, policy, and restore.

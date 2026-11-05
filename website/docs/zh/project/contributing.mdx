@@ -1,0 +1,62 @@
+---
+title: 参与与反馈
+description: 报告问题、运行文档站、修改文档与提交前检查。
+---
+
+# 参与与反馈
+
+## 报告问题
+
+在 GitHub 仓库提交 issue 时，附上下面的信息能显著缩短定位时间：
+
+- 最小 wikitext 源码与 `pageName`。
+- 使用的入口与关键选项（`parseOptions`、`prepareOptions`、`policy`、`labels`）。
+- 库版本、`parserVersion`、React 与打包器版本。
+- 完整错误对象的 `code`、`stage` 与 `cause`，以及 `document.diagnostics`。
+- 期望输出与实际输出；如果涉及样式，附上屏幕截图或 DOM 片段。
+
+请先确认问题不是[渲染行为](../guide/rendering.mdx)或[支持矩阵](../guide/syntax-support.mdx)中标注的行为。
+
+## 运行文档站
+
+文档使用 Rspress，源码位于 `website/`：
+
+```bash
+pnpm install
+pnpm docs:dev     # 本地预览
+pnpm docs:build   # 构建到 website/doc_build/
+pnpm docs:preview # 预览构建产物
+```
+
+- 中文内容在 `website/docs/zh/`，英文在 `website/docs/en/`；新增页面时两边都要补齐。
+- 目录结构由各目录的 `_meta.json` 与顶部的 `_nav.json` 决定。
+- 指南中的可运行示例使用 ` ```tsx preview ` 代码块；示例通过包公共入口导入，由 `@rspress/plugin-preview` 渲染。
+- 首页在线示例由 `website/theme/HomeExample.tsx` 在客户端按需加载库源码。
+
+## 文档站的 AI 入口
+
+文档站每次构建都会发布供 AI 工具读取的纯文本文件：
+
+- [llms.txt](/zh/llms.txt)：各页面的说明与链接索引。
+- [llms-full.txt](/zh/llms-full.txt)：中文站全部页面合并后的文本。
+
+英文版对应 `/llms.txt` 与 `/llms-full.txt`。在页面地址后追加 `.md` 也可以获取该页的纯 Markdown 版本；每页标题下方还提供「复制 Markdown」等入口。把文档站域名和这些路径一起提供给 AI 工具即可。
+
+## 修改文档
+
+- 行为、默认值与导出以 `src/` 与 `tests/` 为准；文档不复制容易漂移的完整测试清单或固定性能数字。
+- 指南负责“怎么做”，参考负责“有什么”；同一个事实只写一处，其他页面链接过去。
+- 代码片段应能独立理解；涉及安全边界时明确标注“可信代码”或“不可信输入”。
+- 中英文段落保持一一对应，术语保持一致：解析快照、渲染快照、解析回调、策略、文案。
+
+## 提交前检查
+
+提交前要运行 `pnpm test`、`pnpm run typecheck` 与 `pnpm run lint`；改动文档时还要运行 `pnpm docs:build`，确认页面与链接可构建。
+
+## 性能测量
+
+`pnpm bench` 分别采样 parse、prepare、render 与 expand，把样本、中位数与四分位区间写入 `test-results/bench/report.json` 和 `summary.md`。对比改动前后的数据时，记录输入、解析器版本与运行环境；耗时变化不作为绝对门槛。
+
+## 许可
+
+提交内容按仓库的 GPL-3.0-or-later 许可分发；新增第三方代码或资源时，需要同步更新 `NOTICE` 与 `THIRD_PARTY_LICENSES`。

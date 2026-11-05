@@ -18,12 +18,7 @@
     "perf": "warn"
   },
   "rules": {
-    "no-unused-vars": [
-      "error",
-      {
-        "argsIgnorePattern": "^_"
-      }
-    ],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "typescript/consistent-type-imports": "error",
     "typescript/no-empty-object-type": "error",
     "react/react-in-jsx-scope": "off",
@@ -38,6 +33,12 @@
   "overrides": [
     {
       "files": ["playground/src/main.tsx"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      "files": ["website/theme/**"],
       "rules": {
         "import/no-unassigned-import": "off"
       }

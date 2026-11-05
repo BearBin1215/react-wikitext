@@ -23,7 +23,9 @@
     "url": "git+https://github.com/BearBin1215/react-wikitext.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE",
+    "THIRD_PARTY_LICENSES"
   ],
   "type": "module",
   "sideEffects": [
@@ -124,6 +126,9 @@
     "dev": "tsdown --watch",
     "play": "vite",
     "play:dist": "pnpm build && vite --mode dist",
+    "docs:dev": "rspress dev --config website/rspress.config.ts",
+    "docs:build": "rspress build --config website/rspress.config.ts",
+    "docs:preview": "rspress preview --config website/rspress.config.ts",
     "build": "tsdown",
     "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
@@ -156,6 +161,8 @@
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
     "@playwright/test": "1.64.1",
+    "@rspress/core": "2.0.23",
+    "@rspress/plugin-preview": "2.0.23",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/hast": "3.0.5",

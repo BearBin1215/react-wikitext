@@ -1,0 +1,206 @@
+---
+title: Recipes
+description: Copyable snippets for theming, routing and media, template cards, article TOCs, and error reporting.
+---
+
+# Recipes
+
+These snippets use only public APIs and omit the host's own data loading and error handling. Component overrides, resolvers, and plugins are trusted code; review them against the [security model](./security.mdx) before shipping.
+
+## Site theme and dark mode
+
+Styles are driven by CSS variables. Classes and attributes on the container can participate in selectors:
+
+```css
+.wiki-article {
+  --wtr-text: #1f2328;
+  --wtr-accent: #0969da;
+  --wtr-border: #d0d7de;
+  --wtr-placeholder-bg: #f6f8fa;
+}
+
+.wiki-article[data-theme="dark"] {
+  --wtr-text: #e6edf3;
+  --wtr-accent: #4493f8;
+  --wtr-border: #30363d;
+  --wtr-placeholder-bg: #161b22;
+}
+```
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+<Wikitext source={source} className="wiki-article" containerProps={{ "data-theme": theme }} />;
+```
+
+The same source in light and dark themes:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== Theme example ==
+'''Body text''', ''emphasis'', and a [[link]].
+
+{{Infobox|title=Template placeholder}}`;
+
+export default function Demo() {
+  return (
+    <div>
+      <div className="recipe-theme">
+        <Wikitext source={source} lang="en" />
+      </div>
+      <div className="recipe-theme recipe-theme--dark">
+        <Wikitext source={source} lang="en" />
+      </div>
+    </div>
+  );
+}
+```
+
+See [Styling and components](./customization.mdx) for the variable list.
+
+## Site routes and an image CDN
+
+Leave routing and media URLs to the host; the library only validates and renders. Define resolvers at module scope so preparation is not repeated:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import type { WikitextImageResolver, WikitextLinkResolver } from "react-wikitext/hast";
+import "react-wikitext/styles.css";
+
+const resolveLink: WikitextLinkResolver = (request) => {
+  if (request.kind !== "internal") return undefined;
+  const page = request.page ?? request.target;
+  const fragment = request.fragment ? `#${request.fragment}` : "";
+  return { href: `/wiki/${encodeURIComponent(page)}${fragment}`, target: "_self" };
+};
+
+const resolveImage: WikitextImageResolver = (request) => ({
+  src: `https://placehold.co/240x120/png?text=${encodeURIComponent(request.name)}`,
+  alt: request.alt ?? request.name,
+});
+
+const source = `See [[Example page]] and [[File:Example.png|thumb|Image caption]].`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="en" prepareOptions={{ resolveLink, resolveImage }} />;
+}
+```
+
+Return-value semantics and policy are in [Links and images](./links-and-images.mdx).
+
+## Template cards
+
+Do not expand templates, but render the invocation as a site-specific card:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside style={{ border: "1px solid #d0d7de", borderRadius: 8, padding: 12, margin: "8px 0" }}>
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source={"{{Infobox|title=Example|body=Template arguments appear in the card}}"}
+      lang="en"
+      semanticComponents={{ template: TemplateCard }}
+    />
+  );
+}
+```
+
+`WikitextFragment` must be used inside the `WikitextView` context and can only render nodes from the current document.
+
+## Article table of contents
+
+You do not have to use the library's TOC. For a site sidebar, read `headings` from the render snapshot and pin the anchor strategy:
+
+```tsx preview
+import { useMemo } from "react";
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const parser = createWikiparser();
+
+function Article({ source }: { source: string }) {
+  const prepared = useMemo(
+    () => prepareWikitext(parser.parse(source), { headingIdStrategy: "mediawiki" }),
+    [source],
+  );
+
+  return (
+    <div className="article-layout">
+      <nav aria-label="Contents">
+        <ol>
+          {prepared.headings.map((heading) => (
+            <li key={heading.nodeId} data-level={heading.level}>
+              {heading.id ? <a href={`#${heading.id}`}>{heading.text}</a> : heading.text}
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <WikitextView document={prepared} />
+    </div>
+  );
+}
+
+const demoSource = `== First section ==
+First paragraph.
+
+== Second section ==
+Second paragraph.`;
+
+export default function Demo() {
+  return <Article source={demoSource} />;
+}
+```
+
+- The `mediawiki` strategy writes bare anchors and assumes a single instance per page.
+- For multiple instances, keep the default `instance` strategy; inside the view, use `useWikitextIds().toHref` to get the real link.
+- The in-page TOC is still generated; to keep only the sidebar, hide `.wtr-toc` with host CSS or use `__NOTOC__` in the source.
+
+## Reporting render failures
+
+The view isolates failures per top-level block; parse and prepare errors belong to the caller:
+
+```tsx
+import type { WikitextDocument } from "react-wikitext/ast";
+import type { WikitextPrepareOptions } from "react-wikitext/hast";
+import { prepareWikitext, WikitextPrepareError } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+function renderPrepared(document: WikitextDocument, prepareOptions: WikitextPrepareOptions) {
+  try {
+    return <WikitextView document={prepareWikitext(document, prepareOptions)} />;
+  } catch (error) {
+    if (error instanceof WikitextPrepareError) {
+      report(error.code, error.stage, error.cause);
+    }
+    throw error;
+  }
+}
+```
+
+```tsx
+<Wikitext
+  source={source}
+  onRenderError={(error, { node }) => {
+    report("render", error, { nodeId: node.id, nodeType: node.type });
+  }}
+/>
+```
+
+`labels.renderFailed` controls the block placeholder title; see [Errors and diagnostics](../api/errors.mdx).

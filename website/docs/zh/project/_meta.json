@@ -1,0 +1,5 @@
+[
+  { "type": "section-header", "label": "项目" },
+  { "type": "file", "name": "status", "label": "状态与兼容性" },
+  { "type": "file", "name": "contributing", "label": "参与与反馈" }
+]

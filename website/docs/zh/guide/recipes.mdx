@@ -1,0 +1,206 @@
+---
+title: 常用配方
+description: 主题、链接与图片、模板卡片、文章目录与错误上报的可复制片段。
+---
+
+# 常用配方
+
+以下片段都只使用公开 API，省略了应用自身的错误处理与数据加载。组件覆盖、解析回调与插件属于可信代码，接入前请按[安全模型](./security.mdx)审查。
+
+## 站点主题与深色模式
+
+库的样式由 CSS 变量驱动，容器上的 `class` 与属性都可以参与选择器：
+
+```css
+.wiki-article {
+  --wtr-text: #1f2328;
+  --wtr-accent: #0969da;
+  --wtr-border: #d0d7de;
+  --wtr-placeholder-bg: #f6f8fa;
+}
+
+.wiki-article[data-theme="dark"] {
+  --wtr-text: #e6edf3;
+  --wtr-accent: #4493f8;
+  --wtr-border: #30363d;
+  --wtr-placeholder-bg: #161b22;
+}
+```
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+<Wikitext source={source} className="wiki-article" containerProps={{ "data-theme": theme }} />;
+```
+
+同一份源码在浅色与深色下的效果：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `== 主题示例 ==
+'''正文'''、''强调'' 与 [[链接]]。
+
+{{Infobox|title=模板占位}}`;
+
+export default function Demo() {
+  return (
+    <div>
+      <div className="recipe-theme">
+        <Wikitext source={source} lang="zh-CN" />
+      </div>
+      <div className="recipe-theme recipe-theme--dark">
+        <Wikitext source={source} lang="zh-CN" />
+      </div>
+    </div>
+  );
+}
+```
+
+变量清单见[样式与组件](./customization.mdx)。
+
+## 站内路由与图片 CDN
+
+把路由与媒体地址交给宿主，库只负责校验与渲染。把解析回调放在模块作用域，避免每次渲染重新准备：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import type { WikitextImageResolver, WikitextLinkResolver } from "react-wikitext/hast";
+import "react-wikitext/styles.css";
+
+const resolveLink: WikitextLinkResolver = (request) => {
+  if (request.kind !== "internal") return undefined;
+  const page = request.page ?? request.target;
+  const fragment = request.fragment ? `#${request.fragment}` : "";
+  return { href: `/wiki/${encodeURIComponent(page)}${fragment}`, target: "_self" };
+};
+
+const resolveImage: WikitextImageResolver = (request) => ({
+  src: `https://placehold.co/240x120/png?text=${encodeURIComponent(request.name)}`,
+  alt: request.alt ?? request.name,
+});
+
+const source = `参见 [[示例页面]] 与 [[File:Example.png|thumb|图片说明]]。`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="zh-CN" prepareOptions={{ resolveLink, resolveImage }} />;
+}
+```
+
+返回值语义与策略见[链接与图片](./links-and-images.mdx)。
+
+## 模板卡片
+
+不展开模板，但可以把调用显示成站点自己的卡片：
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside style={{ border: "1px solid #d0d7de", borderRadius: 8, padding: 12, margin: "8px 0" }}>
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+export default function Demo() {
+  return (
+    <Wikitext
+      source={"{{Infobox|title=示例|body=模板参数会显示在卡片里}}"}
+      lang="zh-CN"
+      semanticComponents={{ template: TemplateCard }}
+    />
+  );
+}
+```
+
+`WikitextFragment` 必须在 `WikitextView` 的 Context 内使用，并且只能渲染当前文档中的节点。
+
+## 文章目录
+
+目录不一定由库生成。需要站点侧栏时，直接读取渲染快照的 `headings`，并固定锚点策略：
+
+```tsx preview
+import { useMemo } from "react";
+import { createWikiparser } from "react-wikitext/parse";
+import { prepareWikitext } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+import "react-wikitext/styles.css";
+
+const parser = createWikiparser();
+
+function Article({ source }: { source: string }) {
+  const prepared = useMemo(
+    () => prepareWikitext(parser.parse(source), { headingIdStrategy: "mediawiki" }),
+    [source],
+  );
+
+  return (
+    <div className="article-layout">
+      <nav aria-label="目录">
+        <ol>
+          {prepared.headings.map((heading) => (
+            <li key={heading.nodeId} data-level={heading.level}>
+              {heading.id ? <a href={`#${heading.id}`}>{heading.text}</a> : heading.text}
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <WikitextView document={prepared} />
+    </div>
+  );
+}
+
+const demoSource = `== 第一节 ==
+第一段内容。
+
+== 第二节 ==
+第二段内容。`;
+
+export default function Demo() {
+  return <Article source={demoSource} />;
+}
+```
+
+- `mediawiki` 策略写入裸锚点，适合单实例页面。
+- 多实例页面用默认 `instance` 策略；在视图内部可以用 `useWikitextIds().toHref` 取得实际链接。
+- 页内自动目录仍然会生成；只想保留侧栏时，可以用宿主 CSS 隐藏 `.wtr-toc`，或在源码层面使用 `__NOTOC__`。
+
+## 渲染失败上报
+
+视图按顶层块隔离失败；解析与准备的错误需要调用方捕获：
+
+```tsx
+import type { WikitextDocument } from "react-wikitext/ast";
+import type { WikitextPrepareOptions } from "react-wikitext/hast";
+import { prepareWikitext, WikitextPrepareError } from "react-wikitext/hast";
+import { WikitextView } from "react-wikitext/view";
+
+function renderPrepared(document: WikitextDocument, prepareOptions: WikitextPrepareOptions) {
+  try {
+    return <WikitextView document={prepareWikitext(document, prepareOptions)} />;
+  } catch (error) {
+    if (error instanceof WikitextPrepareError) {
+      report(error.code, error.stage, error.cause);
+    }
+    throw error;
+  }
+}
+```
+
+```tsx
+<Wikitext
+  source={source}
+  onRenderError={(error, { node }) => {
+    report("render", error, { nodeId: node.id, nodeType: node.type });
+  }}
+/>
+```
+
+`labels.renderFailed` 控制块级占位的标题；错误码与处理方式见[错误与诊断](../api/errors.mdx)。

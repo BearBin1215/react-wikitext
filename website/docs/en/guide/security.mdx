@@ -1,0 +1,127 @@
+---
+title: Security Model
+description: Default security boundaries, sanitization order, and host responsibilities.
+---
+
+# Security Model
+
+Wikitext usually comes from untrusted users. The library aims to output only sanitized React elements — even when the source contains hostile HTML, URLs, or templates — without executing scripts or loading unauthorized media.
+
+## What the library guarantees
+
+### No HTML injection
+
+- The library never uses `dangerouslySetInnerHTML` and never hands a wikitext or parser HTML string to React.
+- Output is produced from the sanitized HAST as React elements.
+- Dangerous source tags (`script`, `style`, `iframe`, form controls, `svg`, HTML `math`, and similar) are escaped as plain text by default; if configured as HTML or inserted into HAST by a plugin, they are dropped as whole pairs with a readable hint and never executed.
+
+The example below contains a dangerous address, a script tag, and an event attribute. No script runs in the output:
+
+```tsx preview
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+const source = `[javascript:alert(1) blocked link]
+
+<script>script that never runs</script>
+
+<div onclick="alert(1)">the event attribute is removed</div>`;
+
+export default function Demo() {
+  return <Wikitext source={source} lang="en" />;
+}
+```
+
+The `javascript:` address becomes readable text, the `<script>` source is escaped, and `onclick` never reaches the DOM.
+
+### Fixed sanitization order
+
+```text
+wikitextPlugins
+  → semantic AST → HAST
+  → rehypePlugins
+  → sanitize (hast-util-sanitize + wiki schema)
+  → finalize (link/image attributes, reference ids, heading anchors, TOC)
+  → React
+```
+
+- Plugins run before final sanitization and cannot bypass it.
+- When integrating through `/unified`, use `createWikitextProcessor`: the final stage is appended by the library, so host plugins cannot run after sanitization; hand-wiring the raw plugins is no longer a supported path.
+- The original parse snapshot is read-only; preparation works on a cloned tree.
+- Finalization revalidates `target`, `rel`, image authorization, and URL protocols.
+
+### Attribute and URL whitelists
+
+- Source HTML keeps only `class`, `title`, `dir`, `lang`, and table-related attributes.
+- `style`, `id`, event attributes, and `srcdoc` never reach the DOM.
+- `href` allows only `http:`, `https:`, and `mailto:`; `src` allows only `http:` and `https:`.
+- Entities are decoded before validation, preventing bypasses such as `&#106;avascript:`.
+- `class` is checked against the `[A-Za-z0-9_-]` safe character set; `colspan` / `rowspan` and similar values have bounds.
+
+### Image authorization
+
+- Without `resolveImage`, no `<img>` is generated.
+- Only a `src` returned by the resolver and validated is authorized; finalization removes unauthorized images.
+- Authorized images carry `loading="lazy"` and `decoding="async"`.
+- The library makes no network requests; the browser loads images as ordinary `<img>` elements.
+
+### Expansion is still untrusted
+
+- `expandWikitext` only processes template source supplied by the host and never executes HTML or scripts inside it.
+- Lua is not built in, and `#invoke` is not executed.
+- Expanded output and template source go through the normal semantic normalization, HAST conversion, and final sanitization.
+
+### Error isolation
+
+- Each top-level block is wrapped in an error boundary; one failing block does not affect the rest.
+- A failure placeholder shows the node type and source and reports through `onRenderError`.
+- Parse and prepare errors belong to the calling stage and are not handled by the view boundary.
+
+## What the host must handle
+
+### Trusted code
+
+`components`, `semanticComponents`, `handlers`, `wikitextPlugins`, `rehypePlugins`, `resolveLink`, and `resolveImage` are host code and therefore trusted. They can emit DOM outside the whitelist or interpolate input into dangerous attributes; that output is not sanitized again. Review them like any other React component.
+
+### Routing and media addresses
+
+Resolver URLs are protocol-checked, but whether they point to the right page or leak private resources is the host's decision. When integrating a router or media service:
+
+- Use trusted mappings or validated page titles.
+- Never interpolate unchecked user input into a position where `javascript:` could reach.
+- Add image CDN hosts to the CSP `img-src` directive.
+
+### Serialized snapshots
+
+`serializeWikitextRenderDocument` produces plain data. `restoreWikitextRenderDocument` validates the schema, structure, and budget and re-sanitizes, but you should still restore only snapshots from a trusted server or trusted cache. Never pass arbitrary third-party HAST to `WikitextView`.
+
+### Policy changes
+
+`policy` is the only adjustable security surface:
+
+- Widening `extraTags` or reducing `stripTags` expands what can be emitted.
+- `allowRelativeLinks` / `allowRelativeImages` change URL validation.
+- `allowPluginImages` lets rehype plugins insert images, still subject to protocol validation.
+
+Confirm your threat model before changing these; the defaults target untrusted wikitext.
+
+### CSP
+
+The library does not depend on `eval`. Inline styles keep only whitelisted declarations (color, font, alignment, size, border, spacing, and similar); any declaration using `url()`, `expression()`, `var()`, `@import`, or `!important` is dropped whole and reported as `STYLE_DECLARATION_DROPPED`, so styles never fetch remote resources. If CSP forbids inline styles via `style-src`, those declarations simply do not apply; no script runs. If a resolver authorizes remote images, allow the relevant `img-src`. External fonts or styles are governed by the host's own CSP.
+
+## Known boundaries
+
+- The security model covers DOM and URLs, not users leaving the site through legitimate external links.
+- Generated structures such as references, tables of contents, and categories carry no source `id` and cannot collide with host DOM.
+- Custom components can produce arbitrary React output; that is inside the host's trust boundary.
+- The parser is pinned to `wikiparser-node@1.48.1`; upgrading it requires re-reviewing the rendering and security baseline.
+- There is no built-in post-sanitize audit or CSP report integration; add those at the host level if needed.
+
+## Checklist
+
+- [ ] Import `react-wikitext/styles.css` and set the correct `lang` / `dir` on the container.
+- [ ] Wire `resolveLink` / `resolveImage` only where needed.
+- [ ] Review all component overrides and plugins as trusted code.
+- [ ] Restore serialized snapshots only from trusted sources.
+- [ ] Configure CSP and image hosts for your site.
+- [ ] Keep the default `policy` for untrusted input; do not loosen sanitization for styling.

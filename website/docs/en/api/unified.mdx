@@ -1,0 +1,113 @@
+---
+title: unified
+description: Integrate wikitext processing into unified via createWikitextProcessor; the final sanitize stage is owned by the library.
+---
+
+# unified
+
+```ts
+import { createWikitextProcessor, getWikitextDocument } from "react-wikitext/unified";
+```
+
+`/unified` loads neither the default parser nor React. It provides a processor with a fixed stage order for reusing plugin combinations, registering transforms incrementally, or embedding wikitext processing in an existing unified-style build.
+
+## Why a processor
+
+Parsing, semantic conversion, and HAST sanitization must run in a fixed order. With a hand-written `unified().use(...)` chain, nothing at runtime prevents a plugin from running after the final sanitize: a later plugin returning a new tree makes the snapshot diverge from the actual output, and in-place mutation can carry unsanitized content into a snapshot marked as finalized.
+
+`createWikitextProcessor` appends the final stage internally, so host plugins always run before sanitization. There is no way — and no need — to place a plugin after finalization. `/unified` no longer exports separate parse / rehype / finalize plugins.
+
+## Basic usage
+
+```ts
+import { createWikiparser } from "react-wikitext/parse";
+import { createWikitextProcessor } from "react-wikitext/unified";
+
+const parser = createWikiparser();
+
+const processor = createWikitextProcessor({
+  parser,
+  resolveLink: (request) => ({ href: `/wiki/${request.target}` }),
+  headingIdStrategy: "mediawiki",
+  wikitextPlugins: [semanticPlugin], // semantic stage
+  rehypePlugins: [rehypePlugin], // HAST stage, still before sanitization
+});
+
+const prepared = processor.runSync(source);
+const asyncPrepared = await processor.run(source);
+```
+
+The return value is the same `WikitextRenderDocument` produced by `prepareWikitext`, sanitized and finalized. Each `run` / `runSync` creates a fresh VFile; runs share no state.
+
+## Options
+
+```ts
+interface WikitextProcessorOptions extends Omit<
+  WikitextPrepareOptions,
+  "wikitextPlugins" | "rehypePlugins"
+> {
+  parser: WikitextParser;
+  parseOptions?: WikitextParseOptions;
+  wikitextPlugins?: readonly unknown[];
+  rehypePlugins?: readonly unknown[];
+}
+```
+
+Apart from `parser` and `parseOptions`, every field matches the [`prepareWikitext`](./prepare.mdx) prepare options: resolvers, `policy`, `labels`, `headingIdStrategy`, `toc`, and `handlers`. `toc` exists only in prepare settings; there is no separate finalize override.
+
+- The parser must be supplied explicitly; `/unified` never loads `wikiparser-node` implicitly.
+- Options are validated at creation time; invalid values throw `WikitextPrepareError("PREPARE_FAILED")` immediately.
+- Plugin lists are unified plugin arrays; elements can be plugin functions or `[plugin, options]` tuples, and empty arrays are valid.
+
+## Adding plugins per stage
+
+```ts
+processor.useWikitext(pluginForSemanticTree).useHast(pluginForHastTree);
+```
+
+- `useWikitext`: runs on the semantic tree before HAST conversion; may add or remove semantic nodes.
+- `useHast`: runs after HAST conversion but before sanitization and finalization.
+
+Both return the processor for chaining; you can keep adding plugins between runs.
+
+## Running and errors
+
+```ts
+processor.runSync(source); // sync; async plugins throw ASYNC_PLUGIN_IN_SYNC_PATH
+await processor.run(source); // plugins may return a Promise
+```
+
+- Plugin errors are wrapped in `WikitextPrepareError` with `code: "PREPARE_FAILED"`, `stage: "prepare"`, and the original error in `cause`.
+- The working tree structure, node count, and depth are validated before conversion; violations use `stage: "wikitext"`.
+- The final stage always sanitizes and finalizes; dangerous tags, attributes, and unauthorized images injected by plugins never reach the snapshot.
+
+## Reading snapshots inside plugins
+
+```ts
+import { getWikitextDocument, getWikitextRenderDocument } from "react-wikitext/unified";
+
+processor.useWikitext(() => (tree, file) => {
+  const parsed = getWikitextDocument(file); // parse snapshot; read-only for plugins
+  void parsed;
+});
+```
+
+- `getWikitextDocument(file)` returns the parse snapshot for the current run.
+- `getWikitextRenderDocument(file)` returns the render snapshot; it is written only in the final stage, so HAST plugins cannot read it yet.
+
+## Relation to prepareWikitext
+
+| Scenario                                   | Recommendation                             |
+| ------------------------------------------ | ------------------------------------------ |
+| One-off processing with fixed options      | `prepareWikitext` / `prepareWikitextAsync` |
+| Reusing a plugin composition incrementally | `createWikitextProcessor`                  |
+| Async plugins without running twice        | `processor.run()`                          |
+| Only semantic or only HAST plugins         | The processor's two `use*` methods         |
+
+Both paths produce equivalent render snapshots; the processor differs only in how plugins are registered and how errors are wrapped.
+
+## Related
+
+- [Preparation `/hast`](./prepare.mdx): fixed safety order, resolvers, and policy.
+- [AST `/ast`](./ast.mdx): semantic nodes and queries.
+- [Errors and diagnostics](./errors.mdx): fields on `WikitextPrepareError`.

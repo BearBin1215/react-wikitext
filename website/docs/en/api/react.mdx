@@ -1,0 +1,255 @@
+---
+title: React Components
+description: Wikitext, WikitextView, WikitextFragment, component overrides, and context hooks.
+---
+
+# React Components
+
+Both the root entry and `/view` export the view components; only the root entry exports the `Wikitext` source component.
+
+:::warning
+These components create Context at module load and use `useId` / `useMemo`, so they can only run in Client Components. The root entry and `/view` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments; on the server, call `/parse` and `/hast` only.
+:::
+
+## Wikitext
+
+```tsx
+import { Wikitext } from "react-wikitext";
+import "react-wikitext/styles.css";
+
+<Wikitext source={source} lang="en" />;
+```
+
+The source component parses, prepares, and renders in one step. It only supports the synchronous pipeline.
+
+### Props
+
+```ts
+interface WikitextProps extends Omit<WikitextViewProps, "document"> {
+  source: string;
+  parser?: WikitextParser;
+  parseOptions?: WikitextParseOptions;
+  prepareOptions?: WikitextPrepareOptions;
+  onPrepared?: (document: WikitextRenderDocument) => void;
+  onError?: (error: WikitextError, info: { stage: "parse" | "prepare" }) => void;
+  fallback?:
+    | React.ReactNode
+    | ((error: WikitextError, info: { stage: "parse" | "prepare" }) => React.ReactNode);
+}
+```
+
+| Prop                 | Description                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| `source`             | Wikitext to render                                                                         |
+| `parser`             | Reuse an existing parser; defaults to the shared parser with default config                |
+| `parseOptions`       | Parse options, see [`/parse`](./parse.mdx)                                                 |
+| `prepareOptions`     | Prepare options, see [`/hast`](./prepare.mdx)                                              |
+| `onPrepared`         | Called after preparation; read `diagnostics`, `headings`, and effective settings           |
+| `onError`            | Parse/prepare failure callback; `error` is always a `WikitextError`                        |
+| `fallback`           | Content rendered on failure; takes over rendering entirely when provided                   |
+| `components`         | Override by HTML tag                                                                       |
+| `semanticComponents` | Override by wiki semantic type                                                             |
+| `lang` / `dir`       | Language and direction on the root container                                               |
+| `idPrefix`           | Instance heading id prefix; only for `instance`; invalid/empty values fall back to `useId` |
+| `className`          | Merged with `wtr-view`                                                                     |
+| `containerProps`     | Extra root attributes; the type excludes `dangerouslySetInnerHTML`                         |
+| `onRenderError`      | Called when a single block fails to render                                                 |
+
+### Behavior
+
+- Parsing and preparation use two `useMemo` caches: `[parser, source, parseOptions]` for parsing, then the previous parse result plus `prepareOptions` for preparation. Changing only `prepareOptions` reuses the parse result.
+- New option objects on every render rerun the corresponding stage; keep references stable.
+- Plugins and resolvers must be pure; an async plugin throws `ASYNC_PLUGIN_IN_SYNC_PATH`.
+- Importing `/parse` executes the upstream IIFE; the default parser instance is created lazily on first parse. Use `/view` when you do not need a parser.
+- Placeholders, blocks, and degradations are recorded as diagnostics while the page still renders successfully; read them with `onPrepared`, not `onError`.
+
+## WikitextView
+
+```tsx
+import { WikitextView } from "react-wikitext/view";
+
+<WikitextView document={prepared} lang="en" />;
+```
+
+`WikitextView` accepts only a prepared render snapshot. It never parses source, runs plugins, or calls resolvers during rendering. The view performs a lightweight runtime check: passing a parse snapshot throws `WikitextError("INVALID_DOCUMENT")` instead of silently rendering nothing.
+
+### Props
+
+| Prop                 | Description                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| `document`           | `WikitextRenderDocument`                                     |
+| `components`         | Override by HAST tag name                                    |
+| `semanticComponents` | Override by wiki semantic type                               |
+| `lang` / `dir`       | Language and direction on the root container                 |
+| `idPrefix`           | Instance prefix for `instance` strategy; defaults to `useId` |
+| `className`          | Merged with `wtr-view`                                       |
+| `containerProps`     | Root attributes; `dangerouslySetInnerHTML` is excluded       |
+| `onRenderError`      | Block-level render error callback                            |
+
+- The root is always `div.wtr-view`.
+- `idPrefix` affects heading ids, in-document `#fragment` links, and table `headers`.
+- Each top-level block is wrapped in an error boundary; one failing block does not affect others.
+- The view builds semantic and HAST indexes for components and `WikitextFragment`.
+
+## WikitextFragment
+
+```tsx
+import { WikitextFragment } from "react-wikitext/view";
+
+<WikitextFragment nodes={node.children} mode="block" />;
+```
+
+| Prop        | Description                                     |
+| ----------- | ----------------------------------------------- |
+| `nodes`     | Semantic nodes from the current render document |
+| `mode`      | `"inline"` (default) or `"block"`               |
+| `className` | Optional outer class                            |
+
+- Must be used inside the `<WikitextView>` context, otherwise it throws.
+- `nodes` must be the **same node objects** from the current view document; matching ids are not enough.
+- It renders only nodes found in the prepared HAST index, which suits template parameters, file captions, and `ref` content.
+- Inline mode without `className` adds no wrapper; with `className` it uses `<span>`. Block mode uses a `wtr-fragment` container.
+- Rendering the same node twice in one view duplicates content and heading ids.
+
+## Component overrides
+
+### HTML components
+
+```ts
+type WikitextHtmlComponents = Partial<
+  Record<string, React.ComponentType<WikitextHtmlComponentProps>>
+>;
+
+interface WikitextHtmlComponentProps extends React.HTMLAttributes<HTMLElement> {
+  node?: import("hast").Element;
+  document: WikitextRenderDocument;
+  semantic?: WikitextNode;
+  origin?: WikitextOrigin;
+  children?: React.ReactNode;
+  href?: string;
+  src?: string;
+  alt?: string;
+}
+```
+
+Mapped by tag name, such as `p`, `table`, `img`, or `a`. Components receive sanitized DOM props plus the HAST element, document, and optional semantic node.
+
+### Semantic components
+
+```ts
+type WikitextSemanticComponents = {
+  link?: React.ComponentType<WikitextLinkComponentProps>;
+  template?: React.ComponentType<WikitextTemplateComponentProps>;
+  parserFunction?: React.ComponentType<WikitextTemplateComponentProps>;
+  argument?: React.ComponentType<WikitextSemanticComponentProps<WikitextArgument>>;
+  file?: React.ComponentType<WikitextFileComponentProps>;
+  reference?: React.ComponentType<WikitextReferenceComponentProps>;
+  extension?: React.ComponentType<WikitextExtensionComponentProps>;
+  unknown?: React.ComponentType<WikitextUnknownComponentProps>;
+  table?: React.ComponentType<WikitextSemanticComponentProps<WikitextTable>>;
+};
+```
+
+Every semantic component receives:
+
+```ts
+interface WikitextSemanticComponentProps<Node extends WikitextNode> {
+  document: WikitextRenderDocument;
+  node: Node;
+  hastNode: import("hast").Element;
+  origin?: WikitextOrigin;
+  children?: React.ReactNode;
+}
+```
+
+Extra props:
+
+| Type                          | Extra props                           |
+| ----------------------------- | ------------------------------------- |
+| `link`                        | `target`, `kind`, `href?`, `external` |
+| `template` / `parserFunction` | `displayName`                         |
+| `file`                        | `name`                                |
+| `reference`                   | `number`                              |
+| `extension`                   | `name`, `block`                       |
+| `unknown`                     | `parsedType`, `block`                 |
+
+Precedence: an explicit semantic component replaces the entire semantic structure; otherwise tags inside the default HAST structure use `components`; otherwise native elements are used.
+
+### Custom template card
+
+```tsx
+import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
+
+function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
+  return (
+    <aside className="template-card">
+      <strong>{displayName}</strong>
+      <WikitextFragment nodes={node.children} mode="block" />
+    </aside>
+  );
+}
+
+<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+```
+
+### Custom link
+
+```tsx
+<WikitextView
+  document={prepared}
+  semanticComponents={{
+    link: ({ href, external, children }) =>
+      href ? (
+        <a
+          href={href}
+          {...(external ? { target: "_blank", rel: "nofollow noopener noreferrer" } : {})}
+        >
+          {children}
+        </a>
+      ) : (
+        <span className="unresolved-link">{children}</span>
+      ),
+  }}
+/>
+```
+
+## Context hooks
+
+```ts
+interface WikitextViewContextValue {
+  document: WikitextRenderDocument;
+  semanticIndex: ReadonlyMap<string, WikitextNode>;
+  hastIndex: ReadonlyMap<string, import("hast").ElementContent>;
+  components: WikitextHtmlComponents;
+  semanticComponents: WikitextSemanticComponents;
+  idPrefix: string;
+  mapId: (id: string) => string;
+  mapHref: (href: string) => string;
+  onRenderError?: (error: Error, info: { node: WikitextNode }) => void;
+}
+
+function useWikitextContext(): WikitextViewContextValue;
+function useWikitextLabels(): WikitextLabels;
+function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): string };
+```
+
+- These hooks must be used inside `<WikitextView>`.
+- `useWikitextLabels()` reads the final labels from the render snapshot.
+- `useWikitextIds()` suits custom components that need to generate anchors or fragment links.
+
+## Render errors
+
+```tsx
+<Wikitext
+  source={source}
+  onRenderError={(error, { node }) => {
+    reportError(error, { nodeType: node.type, nodeId: node.id });
+  }}
+/>
+```
+
+Error boundaries isolate top-level HAST blocks. The placeholder shows `labels.renderFailed`, the node type, and the source. Parse and prepare errors do not enter this boundary: without `onError` or `fallback` the error is rethrown to the outer boundary; with only `onError` the built-in error container is shown (text from `prepareOptions.labels.renderFailed`); with `fallback` it takes over completely, and returning `null` renders nothing.
+
+## Related types
+
+The root entry additionally exports selected semantic types used by view props: `WikitextLink`, `WikitextTemplate`, `WikitextFile`, `WikitextReference`, `WikitextTable`, `WikitextUnknown`, and more. Import the full node subtypes and AST tools from [`/ast`](./ast.mdx).

@@ -4,6 +4,7 @@
     "dist/",
     "**/dist/",
     "**/dist-*/",
+    "website/doc_build/",
     "node_modules/",
     ".vscode/",
     "tests/fixtures/samples/",
@@ -11,6 +12,8 @@
     "playwright-report/",
     "test-results/",
     "coverage/",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_LICENSES"
   ]
 }
