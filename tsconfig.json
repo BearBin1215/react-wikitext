@@ -44,6 +44,8 @@
     "playwright.config.ts",
     "playwright.consumer.config.ts",
     "tsdown.config.ts",
+    "bump.config.ts",
+    "changelogithub.config.ts",
     "website/rspress.config.ts",
     "website/theme"
   ],

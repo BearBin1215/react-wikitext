@@ -1,0 +1,78 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+# 同一 tag 只允许一个发布任务
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # npm 侧 trusted publisher 绑定的 environment 名，必须与此处一致
+    environment:
+      name: npm-release
+      url: https://www.npmjs.com/package/react-wikitext
+
+    permissions:
+      contents: write # 创建 GitHub Release
+      id-token: write # OIDC 凭证，npm 用它换取短期发布权限与 provenance
+
+    steps:
+      # Release 文案需要完整历史与 tag
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      # 不设置 registry-url：OIDC 凭据由 id-token 换取
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # tag 与 package.json 的 version 必须一致；dist-tag 由版本号推导
+      - name: Resolve version and dist-tag
+        id: release
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME 与 package.json 的 version $version 不一致" >&2
+            exit 1
+          fi
+          case "$version" in
+            *-*)
+              dist_tag="${version#*-}"
+              dist_tag="${dist_tag%%.*}"
+              ;;
+            *)
+              dist_tag="latest"
+              ;;
+          esac
+          echo "dist_tag=$dist_tag" >> "$GITHUB_OUTPUT"
+
+      # 发布前校验：dist 的 CJS/ESM 隔离、类型解析、打包器消费路径（含构建）
+      - run: pnpm test:consumer
+
+      # 构建会回写 exports 与 inlinedDependencies
+      - run: git diff --exit-code package.json
+
+      # OIDC 发布要求 npm >= 11.5.1，runner 自带的 npm 版本不保证满足
+      - run: npm install -g npm@^11
+
+      # prepublishOnly 会重新执行 pnpm build
+      - name: Publish to npm
+        run: npm publish --tag "${{ steps.release.outputs.dist_tag }}"
+
+      # 按 Conventional Commits 生成分组文案并创建 Release
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm exec changelogithub --to "$GITHUB_REF_NAME"

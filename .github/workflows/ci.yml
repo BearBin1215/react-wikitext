@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test
+      - run: pnpm run test:consumer
+      # 构建会回写 exports 与 inlinedDependencies；产物写回后 package.json 必须无 diff。
+      - run: git diff --exit-code package.json
+      - run: pnpm run docs:build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --config playwright.consumer.config.ts --grep "@consumer"
+      - run: pnpm run test:a11y:build
+      - run: pnpm exec playwright test --config playwright.consumer.config.ts --grep "@a11y"
+      - run: pnpm run test:budget
+      - run: pnpm run test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-consumer-failure
+          path: |
+            test-results/playwright-consumer/
+            test-results/a11y/
+          retention-days: 7
+          if-no-files-found: ignore
+      - run: pnpm run bench
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bench-report
+          path: |
+            test-results/bench/report.json
+            test-results/bench/summary.md
+          retention-days: 30
+          if-no-files-found: warn
+
+  node-matrix:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - run: pnpm install --prod --frozen-lockfile
+      - run: node tests/consumer/node-parse.mjs
+      - run: node tests/consumer/node-parse.cjs
+
+  react-18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm add -D react@18.3.1 react-dom@18.3.1 @types/react@18.3.12 @types/react-dom@18.3.1
+      - run: pnpm run typecheck
+      - run: pnpm exec vitest run tests/render/WikitextView.test.tsx tests/render/templates-files.test.tsx tests/render/html.test.tsx tests/playground/AstTree.test.tsx
