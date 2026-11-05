@@ -12,6 +12,9 @@
     "playwright-report/",
     "test-results/",
     "coverage/",
+    ".agents/",
+    "README.md",
+    "CONTRIBUTING.md",
     "LICENSE",
     "NOTICE",
     "THIRD_PARTY_LICENSES"
