@@ -19,6 +19,16 @@ updates:
         patterns:
           - "codemirror"
           - "@codemirror/*"
+      # 会被打包进产物的依赖单独成组：升级后必须重新构建并提交 package.json 的 inlinedDependencies
+      inlined:
+        patterns:
+          - "entities"
+          - "unified"
+          - "vfile"
+          - "hast-util-sanitize"
+          - "hast-util-to-jsx-runtime"
+          - "@types/hast"
+          - "@types/unist"
       dev-dependencies:
         dependency-type: "development"
     ignore:
