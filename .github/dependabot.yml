@@ -31,6 +31,15 @@ updates:
           - "@types/unist"
       dev-dependencies:
         dependency-type: "development"
+        # 被内联的依赖已经在上一组处理，这里排除，避免同时进入两组
+        exclude-patterns:
+          - "entities"
+          - "unified"
+          - "vfile"
+          - "hast-util-sanitize"
+          - "hast-util-to-jsx-runtime"
+          - "@types/hast"
+          - "@types/unist"
     ignore:
       # 大版本一律不自动更新，升级由人工评审进行
       - dependency-name: "*"
