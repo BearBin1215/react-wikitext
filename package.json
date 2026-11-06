@@ -154,7 +154,7 @@
     "bench": "vitest run --config vitest.bench.config.ts && node tests/performance/validate-report.mjs"
   },
   "dependencies": {
-    "wikiparser-node": "1.48.1"
+    "wikiparser-node": "1.48.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
@@ -203,7 +203,7 @@
     }
   },
   "engines": {
-    "node": ">=18.18"
+    "node": ">=20.19"
   },
   "packageManager": "pnpm@10.34.9",
   "inlinedDependencies": {

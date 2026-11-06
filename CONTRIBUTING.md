@@ -4,7 +4,7 @@
 
 ## 环境
 
-推荐使用 Node 24 与 `package.json` 固定的 pnpm 版本。工具链的 Node 版本下限由各开发依赖决定，升级依赖前先确认这些要求；运行时支持范围见 `package.json` 的 `engines`。
+推荐使用 Node 24 与 `package.json` 固定的 pnpm 版本。工具链的 Node 版本下限由各开发依赖决定，升级依赖前先确认这些要求；库的 Node 支持范围见 `package.json` 的 `engines`（当前 `>=20.19`，启用 `engine-strict` 时因 `@bhsd/stylelint-util` 需要 `>=22.13`）。
 
 ```bash
 pnpm install

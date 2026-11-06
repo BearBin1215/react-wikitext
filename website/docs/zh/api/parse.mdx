@@ -14,7 +14,7 @@ import {
 } from "react-wikitext/parse";
 ```
 
-`/parse` 在模块加载时执行 `wikiparser-node@1.48.1` 浏览器包并捕获全局解析器，不加载 React。默认解析器实例在首次解析时才创建。解析是同步的。
+`/parse` 在模块加载时执行 `wikiparser-node@1.48.2` 浏览器包并捕获全局解析器，不加载 React。默认解析器实例在首次解析时才创建。解析是同步的。
 
 ## parseWikitext
 
@@ -39,7 +39,7 @@ const document = parser.parse(source, { maxSourceLength: 50_000 });
 const effective = parser.resolveOptions({ maxSourceLength: 50_000 });
 ```
 
-- 默认配置为 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.1` 的站点配置快照；该常量已深冻结。
+- 默认配置为 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.2` 的站点配置快照；该常量已深冻结。
 - 配置在工厂创建时深拷贝并归一化；之后修改原对象不会影响解析器。
 - 更换配置需要创建新的解析器；需要局部覆盖时用 `/configs` 的 `createMediaWikiConfig`。
 - 库不导出最小配置；需要自定义时以默认配置为基础复制并调整字段。

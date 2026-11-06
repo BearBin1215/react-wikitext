@@ -12,7 +12,7 @@ function deepFreeze<T>(value: T): T {
 }
 
 /**
- * 来源：wikiparser-node@1.48.1/config/default.json 快照。
+ * 来源：wikiparser-node@1.48.2/config/default.json 快照。
  * 上游未标注对应的 MediaWiki 版本，这里保留上游文件名与版本，不冒充站点配置。
  * `excludes` 与 `doubleUnderscore` 的数组形式由 `normalizeConfig` 在深拷贝后补齐。
  *

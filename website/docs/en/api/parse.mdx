@@ -14,7 +14,7 @@ import {
 } from "react-wikitext/parse";
 ```
 
-`/parse` executes the `wikiparser-node@1.48.1` browser bundle at module load and captures the global parser; it does not load React. The default parser instance is created lazily on the first parse. Parsing is synchronous.
+`/parse` executes the `wikiparser-node@1.48.2` browser bundle at module load and captures the global parser; it does not load React. The default parser instance is created lazily on the first parse. Parsing is synchronous.
 
 ## parseWikitext
 
@@ -39,7 +39,7 @@ const document = parser.parse(source, { maxSourceLength: 50_000 });
 const effective = parser.resolveOptions({ maxSourceLength: 50_000 });
 ```
 
-- The default config is `MEDIAWIKI_CONFIG`, a frozen snapshot of the `wikiparser-node@1.48.1` site configuration.
+- The default config is `MEDIAWIKI_CONFIG`, a frozen snapshot of the `wikiparser-node@1.48.2` site configuration.
 - Configuration is deep-cloned and normalized when the factory is created; later mutations of the original object do not affect the parser.
 - Changing config requires creating a new parser; for partial overrides use `createMediaWikiConfig` from `/configs`.
 - The library does not export a minimum config. For custom config, copy the default and adjust fields.

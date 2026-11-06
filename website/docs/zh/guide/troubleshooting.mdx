@@ -44,7 +44,7 @@ description: 常见显示、构建与错误码问题，以及定位问题的固�
 | Next.js Server Component 报 `createContext` 错误 | 在支持 RSC 边界的环境里由服务端调用了 React 入口         | 确认产物带有 `"use client"`；服务端改用[服务端准备](./server-rendering.mdx) |
 | Hydration 不一致或锚点不同                       | 服务端与客户端渲染了不同结构，或没有固定 id 前缀         | 保持同一棵树；显式传 `idPrefix`；必要时用 `mediawiki` 策略                  |
 | `WikitextError("INVALID_DOCUMENT")`              | 把解析快照交给了 `prepare` 或 `WikitextView`             | 先调用 `prepareWikitext` 得到渲染快照；视图不接受解析快照                   |
-| CJS 环境加载失败                                 | 运行时版本过低或打包器不支持 `exports`                   | 使用 Node `>=18.18` 与支持条件导出的打包器                                  |
+| CJS 环境加载失败                                 | 运行时版本过低或打包器不支持 `exports`                   | 使用 Node `>=20.19` 与支持条件导出的打包器                                  |
 
 ## 错误码
 

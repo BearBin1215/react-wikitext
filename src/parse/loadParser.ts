@@ -52,6 +52,6 @@ export function getBrowserParser(): UpstreamParser {
 /** 适配器名称，写入文档元数据。 */
 export const PARSER_NAME = "wikiparser-node";
 /** 适配器对应的上游版本。 */
-export const PARSER_VERSION = "1.48.1";
+export const PARSER_VERSION = "1.48.2";
 /** 与浏览器包默认阶段一致；升级解析器时需要重新审查。 */
 export const PARSE_MAX_STAGE = 11;

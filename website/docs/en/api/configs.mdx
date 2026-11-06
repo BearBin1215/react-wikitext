@@ -16,7 +16,7 @@ import type { ParserConfig, ParserConfigOverrides } from "react-wikitext/configs
 
 | Export                  | Description                                                         |
 | ----------------------- | ------------------------------------------------------------------- |
-| `MEDIAWIKI_CONFIG`      | Default config from the `wikiparser-node@1.48.1` site snapshot      |
+| `MEDIAWIKI_CONFIG`      | Default config from the `wikiparser-node@1.48.2` site snapshot      |
 | `createMediaWikiConfig` | Deep-merges overrides over the default and returns a validated copy |
 
 `MEDIAWIKI_CONFIG` is deeply frozen. Mutating it fails at runtime and affects neither existing nor future parsers; use `createMediaWikiConfig` to adjust site config.

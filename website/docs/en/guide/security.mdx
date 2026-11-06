@@ -114,7 +114,7 @@ The library does not depend on `eval`. Inline styles keep only whitelisted decla
 - The security model covers DOM and URLs, not users leaving the site through legitimate external links.
 - Generated structures such as references, tables of contents, and categories carry no source `id` and cannot collide with host DOM.
 - Custom components can produce arbitrary React output; that is inside the host's trust boundary.
-- The parser is pinned to `wikiparser-node@1.48.1`; upgrading it requires re-reviewing the rendering and security baseline.
+- The parser is pinned to `wikiparser-node@1.48.2`; upgrading it requires re-reviewing the rendering and security baseline.
 - There is no built-in post-sanitize audit or CSP report integration; add those at the host level if needed.
 
 ## Checklist

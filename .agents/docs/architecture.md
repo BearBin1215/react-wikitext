@@ -266,7 +266,7 @@ playground/src/
 ## 9. 运行时与交付边界
 
 - 浏览器优先；解析、归一化与 HAST 转换均不依赖 DOM，可在 Node 测试环境执行。
-- React 兼容范围 18.2–19；ESM + CJS 双产物；CI 含 React 18 运行时 job 与 Node 18/20/22/24 解析矩阵。
+- React 兼容范围 18.2–19；ESM + CJS 双产物；CI 含 React 18 运行时 job 与 Node 20/22/24 解析矩阵。
 - `wikiparser-node` 与 React 保持 external，因此只有它们是运行时依赖；unified、vfile、HAST 清洗与 JSX 工具及其传递依赖打包进库产物，作为开发依赖安装。CJS 产物强制按浏览器条件解析，不残留 `node:*` 内置模块引用。打包范围与原因见 `tsdown.config.ts`。
 - parser 精确锁定单一版本，不提供兼容区间；浏览器加载后 `globalThis.Parser` 是单例，多版本并存会互相覆盖，当前不支持。`loadParser` 在模块执行后立即捕获。
 - 根入口的 `Wikitext`、`/parse` 与 `/expand` 会加载 parser；`/view` 加载 React；`/ast`、`/hast`、`/unified` 与 `/configs` 既不加载 parser 也不加载 React。

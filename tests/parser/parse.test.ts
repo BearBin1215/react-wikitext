@@ -61,7 +61,7 @@ describe("parseWikitext", () => {
     expect(doc.meta).toMatchObject({
       astSchemaVersion: AST_SCHEMA_VERSION,
       parser: "wikiparser-node",
-      parserVersion: "1.48.1",
+      parserVersion: "1.48.2",
       pageName: "Page",
       sourceNormalized: true,
       originalLength: 4,

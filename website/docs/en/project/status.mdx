@@ -18,15 +18,17 @@ Installation is covered in [Quick start](../guide/quick-start.mdx).
 
 ## Runtime compatibility
 
-| Item                 | Supported range                                               |
-| -------------------- | ------------------------------------------------------------- |
-| React                | `>=18.2 <20` (peer dependency)                                |
-| React DOM            | `>=18.2 <20`; optional peer for server rendering or hydration |
-| Node                 | `>=18.18` at runtime                                          |
-| Module format        | ESM and CJS, both with type declarations                      |
-| Bundlers             | Vite and webpack 5 consumer builds are covered by tests       |
-| Browsers             | Output targets ES2022; IE and older browsers are unsupported  |
-| Runtime dependencies | No Wikimedia, font CDN, or external API dependency            |
+| Item                 | Supported range                                                   |
+| -------------------- | ----------------------------------------------------------------- |
+| React                | `>=18.2 <20` (peer dependency)                                    |
+| React DOM            | `>=18.2 <20`; optional peer for server rendering or hydration     |
+| Node                 | `>=20.19` for install and runtime; `>=22.13` with `engine-strict` |
+| Module format        | ESM and CJS, both with type declarations                          |
+| Bundlers             | Vite and webpack 5 consumer builds are covered by tests           |
+| Browsers             | Output targets ES2022; IE and older browsers are unsupported      |
+| Runtime dependencies | No Wikimedia, font CDN, or external API dependency                |
+
+The Node floor comes from the dependency chain: `wikiparser-node` declares `^20.19.0 || ^22.13.0 || >=24.11.0`, and its transitive dependency `@bhsd/stylelint-util` requires `^22.13.0 || >=24.11.0`. Default installs only warn on a mismatch; `engine-strict` fails instead, so that setup needs Node `>=22.13`.
 
 The package's `files` field lists `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`; npm also includes the README and LICENSE automatically. See the [contributing guide](./contributing.mdx) for building from source.
 
@@ -34,7 +36,7 @@ The package's `files` field lists `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`;
 
 | Item                | Value                                               |
 | ------------------- | --------------------------------------------------- |
-| Parser              | `wikiparser-node@1.48.1`                            |
+| Parser              | `wikiparser-node@1.48.2`                            |
 | Default site config | `MEDIAWIKI_CONFIG` from the same version's snapshot |
 
 Upgrading the parser changes AST shape, source ranges, and the rendering baseline. Re-run rendering and security review.
@@ -79,7 +81,7 @@ After upgrading React, the parser, or the bundler config, run the checks listed 
 ## License
 
 - The library is released under **GPL-3.0-or-later**.
-- `wikiparser-node@1.48.1` uses the same license.
+- `wikiparser-node@1.48.2` uses the same license.
 - Third-party notices are in `NOTICE` and `THIRD_PARTY_LICENSES` at the repository root.
 
 Check GPL-3.0-or-later compatibility before distributing builds that include this library.

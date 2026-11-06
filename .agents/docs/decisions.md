@@ -26,7 +26,7 @@
 
 ## 3. 解析器与渲染入口解耦
 
-**决策**：固定 `wikiparser-node@1.48.1` 浏览器 IIFE；默认适配器、IIFE 加载与配置快照只属于根入口的 `Wikitext`、`/parse` 与 `/expand`。只渲染已准备文档的宿主使用 `/view`，该入口不加载 parser。
+**决策**：固定 `wikiparser-node@1.48.2` 浏览器 IIFE；默认适配器、IIFE 加载与配置快照只属于根入口的 `Wikitext`、`/parse` 与 `/expand`。只渲染已准备文档的宿主使用 `/view`，该入口不加载 parser。
 
 **理由**：源码组件必须解析源码，放在根入口符合库的主用途；只渲染的宿主仍可通过 `/view` 避免全局 `Parser` 初始化；解析器接口与默认实现分离，自定义 adapter 可输出相同语法树而不加载 IIFE；配置在工厂创建时快照，避免每次解析隐式修改全局配置。
 
@@ -122,7 +122,7 @@
 ## 12.1 兼容基线与技术决定
 
 - **预算超限**：维持整页失败（`SOURCE_TOO_COMPLEX`），不提供截断节点；宿主应使用 Worker 与明确的长度上限。理由是截断会伪造结构与来源，难以保证 1.x 的兼容性。
-- **运行时基线**：产物 target 为 ES2022，依赖 `structuredClone`；Node 侧要求 `>=18.18`，浏览器侧按现代常青浏览器作为基线。暂不提供 `structuredClone` fallback，因为快照格式要求保留 `undefined` 与普通对象语义。
+- **运行时基线**：产物 target 为 ES2022，依赖 `structuredClone`；Node 侧要求 `>=20.19`（下限来自 `wikiparser-node` 及其传递依赖，启用 `engine-strict` 时需 `>=22.13`），浏览器侧按现代常青浏览器作为基线。暂不提供 `structuredClone` fallback，因为快照格式要求保留 `undefined` 与普通对象语义。
 - **parser 全局**：保留单一 IIFE 与 `globalThis.Parser` 捕获；不支持多版本并存或隔离加载，1.0 明确声明该限制。
 - **`style`**：采用安全子集而非整体丢弃；非法声明逐条丢弃并产生诊断。
 
@@ -182,7 +182,7 @@
 
 - **IIFE 方案**：保留精确版本的 `wikiparser-node` npm 依赖与当前运行时读取锚点，本轮不 vendor。生产 consumer 的页面与 Worker 用压缩产物实际执行来验证；升级后如果这些验收失败且问题无法在现有方案内解决，再评估 vendor 或其他入口。
 - **打包器支持范围**：正式支持并持续验收 Vite 与 webpack 5。其他打包器“可能可用”，但不承诺配置或兼容性；只有出现真实宿主需求、可复现问题和持续测试能力时才进入支持范围。
-- **解析器替换**：本轮不替换 `wikiparser-node@1.48.1`，保留精确锁定、升级清单与 oracle。只有核心语法需求被上游能力阻塞，或性能、维护、加载风险无法在现有实现中解决时才重新选型；届时必须比较语法覆盖、range、许可证、包体积与迁移成本。
+- **解析器替换**：本轮不替换 `wikiparser-node@1.48.2`，保留精确锁定、升级清单与 oracle。只有核心语法需求被上游能力阻塞，或性能、维护、加载风险无法在现有实现中解决时才重新选型；届时必须比较语法覆盖、range、许可证、包体积与迁移成本。
 - **非默认 parser 接入**：官方流程是使用现有 adapter，并从 `/ast` 导入 `createWikitextParser`，避免通过 `/parse` 初始化默认 parser。文档说明 LF、UTF-16 range、position、属性、token 类型与嵌套规则，并明确 adapter 的语法子集不等同于完整 wikitext 支持。
 - **模板与站点扩展接管**：使用现有分阶段接口，不增加注册中心或隐式求值：异步前置用 `/expand`，语义/HAST 阶段用插件与 handlers，视图阶段用 `semanticComponents.template` / `parserFunction` / `extension` / `reference`。`undefined` 回退内建转换，`null` 丢弃节点；自定义组件与插件属于可信边界。
 - **文档中的用法分层**：指南分别演示展开、插件/handlers 与语义组件接管，说明优先级、回退与可信边界，避免把模板接管错写成 `extension`。

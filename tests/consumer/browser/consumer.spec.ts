@@ -42,7 +42,7 @@ async function readResult(page: Page): Promise<ConsumerResult> {
 
 function expectParseResult(result: ConsumerResult): void {
   expect(result.parser).toBe("wikiparser-node");
-  expect(result.parserVersion).toBe("1.48.1");
+  expect(result.parserVersion).toBe("1.48.2");
   expect(result.sourceLength).toBeGreaterThan(0);
   expect(result.nodes).toBeGreaterThan(0);
   expect(result.heading).toBe("Head");

@@ -16,7 +16,7 @@ import type { ParserConfig, ParserConfigOverrides } from "react-wikitext/configs
 
 | 导出                    | 说明                                                     |
 | ----------------------- | -------------------------------------------------------- |
-| `MEDIAWIKI_CONFIG`      | 默认配置，来源是 `wikiparser-node@1.48.1` 的站点配置快照 |
+| `MEDIAWIKI_CONFIG`      | 默认配置，来源是 `wikiparser-node@1.48.2` 的站点配置快照 |
 | `createMediaWikiConfig` | 以默认配置为基线，深层合并覆盖字段并返回校验过的副本     |
 
 `MEDIAWIKI_CONFIG` 已被深冻结。修改它会在运行时失败，也不会影响已经创建或将要创建的解析器；需要调整站点配置时使用 `createMediaWikiConfig`。

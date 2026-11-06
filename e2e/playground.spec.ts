@@ -218,7 +218,7 @@ test("shows diagnostics and reparses with another parser config", async ({ page 
   await page.getByTestId("pg-tab-diagnostics").click();
   const diagnostics = page.getByTestId("pg-diagnostics");
   await expect(diagnostics).toContainText("wikiparser-node");
-  await expect(diagnostics).toContainText("1.48.1");
+  await expect(diagnostics).toContainText("1.48.2");
   await expect(diagnostics).toContainText("Web Worker");
   await expect(diagnostics).toContainText("mediawiki");
   await expect(diagnostics).toContainText("source");
@@ -306,7 +306,7 @@ test("exports a repro and a Vitest snippet", async ({ page }) => {
   const repro = page.getByTestId("pg-repro");
   await expect(repro).toContainText("createWikiparser");
   await expect(repro).toContainText("示例条目");
-  await expect(repro).toContainText("wikiparser-node 1.48.1");
+  await expect(repro).toContainText("wikiparser-node 1.48.2");
   await expect(repro).toContainText('describe("wikitext repro"');
 });
 

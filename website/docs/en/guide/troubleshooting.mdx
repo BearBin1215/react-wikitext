@@ -44,7 +44,7 @@ See [Syntax support](./syntax-support.mdx) for the full default output.
 | Next.js Server Component throws a `createContext` error | A React entry was called from the server in an environment with RSC boundaries | Confirm the build ships `"use client"`; use [server preparation](./server-rendering.mdx) on the server |
 | Hydration mismatch or drifting anchors                  | Server and client trees differ, or no id prefix is fixed                       | Render the same tree; pass `idPrefix`; consider the `mediawiki` strategy                               |
 | `WikitextError("INVALID_DOCUMENT")`                     | A parse snapshot was passed to `prepare` or `WikitextView`                     | Call `prepareWikitext` first to obtain a render snapshot; the view rejects parse snapshots             |
-| CJS environment fails to load                           | Runtime too old, or bundler ignores `exports`                                  | Use Node `>=18.18` and a bundler that supports conditional exports                                     |
+| CJS environment fails to load                           | Runtime too old, or bundler ignores `exports`                                  | Use Node `>=20.19` and a bundler that supports conditional exports                                     |
 
 ## Error codes
 

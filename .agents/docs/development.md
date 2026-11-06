@@ -16,7 +16,7 @@
 
 ## 1. 环境与依赖
 
-- 推荐 Node 24。工具链的 Node 版本下限由各开发依赖的 `engines` 决定，升级前逐项确认，不要只按某一个包的要求判断。
+- 推荐 Node 24。工具链的 Node 版本下限由各开发依赖的 `engines` 决定，升级前逐项确认，不要只按某一个包的要求判断。库的 Node 支持基线写在 `package.json` 的 `engines`；`engine-strict` 下还要满足传递依赖 `@bhsd/stylelint-util` 的引擎要求。
 - `pnpm-workspace.yaml` 的 `minimumReleaseAge` 会阻止安装发布不满一天的版本。升级工具链需要等待这段时间，紧急情况才临时加入排除项。
 - 构建会回写 `package.json` 的 `exports` 与 `inlinedDependencies`。提交前确认这两个字段没有未提交的改动，也不要手工维护它们。
 

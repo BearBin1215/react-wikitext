@@ -154,7 +154,7 @@ function removeRanges(
       Math.max(rangeStart, start),
       Math.min(rangeEnd, end),
     ])
-    // oxlint-disable-next-line unicorn/no-array-sort -- Node 18 兼容，不能使用 toSorted。
+    // oxlint-disable-next-line unicorn/no-array-sort -- 产物 target 为 ES2022，不使用 ES2023 的 toSorted。
     .sort((left, right) => left[0] - right[0] || left[1] - right[1]);
   const merged: WikitextRange[] = [];
   for (const range of clipped) {

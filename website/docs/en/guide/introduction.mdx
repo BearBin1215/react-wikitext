@@ -17,7 +17,7 @@ A common shortcut is to inject pre-rendered HTML with `dangerouslySetInnerHTML`,
 
 | Capability                  | Description                                                                                                   |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Parse and render            | `wikiparser-node@1.48.1` produces a syntax tree; the library normalizes it into a typed AST and renders React |
+| Parse and render            | `wikiparser-node@1.48.2` produces a syntax tree; the library normalizes it into a typed AST and renders React |
 | Snapshots and server        | Parse and render snapshots are plain data; prepare on the server and ship only `/view`                        |
 | Template expansion          | Optional `/expand` with a host template table or fetch callback for supported templates and pure functions    |
 | Customization and debugging | Component overrides, `handlers`, rehype plugins, CSS variables, labels, and diagnostics                       |
@@ -67,7 +67,7 @@ Other tools fit better in these cases:
 ## Current status
 
 :::note
-Releases in the 0.x range follow semantic versioning: minor versions may contain breaking changes, and patch versions only carry compatible fixes. React `>=18.2 <20`; Node `>=18.18` for builds or server execution. The parser is pinned to `wikiparser-node@1.48.1`; the license is GPL-3.0-or-later.
+Releases in the 0.x range follow semantic versioning: minor versions may contain breaking changes, and patch versions only carry compatible fixes. React `>=18.2 <20`; Node `>=20.19` for builds or server execution. The parser is pinned to `wikiparser-node@1.48.2`; the license is GPL-3.0-or-later.
 :::
 
 See [Status and compatibility](../project/status.mdx) for the full matrix.

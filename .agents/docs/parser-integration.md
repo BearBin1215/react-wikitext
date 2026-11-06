@@ -2,11 +2,11 @@
 
 文档类型：实现规范（Normative）
 
-适用范围：`wikiparser-node@1.48.1` 浏览器包的加载、默认适配器、配置快照、源码语法树、range/属性重建、`retainSyntax`、预算与 oracle。
+适用范围：`wikiparser-node@1.48.2` 浏览器包的加载、默认适配器、配置快照、源码语法树、range/属性重建、`retainSyntax`、预算与 oracle。
 
 公开类型见[文档站 parse 页面](../../website/docs/zh/api/parse.mdx)；测试分工见[开发约定](./development.md)；未完成事项见[路线图](./roadmap.md)。
 
-解析器精确锁定为 `wikiparser-node@1.48.1`，不提供兼容区间，也不支持多版本并存。升级时按本文第 8 节整体替换，并以 `tests/` 中的 oracle、range 与真实语料 fixture 作为回归基线。
+解析器精确锁定为 `wikiparser-node@1.48.2`，不提供兼容区间，也不支持多版本并存。升级时按本文第 8 节整体替换，并以 `tests/` 中的 oracle、range 与真实语料 fixture 作为回归基线。
 
 ## 1. 运行时事实
 
@@ -103,7 +103,7 @@ return buildSyntaxTree(rootToken, source, context.limits);
 - **必须先做 LF 归一化**：parser 内部会把 CRLF 归一化，但 token `toString()` 不含 `\r`；用原源码反查 range 会整体错位。
 - 上游 `config/*.json` 没有 `excludes` 字段；浏览器 parse 会读取它，缺失会报 `excludes is not iterable`，因此 `normalizeConfig` 补 `excludes: []`。
 - 不按数组字段混合合并站点配置；调用方传入 config 时整体深拷贝使用，只补 `excludes` 并展开 `doubleUnderscore`。
-- 库内置 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.1` 的 `config/default.json` 快照；来源记录在源码注释中，不作为公共常量导出。
+- 库内置 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.2` 的 `config/default.json` 快照；来源记录在源码注释中，不作为公共常量导出。
 - 最小配置不作为公共导出；测试与 playground 直接读取上游 `wikiparser-node/config/minimum.json`。在它下面 ref/gallery/图片参数会退化，相关测试会显式覆盖这种差异。
 - `pageName` 用于页面上下文（如 `{{PAGENAME}}`）；库不擅自造页面名。
 - 同一份源码配不同 config 或 pageName 可能产生不同 AST；它们属于解析输入。
@@ -256,7 +256,7 @@ Node 完整版只用于测试，提供 `json()` 原生 range 和 `toHtml()`：
 
 ## 8. 版本升级清单
 
-`wikiparser-node` 精确锁定 `1.48.1`；升级时逐项检查：
+`wikiparser-node` 精确锁定 `1.48.2`；升级时逐项检查：
 
 1. `npm pack` 检查浏览器 bundle 名称、文件是否存在、大小是否突变。
 2. 检查 `package.json` 的 `sideEffects`、`browser`、深层路径是否变化。
