@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # pnpm 的 minimumReleaseAge 为 1440 分钟，延后取新版本，避免刚发布的版本导致安装失败
+    cooldown:
+      default-days: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      # 同一套工具链的包一起更新，避免版本错配
+      rspress:
+        patterns:
+          - "@rspress/*"
+      codemirror:
+        patterns:
+          - "codemirror"
+          - "@codemirror/*"
+      dev-dependencies:
+        dependency-type: "development"
+    ignore:
+      # 大版本一律不自动更新，升级由人工评审进行
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+      # 上游解析器决定语法树与 HTML 基线，升级时需同步更新 oracle 语料与预算
+      - dependency-name: "wikiparser-node"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      actions:
+        patterns:
+          - "*"
