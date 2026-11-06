@@ -25,7 +25,7 @@ describe("heading ids", () => {
   it("collects raw HTML headings and renders them as headings", () => {
     expect(headingIds("<h2>HTML</h2>\n\n== Wiki ==")).toEqual(["HTML", "Wiki"]);
     const html = renderView("<h2>HTML</h2>");
-    expect(html).toContain('class="wtr-html-block wtr-html-h2 wtr-heading"');
+    expect(html).toContain('class="wikitext-html-block wikitext-html-h2 wikitext-heading"');
     expect(html).toContain('id="HTML"');
   });
 

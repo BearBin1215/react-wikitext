@@ -52,7 +52,7 @@ export default function Article() {
 }
 ```
 
-`Wikitext` renders a root `div.wtr-view`. `lang` and `dir` are written to that container for layout and assistive technology.
+`Wikitext` renders a root `div.wikitext-view`. `lang` and `dir` are written to that container for layout and assistive technology.
 
 :::warning
 `Wikitext` and `WikitextView` depend on React Context and only run in Client Components. The root entry and `/view` already ship a `"use client"` directive, so they can be used directly in Next.js App Router; the server should only call React-free entries such as `/parse` and `/hast`, as shown in [server preparation](./server-rendering.mdx).

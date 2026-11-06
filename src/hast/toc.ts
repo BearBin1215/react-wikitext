@@ -2,14 +2,14 @@ import type { Element, ElementContent, Properties } from "hast";
 import type { WikitextHeadingInfo } from "../ast/model";
 
 /** 生成目录的 class；同时保留 MediaWiki 的 `toc` class 便于宿主样式复用。 */
-const TOC_CLASS = "wtr-toc";
+const TOC_CLASS = "wikitext-toc";
 /** 目录占位节点的 class；最终整理阶段替换为真实目录。 */
-export const TOC_PLACEHOLDER_CLASS = "wtr-toc-placeholder";
+export const TOC_PLACEHOLDER_CLASS = "wikitext-toc-placeholder";
 /** MediaWiki 默认在标题数达到该值时自动生成目录。 */
 export const TOC_AUTO_MIN_HEADINGS = 4;
 
 /** HAST 属性上的目录标记；源码 HTML 无法通过属性清洗写入该值。 */
-export const TOC_DATA_PROPERTY = "dataWtrToc";
+export const TOC_DATA_PROPERTY = "dataWikitextToc";
 export type TocMarker = "auto" | "explicit";
 
 interface TocEntry {
@@ -56,18 +56,20 @@ function tocEntryElement(entry: TocEntry, section: { value: number }): Element {
   section.value++;
   const depth = entry.number.split(".").length;
   const label: ElementContent[] = [
-    element("span", { className: ["tocnumber", "wtr-toc__number"] }, [textNode(entry.number)]),
+    element("span", { className: ["tocnumber", "wikitext-toc__number"] }, [textNode(entry.number)]),
     textNode(" "),
-    element("span", { className: ["toctext", "wtr-toc__text"] }, [textNode(entry.heading.text)]),
+    element("span", { className: ["toctext", "wikitext-toc__text"] }, [
+      textNode(entry.heading.text),
+    ]),
   ];
   const link: ElementContent =
     entry.heading.id === undefined
-      ? element("span", { className: ["wtr-toc__link"] }, label)
-      : element("a", { className: ["wtr-toc__link"], href: `#${entry.heading.id}` }, label);
+      ? element("span", { className: ["wikitext-toc__link"] }, label)
+      : element("a", { className: ["wikitext-toc__link"], href: `#${entry.heading.id}` }, label);
   return element(
     "li",
     {
-      className: [`toclevel-${depth}`, `tocsection-${section.value}`, "wtr-toc__item"],
+      className: [`toclevel-${depth}`, `tocsection-${section.value}`, "wikitext-toc__item"],
     },
     [
       link,
@@ -75,7 +77,7 @@ function tocEntryElement(entry: TocEntry, section: { value: number }): Element {
         ? [
             element(
               "ul",
-              { className: ["wtr-toc__list"], role: "list" },
+              { className: ["wikitext-toc__list"], role: "list" },
               entry.children.map((child) => tocEntryElement(child, section)),
             ),
           ]
@@ -102,16 +104,16 @@ export function buildToc(
   return element(
     "div",
     {
-      className: ["toc", TOC_CLASS, ...(columns > 1 ? [`wtr-toc--columns-${columns}`] : [])],
+      className: ["toc", TOC_CLASS, ...(columns > 1 ? [`wikitext-toc--columns-${columns}`] : [])],
       role: "navigation",
       ariaLabel: label,
       [TOC_DATA_PROPERTY]: "toc",
     },
     [
-      element("div", { className: ["toctitle", "wtr-toc__title"] }, [textNode(label)]),
+      element("div", { className: ["toctitle", "wikitext-toc__title"] }, [textNode(label)]),
       element(
         "ul",
-        { className: ["wtr-toc__list"], role: "list" },
+        { className: ["wikitext-toc__list"], role: "list" },
         entries.map((entry) => tocEntryElement(entry, section)),
       ),
     ],

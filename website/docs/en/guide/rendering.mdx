@@ -47,10 +47,10 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 
 ## Paragraphs, text, and formatting
 
-- Consecutive inline content becomes `<p class="wtr-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
+- Consecutive inline content becomes `<p class="wikitext-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
 - Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When both are open, the output is `<i><b>…</b></i>`.
-- Headings render as real `<h1>`–`<h6 class="wtr-heading">` and participate in anchors and the table of contents.
-- Horizontal rules render as `<hr class="wtr-hr">`.
+- Headings render as real `<h1>`–`<h6 class="wikitext-heading">` and participate in anchors and the table of contents.
+- Horizontal rules render as `<hr class="wikitext-hr">`.
 - Comments, categories, and behavior switches do not enter the body. Categories go to the footer; behavior switches only affect the table of contents.
 
 ## Lists
@@ -64,7 +64,7 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 
 - The output order is `<table><caption>…</caption><tbody>…`; cells are `<th>` / `<td>`.
 - Table, row, and cell attributes are kept through a whitelist; `style` keeps only a safe layout subset, while event attributes and `id` are always dropped.
-- Layout is computed on a logical grid: `colspan` / `rowspan` are clamped to the table bounds, and missing slots get filler cells (`wtr-table__cell--filler`).
+- Layout is computed on a logical grid: `colspan` / `rowspan` are clamped to the table bounds, and missing slots get filler cells (`wikitext-table__cell--filler`).
 - When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
 - A wikitext table with unmatched `{|` / `|}` markers degrades to a source card. A nested wikitext table with matched markers and a nested HTML `<table>` render normally.
 - Tables allow safe `data-*` attributes but reject library-reserved names such as `data-node-id` and `data-wikitext`.
@@ -78,13 +78,13 @@ Default output for each link type, the protocol allowlist, and resolver usage ar
 File nodes render as a placeholder by default:
 
 ```html
-<figure class="wtr-file wtr-file--block mw-default-size">
-  <span class="wtr-file__label">File: Example.png</span>
-  <figcaption class="wtr-file__caption">Caption text</figcaption>
+<figure class="wikitext-file wikitext-file--block mw-default-size">
+  <span class="wikitext-file__label">File: Example.png</span>
+  <figcaption class="wikitext-file__caption">Caption text</figcaption>
 </figure>
 ```
 
-- Inline files use `<span class="wtr-file">`; block files use `<figure>`.
+- Inline files use `<span class="wikitext-file">`; block files use `<figure>`.
 - Captions come from the real subtree, so links and template placeholders inside them render recursively.
 - Only a `src` returned by `resolveImage` and validated as `http:` / `https:` produces `<img loading="lazy" decoding="async">`; dimensions are clamped to 1–4096.
 - The library never contacts `upload.wikimedia.org` or any image URL on its own.
@@ -93,7 +93,7 @@ File nodes render as a placeholder by default:
 
 The default pipeline **does not evaluate** anything:
 
-- Templates render as a block `<details class="wtr-template">` or an inline badge listing their parameters, using `labels.templateNotExpanded`.
+- Templates render as a block `<details class="wikitext-template">` or an inline badge listing their parameters, using `labels.templateNotExpanded`.
 - Parser functions render the same kind of placeholder and are explicitly marked as not evaluated.
 - Arguments `{{{name|default}}}` show the name and default value.
 - Magic words inside templates, functions, and arguments do not affect the table of contents or categories.
@@ -102,8 +102,8 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 
 ## References
 
-- Each `<ref>` is numbered within its group and produces `<sup class="reference wtr-ref">` with a numbered link.
-- Reference content is collected into `<section class="wtr-references" role="doc-endnotes">`; named references reuse the same entry and groups number independently.
+- Each `<ref>` is numbered within its group and produces `<sup class="reference wikitext-ref">` with a numbered link.
+- Reference content is collected into `<section class="wikitext-references" role="doc-endnotes">`; named references reuse the same entry and groups number independently.
 - `<references/>` or `<references group="x"/>` places the matching group section; groups without a marker are appended after the body and before the category footer. Notes carry `a[role="doc-backlink"]` backlinks.
 - Duplicate definitions and empty references produce diagnostics; repeated uses get `cite_ref-N`, `cite_ref-N-2`, and so on.
 
@@ -117,7 +117,7 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 
 ## Categories and redirects
 
-- Categories stay out of the body and are collected in source order into `div.catlinks.wtr-categories` at the end. Namespace prefixes are removed, underscores become spaces, and sort keys are not displayed.
+- Categories stay out of the body and are collected in source order into `div.catlinks.wikitext-categories` at the end. Namespace prefixes are removed, underscores become spaces, and sort keys are not displayed.
 - A first-line `#REDIRECT` renders a redirect banner and skips the rest of the body. It does not load the target page.
 
 ## HTML

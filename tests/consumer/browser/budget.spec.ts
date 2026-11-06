@@ -26,8 +26,8 @@ test.describe("@budget", () => {
       const rows = first ? [...first.querySelectorAll(":scope > tbody > tr")] : [];
       return {
         tables: tables.length,
-        fillerCells: document.querySelectorAll("td.wtr-table__cell--filler").length,
-        realCells: document.querySelectorAll("td.wtr-table__cell").length,
+        fillerCells: document.querySelectorAll("td.wikitext-table__cell--filler").length,
+        realCells: document.querySelectorAll("td.wikitext-table__cell").length,
         firstRowCells: rows[0]?.querySelectorAll(":scope > td, :scope > th").length ?? 0,
         secondRowCells: rows[1]?.querySelectorAll(":scope > td, :scope > th").length ?? 0,
         text: first?.textContent?.includes("y") ?? false,

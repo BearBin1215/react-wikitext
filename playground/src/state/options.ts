@@ -18,7 +18,7 @@ export const HEADING_STRATEGIES = ["instance", "mediawiki", "none"] as const;
 export const COMPONENTS_MODES = ["none", "demo", "throwing"] as const;
 type ComponentsMode = (typeof COMPONENTS_MODES)[number];
 
-export const DEFAULT_HEADING_PREFIX = "wtr-heading-";
+export const DEFAULT_HEADING_PREFIX = "wikitext-heading-";
 const DEFAULT_HEADING_STRATEGY: WikitextHeadingIdStrategy = "instance";
 export const EXPANDED_DEPTH_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
 

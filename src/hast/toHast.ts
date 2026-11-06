@@ -247,20 +247,20 @@ function categoriesFooter(
   if (categories.length === 0) {
     return undefined;
   }
-  return element("div", { className: ["catlinks", "wtr-categories"], role: "navigation" }, [
-    element("div", { className: ["mw-normal-catlinks", "wtr-categories__inner"] }, [
-      element("span", { className: ["wtr-categories__label"] }, [
+  return element("div", { className: ["catlinks", "wikitext-categories"], role: "navigation" }, [
+    element("div", { className: ["mw-normal-catlinks", "wikitext-categories__inner"] }, [
+      element("span", { className: ["wikitext-categories__label"] }, [
         textNode(`${context.labels.categories}:`),
       ]),
       element(
         "ul",
-        { className: ["wtr-categories__list"], role: "list" },
+        { className: ["wikitext-categories__list"], role: "list" },
         categories.map((category) =>
-          element("li", { className: ["wtr-categories__item"] }, [
+          element("li", { className: ["wikitext-categories__item"] }, [
             element(
               "span",
               {
-                className: ["wtr-link", "wtr-categories__link"],
+                className: ["wikitext-link", "wikitext-categories__link"],
                 title: categoryTitle(category.target),
               },
               [textNode(categoryName(category.target))],
@@ -284,7 +284,7 @@ function paragraphElement(
       ? node.children.filter((_child, index) => index !== markerIndex)
       : node.children;
   const paragraph = hasVisibleContent(content)
-    ? element("p", { className: ["wtr-paragraph"] }, convertChildren(context, content), node)
+    ? element("p", { className: ["wikitext-paragraph"] }, convertChildren(context, content), node)
     : undefined;
   if (markerIndex < 0) {
     return paragraph ?? null;
@@ -326,10 +326,10 @@ function unknownElement(
   if (reason === "nestedTableUnsupported") {
     return element(
       "section",
-      { className: classNames("wtr-table--degraded"), role: "note" },
+      { className: classNames("wikitext-table--degraded"), role: "note" },
       [
-        element("span", { className: ["wtr-unknown__label"] }, [textNode(label)]),
-        element("pre", { className: ["wtr-unknown__source"] }, [textNode(value)]),
+        element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
+        element("pre", { className: ["wikitext-unknown__source"] }, [textNode(value)]),
       ],
       node,
     );
@@ -338,13 +338,13 @@ function unknownElement(
     return element(
       "section",
       {
-        className: ["wtr-unknown", "wtr-unknown--block"],
+        className: ["wikitext-unknown", "wikitext-unknown--block"],
         dataNodeType: parserType,
         dataNodeId: node.id,
       },
       [
-        element("span", { className: ["wtr-unknown__label"] }, [textNode(label)]),
-        element("pre", { className: ["wtr-unknown__source"] }, [textNode(value)]),
+        element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
+        element("pre", { className: ["wikitext-unknown__source"] }, [textNode(value)]),
       ],
       node,
     );
@@ -352,14 +352,14 @@ function unknownElement(
   return element(
     "span",
     {
-      className: ["wtr-unknown", "wtr-unknown--inline"],
+      className: ["wikitext-unknown", "wikitext-unknown--inline"],
       dataNodeType: parserType,
       dataNodeId: node.id,
       title: label,
     },
     [
-      element("span", { className: ["wtr-unknown__label"] }, [textNode(label)]),
-      element("code", { className: ["wtr-unknown__source"] }, [
+      element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
+      element("code", { className: ["wikitext-unknown__source"] }, [
         textNode(value.length > 160 ? `${value.slice(0, 160)}…` : value),
       ]),
     ],
@@ -441,9 +441,9 @@ function linkElement(
   if (href !== null) {
     const className =
       node.kind === "internal"
-        ? classNames("wtr-link", "wtr-link--resolved")
+        ? classNames("wikitext-link", "wikitext-link--resolved")
         : classNames(
-            "wtr-ext-link",
+            "wikitext-ext-link",
             "external",
             autonumber ? "autonumber" : node.kind === "bareExternal" ? "free" : "text",
           );
@@ -463,8 +463,8 @@ function linkElement(
     "span",
     {
       className: unsafeExternal
-        ? classNames("wtr-link", "wtr-link--blocked")
-        : classNames("wtr-link"),
+        ? classNames("wikitext-link", "wikitext-link--blocked")
+        : classNames("wikitext-link"),
       title: unsafeExternal
         ? context.labels.blockedLink
         : node.kind === "internal"
@@ -516,7 +516,7 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
     const image = element(
       "img",
       {
-        className: ["wtr-file__image", "mw-file-element"],
+        className: ["wikitext-file__image", "mw-file-element"],
         src,
         alt,
         ...(width === undefined ? {} : { width }),
@@ -527,7 +527,7 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
     image.data = { wikitext: { ...mark(node).wikitext, imageSource: "resolver" } };
     body = image;
   } else {
-    body = element("span", { className: ["wtr-file__label"] }, [
+    body = element("span", { className: ["wikitext-file__label"] }, [
       textNode(`${context.labels.filePlaceholder}: ${parameters.name}`),
     ]);
   }
@@ -537,7 +537,9 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
       allowRelative: context.policy.allowRelativeLinks,
     });
     if (href) {
-      body = element("a", { className: ["wtr-file__link"], href, title: parameters.name }, [body]);
+      body = element("a", { className: ["wikitext-file__link"], href, title: parameters.name }, [
+        body,
+      ]);
     }
   }
 
@@ -552,13 +554,13 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
     return element(
       "figure",
       {
-        className: classNames("wtr-file", "wtr-file--block", ...mwClasses),
+        className: classNames("wikitext-file", "wikitext-file--block", ...mwClasses),
         dataNodeId: node.id,
       },
       [
         body,
         ...(caption.length > 0
-          ? [element("figcaption", { className: ["wtr-file__caption"] }, caption)]
+          ? [element("figcaption", { className: ["wikitext-file__caption"] }, caption)]
           : []),
       ],
       node,
@@ -567,13 +569,13 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
   return element(
     "span",
     {
-      className: classNames("wtr-file", "wtr-file--inline", ...mwClasses),
+      className: classNames("wikitext-file", "wikitext-file--inline", ...mwClasses),
       dataNodeId: node.id,
     },
     [
       body,
       ...(caption.length > 0
-        ? [element("span", { className: ["wtr-file__caption"] }, [textNode(" "), ...caption])]
+        ? [element("span", { className: ["wikitext-file__caption"] }, [textNode(" "), ...caption])]
         : []),
     ],
     node,
@@ -593,13 +595,13 @@ function parameterList(
     items.push(
       element(
         "li",
-        { className: ["wtr-template__param"] },
+        { className: ["wikitext-template__param"] },
         [
-          element("span", { className: ["wtr-template__param-name"] }, [textNode(name)]),
-          element("span", { className: ["wtr-template__param-eq"] }, [textNode("=")]),
+          element("span", { className: ["wikitext-template__param-name"] }, [textNode(name)]),
+          element("span", { className: ["wikitext-template__param-eq"] }, [textNode("=")]),
           element(
             "span",
-            { className: ["wtr-template__param-value"] },
+            { className: ["wikitext-template__param-value"] },
             convertChildren(context, parameter.children),
           ),
         ],
@@ -607,7 +609,7 @@ function parameterList(
       ),
     );
   }
-  return element("ul", { className: ["wtr-template__params"] }, items);
+  return element("ul", { className: ["wikitext-template__params"] }, items);
 }
 
 function templateElement(
@@ -620,19 +622,21 @@ function templateElement(
     : `${context.labels.parserFunctionNotEvaluated}: ${node.name}`;
   if (node.block) {
     const className = template
-      ? "wtr-template wtr-template--block"
-      : "wtr-magic-word wtr-magic-word--block";
+      ? "wikitext-template wikitext-template--block"
+      : "wikitext-magic-word wikitext-magic-word--block";
     return element(
       "details",
       { className: classNames(className), dataNodeId: node.id },
       [
-        element("summary", { className: ["wtr-template__summary"] }, [textNode(label)]),
+        element("summary", { className: ["wikitext-template__summary"] }, [textNode(label)]),
         parameterList(context, node),
       ],
       node,
     );
   }
-  const className = template ? "wtr-template wtr-template--inline" : "wtr-magic-word";
+  const className = template
+    ? "wikitext-template wikitext-template--inline"
+    : "wikitext-magic-word";
   return element(
     "span",
     {
@@ -652,7 +656,7 @@ function argumentElement(
   const children: ElementContent[] = [textNode(node.name ? `{{{${node.name}}}}` : "{{{…}}}")];
   if (node.children.length > 0) {
     children.push(
-      element("span", { className: ["wtr-argument__default"] }, [
+      element("span", { className: ["wikitext-argument__default"] }, [
         textNode(" ← "),
         ...convertChildren(context, node.children),
       ]),
@@ -661,7 +665,7 @@ function argumentElement(
   return element(
     "span",
     {
-      className: ["wtr-argument"],
+      className: ["wikitext-argument"],
       dataNodeId: node.id,
       title: sourceOf(context, node),
     },
@@ -673,9 +677,9 @@ function argumentElement(
 function unnumberedReference(context: BuildContext, node: WikitextReference): Element {
   return element(
     "sup",
-    { className: ["reference", "wtr-ref"], dataNodeId: node.id, title: node.raw ?? "" },
+    { className: ["reference", "wikitext-ref"], dataNodeId: node.id, title: node.raw ?? "" },
     [
-      element("span", { className: ["wtr-ref__label"] }, [
+      element("span", { className: ["wikitext-ref__label"] }, [
         textNode(`[${context.labels.reference}]`),
       ]),
     ],
@@ -697,7 +701,7 @@ function referenceSup(context: BuildContext, entry: ReferenceEntry, occurrence: 
   const sup = element(
     "sup",
     {
-      className: ["reference", "wtr-ref"],
+      className: ["reference", "wikitext-ref"],
       dataNodeId: entry.node.id,
       title: entry.node.raw ?? "",
     },
@@ -705,7 +709,7 @@ function referenceSup(context: BuildContext, entry: ReferenceEntry, occurrence: 
       element(
         "a",
         {
-          className: ["wtr-ref__link"],
+          className: ["wikitext-ref__link"],
           href: `#${referenceNoteId(entry.number, entry.group)}`,
           ariaLabel: `${context.labels.reference} ${entry.number}`,
         },
@@ -790,7 +794,7 @@ function referencesSections(context: BuildContext, state: ReferenceState): Eleme
     const items = group.entries.map((entry) =>
       element(
         "li",
-        { className: ["wtr-references__item"] },
+        { className: ["wikitext-references__item"] },
         convertChildren(context, entry.node.children),
       ),
     );
@@ -827,14 +831,14 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
     case "nowiki":
       return element(
         "span",
-        { className: ["wtr-nowiki"], dataNodeId: node.id },
+        { className: ["wikitext-nowiki"], dataNodeId: node.id },
         [textNode(raw)],
         node,
       );
     case "pre":
       return element(
         "pre",
-        { className: ["wtr-ext-pre"], dataNodeId: node.id },
+        { className: ["wikitext-ext-pre"], dataNodeId: node.id },
         [textNode(raw)],
         node,
       );
@@ -842,7 +846,7 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
       const language =
         node.attributes.find((attribute) => attribute.name === "lang")?.value?.trim() ?? "";
       const safeLanguage = /^[A-Za-z0-9_-]+$/u.test(language) ? language.toLowerCase() : "";
-      const classes = ["wtr-ext-code", ...(safeLanguage ? [`language-${safeLanguage}`] : [])];
+      const classes = ["wikitext-ext-code", ...(safeLanguage ? [`language-${safeLanguage}`] : [])];
       return element(
         "pre",
         { className: classes, dataNodeId: node.id },
@@ -861,7 +865,7 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
         .filter(Boolean);
       return element(
         "div",
-        { className: ["wtr-poem"], dataNodeId: node.id },
+        { className: ["wikitext-poem"], dataNodeId: node.id },
         stanzas.map((stanza) => {
           const children: ElementContent[] = [];
           for (const [index, line] of stanza.split("\n").entries()) {
@@ -870,7 +874,7 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
             }
             children.push(textNode(line));
           }
-          return element("p", { className: ["wtr-poem__stanza"] }, children);
+          return element("p", { className: ["wikitext-poem__stanza"] }, children);
         }),
         node,
       );
@@ -878,7 +882,7 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
     case "math":
       return element(
         "code",
-        { className: ["wtr-math"], dataNodeId: node.id, title: context.labels.unknownNode },
+        { className: ["wikitext-math"], dataNodeId: node.id, title: context.labels.unknownNode },
         [textNode(raw)],
         node,
       );
@@ -889,7 +893,7 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
         .filter(Boolean);
       return element(
         "div",
-        { className: ["wtr-gallery"], dataNodeId: node.id },
+        { className: ["wikitext-gallery"], dataNodeId: node.id },
         lines.map((line) => {
           const [file = "", ...rest] = line.split("|");
           const name = file.replace(/^(?:File|Image):/iu, "").trim();
@@ -920,19 +924,23 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
           if (src) {
             const image = element(
               "img",
-              { className: ["wtr-gallery__image"], src, alt: resolved?.alt ?? (caption || name) },
+              {
+                className: ["wikitext-gallery__image"],
+                src,
+                alt: resolved?.alt ?? (caption || name),
+              },
               [],
             );
             image.data = { wikitext: { ...mark(node).wikitext, imageSource: "resolver" } };
             media = image;
           } else {
-            media = element("span", { className: ["wtr-gallery__label"] }, [textNode(name)]);
+            media = element("span", { className: ["wikitext-gallery__label"] }, [textNode(name)]);
           }
-          return element("figure", { className: ["wtr-gallery__item"] }, [
+          return element("figure", { className: ["wikitext-gallery__item"] }, [
             media,
             ...(caption
               ? [
-                  element("figcaption", { className: ["wtr-gallery__caption"] }, [
+                  element("figcaption", { className: ["wikitext-gallery__caption"] }, [
                     textNode(caption),
                   ]),
                 ]
@@ -963,7 +971,7 @@ function listElement(
   if (node.type === "definitionList") {
     return element(
       "dl",
-      { className: classNames("wtr-list", "wtr-list--dl") },
+      { className: classNames("wikitext-list", "wikitext-list--dl") },
       convertChildren(context, node.children),
       node,
     );
@@ -971,7 +979,7 @@ function listElement(
   if (node.type === "listItem") {
     return element(
       "li",
-      { className: ["wtr-list__item"] },
+      { className: ["wikitext-list__item"] },
       convertChildren(context, node.children),
       node,
     );
@@ -979,7 +987,7 @@ function listElement(
   if (node.type === "definitionTerm") {
     return element(
       "dt",
-      { className: ["wtr-list__item"] },
+      { className: ["wikitext-list__item"] },
       convertChildren(context, node.children),
       node,
     );
@@ -987,14 +995,19 @@ function listElement(
   if (node.type === "definitionDescription") {
     return element(
       "dd",
-      { className: ["wtr-list__item"] },
+      { className: ["wikitext-list__item"] },
       convertChildren(context, node.children),
       node,
     );
   }
   return element(
     node.ordered ? "ol" : "ul",
-    { className: classNames("wtr-list", node.ordered ? "wtr-list--ol" : "wtr-list--ul") },
+    {
+      className: classNames(
+        "wikitext-list",
+        node.ordered ? "wikitext-list--ol" : "wikitext-list--ul",
+      ),
+    },
     convertChildren(context, node.children),
     node,
   );
@@ -1010,7 +1023,7 @@ function tableElement(
   const captionElement = caption
     ? element(
         "caption",
-        withClassName(sourceProperties(context, caption, "caption"), "wtr-table__caption"),
+        withClassName(sourceProperties(context, caption, "caption"), "wikitext-table__caption"),
         convertChildren(context, caption.children),
         caption,
       )
@@ -1020,13 +1033,13 @@ function tableElement(
     const rowProperties = sourceProperties(context, row, "tr");
     return element(
       "tr",
-      withClassName(rowProperties, "wtr-table__row"),
+      withClassName(rowProperties, "wikitext-table__row"),
       row.children.map((cell) => {
         if (cell.type !== "tableCell") {
           return textNode("");
         }
         const cellProperties = sourceProperties(context, cell, cell.kind);
-        const cellNames = withClassName(cellProperties, "wtr-table__cell");
+        const cellNames = withClassName(cellProperties, "wikitext-table__cell");
         if (cell.kind === "th" && cellNames.scope === undefined) {
           cellNames.scope = "col";
         }
@@ -1041,15 +1054,15 @@ function tableElement(
     );
   });
   applyTableLayout(rowElements, () =>
-    element("td", { className: ["wtr-table__cell", "wtr-table__cell--filler"] }, []),
+    element("td", { className: ["wikitext-table__cell", "wikitext-table__cell--filler"] }, []),
   );
 
   return element(
     "table",
-    { ...withClassName(properties, "wtr-table"), dataNodeId: node.id },
+    { ...withClassName(properties, "wikitext-table"), dataNodeId: node.id },
     [
       ...(captionElement ? [captionElement] : []),
-      element("tbody", { className: ["wtr-table__body"] }, rowElements),
+      element("tbody", { className: ["wikitext-table__body"] }, rowElements),
     ],
     node,
   );
@@ -1067,7 +1080,7 @@ function htmlElement(context: BuildContext, node: WikitextHtmlElement): Element 
       return element(
         "section",
         {
-          className: ["wtr-blocked-html-block"],
+          className: ["wikitext-blocked-html-block"],
           dataNodeType: node.tag,
           role: "note",
         },
@@ -1077,7 +1090,7 @@ function htmlElement(context: BuildContext, node: WikitextHtmlElement): Element 
     }
     return element(
       "span",
-      { className: ["wtr-blocked-html"], dataNodeId: node.id },
+      { className: ["wikitext-blocked-html"], dataNodeId: node.id },
       [textNode(`${context.labels.blockedHtml}: ${node.tag}`)],
       node,
     );
@@ -1087,9 +1100,9 @@ function htmlElement(context: BuildContext, node: WikitextHtmlElement): Element 
     const properties = {
       ...withClassName(
         attributes,
-        "wtr-html-block",
-        `wtr-html-${node.tag}`,
-        /^h[1-6]$/u.test(node.tag) ? "wtr-heading" : "",
+        "wikitext-html-block",
+        `wikitext-html-${node.tag}`,
+        /^h[1-6]$/u.test(node.tag) ? "wikitext-heading" : "",
       ),
       dataNodeId: node.id,
     };
@@ -1098,7 +1111,9 @@ function htmlElement(context: BuildContext, node: WikitextHtmlElement): Element 
       const rows = children.filter(
         (child): child is Element => child.type === "element" && child.tagName === "tr",
       );
-      applyTableLayout(rows, () => element("td", { className: ["wtr-table__cell--filler"] }, []));
+      applyTableLayout(rows, () =>
+        element("td", { className: ["wikitext-table__cell--filler"] }, []),
+      );
     }
     if (node.tag === "pre") {
       return element("pre", { ...properties }, children, node);
@@ -1120,12 +1135,16 @@ function redirectElement(
   const title = (node.page ?? node.target).replace(/^:/u, "");
   return element(
     "div",
-    { className: ["redirectMsg", "wtr-redirect"], role: "note", dataNodeId: node.id },
+    { className: ["redirectMsg", "wikitext-redirect"], role: "note", dataNodeId: node.id },
     [
-      element("p", { className: ["wtr-redirect__label"] }, [textNode(context.labels.redirectTo)]),
-      element("ul", { className: ["redirectText", "wtr-redirect__list"] }, [
+      element("p", { className: ["wikitext-redirect__label"] }, [
+        textNode(context.labels.redirectTo),
+      ]),
+      element("ul", { className: ["redirectText", "wikitext-redirect__list"] }, [
         element("li", {}, [
-          element("span", { className: ["wtr-redirect__target"], title }, [textNode(node.target)]),
+          element("span", { className: ["wikitext-redirect__target"], title }, [
+            textNode(node.target),
+          ]),
         ]),
       ]),
     ],
@@ -1155,7 +1174,7 @@ function convert(
     case "heading":
       return element(
         `h${node.level}`,
-        { className: ["wtr-heading"] },
+        { className: ["wikitext-heading"] },
         convertChildren(context, node.children),
         node,
       );
@@ -1164,7 +1183,7 @@ function convert(
     case "emphasis":
       return element("i", {}, convertChildren(context, node.children), node);
     case "thematicBreak":
-      return element("hr", { className: ["wtr-hr"], dataNodeId: node.id }, [], node);
+      return element("hr", { className: ["wikitext-hr"], dataNodeId: node.id }, [], node);
     case "link":
       return linkElement(context, node);
     case "file":

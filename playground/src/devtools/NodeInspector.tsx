@@ -72,11 +72,11 @@ export function NodeInspector({
   }, [doc, syntax, semantic]);
   const json = useMemo(() => (node ? JSON.stringify(node, null, 2) : ""), [node]);
 
-  const classes = className ? `wtr-inspector ${className}` : "wtr-inspector";
+  const classes = className ? `wikitext-inspector ${className}` : "wikitext-inspector";
   if (!node) {
     return (
       <div className={classes}>
-        <p className="wtr-inspector__empty">{resolved.noSelection}</p>
+        <p className="wikitext-inspector__empty">{resolved.noSelection}</p>
       </div>
     );
   }
@@ -99,24 +99,28 @@ export function NodeInspector({
 
   return (
     <div className={classes}>
-      <div className="wtr-inspector__header">
-        <strong className="wtr-inspector__type">{node.type}</strong>
+      <div className="wikitext-inspector__header">
+        <strong className="wikitext-inspector__type">{node.type}</strong>
         {range ? (
-          <span className="wtr-inspector__range">
+          <span className="wikitext-inspector__range">
             [{range[0]}, {range[1]})
           </span>
         ) : (
-          <span className="wtr-inspector__range">{resolved.generated}</span>
+          <span className="wikitext-inspector__range">{resolved.generated}</span>
         )}
-        <span className="wtr-inspector__id">{node.id}</span>
+        <span className="wikitext-inspector__id">{node.id}</span>
       </div>
-      <div className="wtr-inspector__actions">
-        <button type="button" className="wtr-inspector__action" onClick={() => copy("json", json)}>
+      <div className="wikitext-inspector__actions">
+        <button
+          type="button"
+          className="wikitext-inspector__action"
+          onClick={() => copy("json", json)}
+        >
           {actionLabel("json")}
         </button>
         <button
           type="button"
-          className="wtr-inspector__action"
+          className="wikitext-inspector__action"
           onClick={() => copy("source", source)}
         >
           {actionLabel("source")}
@@ -125,22 +129,24 @@ export function NodeInspector({
       {syntax ? (
         <>
           {Object.keys(syntax.props).length > 0 ? (
-            <section className="wtr-inspector__section">
-              <h4 className="wtr-inspector__title">{resolved.props}</h4>
-              <pre className="wtr-inspector__code">{JSON.stringify(syntax.props, null, 2)}</pre>
+            <section className="wikitext-inspector__section">
+              <h4 className="wikitext-inspector__title">{resolved.props}</h4>
+              <pre className="wikitext-inspector__code">
+                {JSON.stringify(syntax.props, null, 2)}
+              </pre>
             </section>
           ) : null}
           {syntax.attributes.length > 0 ? (
-            <section className="wtr-inspector__section">
-              <h4 className="wtr-inspector__title">{resolved.attributes}</h4>
-              <ul className="wtr-inspector__attributes">
+            <section className="wikitext-inspector__section">
+              <h4 className="wikitext-inspector__title">{resolved.attributes}</h4>
+              <ul className="wikitext-inspector__attributes">
                 {syntax.attributes.map((attribute) => (
                   <li key={`${attribute.name}:${attribute.range[0]}`}>
                     <code>{attribute.name}</code>
                     {attribute.value === null
                       ? ` ${resolved.booleanAttribute}`
                       : `= ${attribute.value}`}
-                    <span className="wtr-inspector__range">
+                    <span className="wikitext-inspector__range">
                       {" "}
                       [{attribute.range[0]}, {attribute.range[1]})
                     </span>
@@ -151,16 +157,16 @@ export function NodeInspector({
           ) : null}
         </>
       ) : (
-        <section className="wtr-inspector__section">
-          <h4 className="wtr-inspector__title">{resolved.semanticValue}</h4>
-          <pre className="wtr-inspector__code">
+        <section className="wikitext-inspector__section">
+          <h4 className="wikitext-inspector__title">{resolved.semanticValue}</h4>
+          <pre className="wikitext-inspector__code">
             {JSON.stringify({ ...semantic, children: undefined }, null, 2)}
           </pre>
         </section>
       )}
-      <section className="wtr-inspector__section">
-        <h4 className="wtr-inspector__title">{resolved.source}</h4>
-        <pre className="wtr-inspector__code">{source || resolved.generated}</pre>
+      <section className="wikitext-inspector__section">
+        <h4 className="wikitext-inspector__title">{resolved.source}</h4>
+        <pre className="wikitext-inspector__code">{source || resolved.generated}</pre>
       </section>
     </div>
   );

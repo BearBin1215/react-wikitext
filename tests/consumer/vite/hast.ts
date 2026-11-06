@@ -70,7 +70,7 @@ export function summarize(root: Root): {
   const tree = root as unknown as HastNode;
   const heading = findElement(tree, (element) => element.tagName === "h2");
   const paragraph = findElement(tree, (element) => element.tagName === "p");
-  const link = findElement(tree, (element) => classNames(element).includes("wtr-link"));
+  const link = findElement(tree, (element) => classNames(element).includes("wikitext-link"));
   const table = findElement(tree, (element) => element.tagName === "table");
   return {
     heading: heading ? textContent(heading) : null,

@@ -13,17 +13,17 @@ Styles are driven by CSS variables. Classes and attributes on the container can 
 
 ```css
 .wiki-article {
-  --wtr-text: #1f2328;
-  --wtr-accent: #0969da;
-  --wtr-border: #d0d7de;
-  --wtr-placeholder-bg: #f6f8fa;
+  --wikitext-text: #1f2328;
+  --wikitext-accent: #0969da;
+  --wikitext-border: #d0d7de;
+  --wikitext-placeholder-bg: #f6f8fa;
 }
 
 .wiki-article[data-theme="dark"] {
-  --wtr-text: #e6edf3;
-  --wtr-accent: #4493f8;
-  --wtr-border: #30363d;
-  --wtr-placeholder-bg: #161b22;
+  --wikitext-text: #e6edf3;
+  --wikitext-accent: #4493f8;
+  --wikitext-border: #30363d;
+  --wikitext-placeholder-bg: #161b22;
 }
 ```
 
@@ -170,7 +170,7 @@ export default function Demo() {
 
 - The `mediawiki` strategy writes bare anchors and assumes a single instance per page.
 - For multiple instances, keep the default `instance` strategy; inside the view, use `useWikitextIds().toHref` to get the real link.
-- The in-page TOC is still generated; to keep only the sidebar, hide `.wtr-toc` with host CSS or use `__NOTOC__` in the source.
+- The in-page TOC is still generated; to keep only the sidebar, hide `.wikitext-toc` with host CSS or use `__NOTOC__` in the source.
 
 ## Reporting render failures
 

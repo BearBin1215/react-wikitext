@@ -90,7 +90,7 @@ export function App() {
   return (
     <div
       className="pg-app"
-      data-wtr-theme={dark ? "dark" : "light"}
+      data-wikitext-theme={dark ? "dark" : "light"}
       data-testid="pg-app"
       data-source-id={state.sourceId}
       data-source-group={scene.group}

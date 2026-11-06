@@ -32,7 +32,7 @@ describe("WikitextFragment", () => {
       />,
     );
     expect(html).toContain('data-label="Template not expanded"');
-    expect(html).toContain('class="wtr-link"');
+    expect(html).toContain('class="wikitext-link"');
     expect(html).toContain("nested");
   });
 
@@ -79,6 +79,6 @@ describe("WikitextFragment", () => {
         semanticComponents={{ template: BlockPreview }}
       />,
     );
-    expect(html).toContain('<div class="wtr-fragment custom-block">');
+    expect(html).toContain('<div class="wikitext-fragment custom-block">');
   });
 });

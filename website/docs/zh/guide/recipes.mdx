@@ -13,17 +13,17 @@ description: 主题、链接与图片、模板卡片、文章目录与错误上�
 
 ```css
 .wiki-article {
-  --wtr-text: #1f2328;
-  --wtr-accent: #0969da;
-  --wtr-border: #d0d7de;
-  --wtr-placeholder-bg: #f6f8fa;
+  --wikitext-text: #1f2328;
+  --wikitext-accent: #0969da;
+  --wikitext-border: #d0d7de;
+  --wikitext-placeholder-bg: #f6f8fa;
 }
 
 .wiki-article[data-theme="dark"] {
-  --wtr-text: #e6edf3;
-  --wtr-accent: #4493f8;
-  --wtr-border: #30363d;
-  --wtr-placeholder-bg: #161b22;
+  --wikitext-text: #e6edf3;
+  --wikitext-accent: #4493f8;
+  --wikitext-border: #30363d;
+  --wikitext-placeholder-bg: #161b22;
 }
 ```
 
@@ -170,7 +170,7 @@ export default function Demo() {
 
 - `mediawiki` 策略写入裸锚点，适合单实例页面。
 - 多实例页面用默认 `instance` 策略；在视图内部可以用 `useWikitextIds().toHref` 取得实际链接。
-- 页内自动目录仍然会生成；只想保留侧栏时，可以用宿主 CSS 隐藏 `.wtr-toc`，或在源码层面使用 `__NOTOC__`。
+- 页内自动目录仍然会生成；只想保留侧栏时，可以用宿主 CSS 隐藏 `.wikitext-toc`，或在源码层面使用 `__NOTOC__`。
 
 ## 渲染失败上报
 

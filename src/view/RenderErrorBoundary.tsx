@@ -51,14 +51,14 @@ export class RenderErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <section
-          className="wtr-render-error"
+          className="wikitext-render-error"
           data-node-type={describe(this.props.node)}
           role="alert"
         >
-          <span className="wtr-render-error__label">
+          <span className="wikitext-render-error__label">
             {this.props.label}: {describe(this.props.node)}
           </span>
-          <pre className="wtr-render-error__source">{this.props.source}</pre>
+          <pre className="wikitext-render-error__source">{this.props.source}</pre>
         </section>
       );
     }

@@ -37,9 +37,9 @@ describe("AstTree", () => {
     const heading = flattenNodes(doc.ast).find((node) => node.type === "heading")!;
     const onSelect = vi.fn();
     render(<AstTree document={doc} onSelect={onSelect} />);
-    const label = Array.from(document.querySelectorAll<HTMLButtonElement>(".wtr-tree__label")).find(
-      (button) => button.textContent?.includes("heading"),
-    );
+    const label = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".wikitext-tree__label"),
+    ).find((button) => button.textContent?.includes("heading"));
     fireEvent.click(label!);
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: heading.id }), "semantic");
   });
@@ -51,7 +51,7 @@ describe("AstTree", () => {
     render(<AstTree document={doc} onSelect={onSelect} />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "template" } });
     const result = Array.from(
-      document.querySelectorAll<HTMLButtonElement>(".wtr-tree__result"),
+      document.querySelectorAll<HTMLButtonElement>(".wikitext-tree__result"),
     ).find((button) => button.textContent?.includes("template"));
     fireEvent.click(result!);
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: template.id }), "semantic");

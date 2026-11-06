@@ -51,7 +51,7 @@ interface WikitextProps extends Omit<WikitextViewProps, "document"> {
 | `semanticComponents` | 按 wiki 语义类型覆盖组件                                                               |
 | `lang` / `dir`       | 写入根容器的语言与方向                                                                 |
 | `idPrefix`           | 实例标题 id 前缀；只在 `headingIdStrategy: "instance"` 下生效，非法/空值回退到 `useId` |
-| `className`          | 与 `wtr-view` 合并                                                                     |
+| `className`          | 与 `wikitext-view` 合并                                                                |
 | `containerProps`     | 根容器的额外属性；类型层排除 `dangerouslySetInnerHTML`                                 |
 | `onRenderError`      | 单个块渲染失败时的回调                                                                 |
 
@@ -82,11 +82,11 @@ import { WikitextView } from "react-wikitext/view";
 | `semanticComponents` | 按 wiki 语义类型覆盖组件                        |
 | `lang` / `dir`       | 写入根容器的语言与方向                          |
 | `idPrefix`           | `instance` 策略下的实例前缀；未传时使用 `useId` |
-| `className`          | 与 `wtr-view` 合并                              |
+| `className`          | 与 `wikitext-view` 合并                         |
 | `containerProps`     | 根容器属性；排除 `dangerouslySetInnerHTML`      |
 | `onRenderError`      | 块级渲染失败回调                                |
 
-- 根节点固定为 `div.wtr-view`。
+- 根节点固定为 `div.wikitext-view`。
 - `idPrefix` 同时影响标题 id、文档内 `#fragment` 链接与表格 `headers`。
 - 每个顶层块包在错误边界内；一个块失败不会影响其他块。
 - 视图内部建立语义索引与 HAST 索引，供组件与 `WikitextFragment` 使用。
@@ -108,7 +108,7 @@ import { WikitextFragment } from "react-wikitext/view";
 - 必须在 `<WikitextView>` 的 Context 内使用，否则抛错。
 - `nodes` 必须是当前视图渲染文档中的**同一批节点对象**；仅 id 相同并不够。
 - 只渲染能在准备结果 HAST 索引中找到的节点，适合模板参数、文件说明与 `ref` 内容。
-- inline 模式无 `className` 时不额外包裹 DOM；有 `className` 时使用 `<span>`；block 模式使用 `wtr-fragment` 容器。
+- inline 模式无 `className` 时不额外包裹 DOM；有 `className` 时使用 `<span>`；block 模式使用 `wikitext-fragment` 容器。
 - 同一视图内重复渲染同一节点会产生重复内容与重复标题 id。
 
 ## 组件覆盖

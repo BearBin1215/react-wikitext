@@ -5,7 +5,11 @@ description: 主题变量、文案、标题锚点、插件与组件覆盖点。
 
 # 样式与组件定制
 
-库输出稳定的 `wtr-*` 类名与一组 CSS 变量。页面结构、文案、标题锚点和组件外观都可以在不改源码的情况下调整。
+库输出稳定的 `wikitext-*` 类名与一组 CSS 变量。页面结构、文案、标题锚点和组件外观都可以在不改源码的情况下调整。
+
+:::warning 从 0.1 升级
+0.2.0 起自有类名、CSS 变量与 data 属性的前缀由 `wtr-` 改为 `wikitext-`：`.wtr-view` → `.wikitext-view`，`--wtr-text` → `--wikitext-text`，`[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`，默认标题锚点前缀 `wtr-heading-` → `wikitext-heading-`。旧前缀不再输出，宿主样式与选择器需要同步替换。
+:::
 
 ## 样式
 
@@ -16,33 +20,33 @@ import "react-wikitext/styles.css";
 ```
 
 - 库不设置全局元素样式，页面字体默认继承自宿主。
-- 根容器是 `div.wtr-view`；自有类名以 `wtr-` 前缀开头，同时保留一部分 MediaWiki 兼容类名。
+- 根容器是 `div.wikitext-view`；自有类名以 `wikitext-` 前缀开头，同时保留一部分 MediaWiki 兼容类名。
 - 内联样式只保留白名单内的排版与外观声明，危险值整条丢弃；严格 CSP 下可按需放行 `style-src`。
 
 ### CSS 变量
 
-| 变量                   | 用途           |
-| ---------------------- | -------------- |
-| `--wtr-text`           | 正文颜色       |
-| `--wtr-muted`          | 次要文本       |
-| `--wtr-border`         | 边框与分隔线   |
-| `--wtr-accent`         | 链接与强调色   |
-| `--wtr-accent-soft`    | 强调背景       |
-| `--wtr-placeholder-bg` | 占位背景       |
-| `--wtr-danger`         | 错误与阻止提示 |
-| `--wtr-font-mono`      | 等宽文本       |
+| 变量                        | 用途           |
+| --------------------------- | -------------- |
+| `--wikitext-text`           | 正文颜色       |
+| `--wikitext-muted`          | 次要文本       |
+| `--wikitext-border`         | 边框与分隔线   |
+| `--wikitext-accent`         | 链接与强调色   |
+| `--wikitext-accent-soft`    | 强调背景       |
+| `--wikitext-placeholder-bg` | 占位背景       |
+| `--wikitext-danger`         | 错误与阻止提示 |
+| `--wikitext-font-mono`      | 等宽文本       |
 
 变量定义在 `:root`，可以在任意祖先覆盖：
 
 ```css
 .article-theme {
-  --wtr-text: #1f2328;
-  --wtr-accent: #0969da;
-  --wtr-border: #d0d7de;
+  --wikitext-text: #1f2328;
+  --wikitext-accent: #0969da;
+  --wikitext-border: #d0d7de;
 }
 ```
 
-深色主题可以通过 `[data-wtr-theme="dark"]` 或宿主自己的选择器覆盖同一组变量。
+深色主题可以通过 `[data-wikitext-theme="dark"]` 或宿主自己的选择器覆盖同一组变量。
 
 变量单独发布在 `react-wikitext/tokens.css`。需要把变量注入到其他样式作用域、或已经在别处加载完整样式时，可以只导入这一份，避免重复引入 `styles.css`：
 
@@ -63,7 +67,7 @@ import "react-wikitext/tokens.css"; // 只有变量
 />
 ```
 
-`className` 与 `containerProps.className` 会和 `wtr-view` 合并。`containerProps` 在类型层排除了 `dangerouslySetInnerHTML`。
+`className` 与 `containerProps.className` 会和 `wikitext-view` 合并。`containerProps` 在类型层排除了 `dangerouslySetInnerHTML`。
 
 ## 文案
 

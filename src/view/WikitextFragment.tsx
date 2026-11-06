@@ -26,7 +26,9 @@ export function WikitextFragment({
   }
   if (mode === "block") {
     return (
-      <div className={className ? `wtr-fragment ${className}` : "wtr-fragment"}>{rendered}</div>
+      <div className={className ? `wikitext-fragment ${className}` : "wikitext-fragment"}>
+        {rendered}
+      </div>
     );
   }
   return className ? <span className={className}>{rendered}</span> : <>{rendered}</>;

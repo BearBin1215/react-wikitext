@@ -52,7 +52,7 @@ export default function Article() {
 }
 ```
 
-`Wikitext` 渲染出的根节点是 `div.wtr-view`。`lang` 与 `dir` 会写入容器属性，用于排版与辅助技术。
+`Wikitext` 渲染出的根节点是 `div.wikitext-view`。`lang` 与 `dir` 会写入容器属性，用于排版与辅助技术。
 
 :::warning 警告
 `Wikitext` 与 `WikitextView` 依赖 React Context，只能在客户端组件中运行。根入口与 `/view` 的产物顶部已经带有 `"use client"` 指令，在 Next.js App Router 中直接使用即可；服务端只调用 `/parse`、`/hast` 等无 React 入口，链路见[服务端准备 + 客户端渲染](./server-rendering.mdx)。

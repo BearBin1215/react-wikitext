@@ -178,7 +178,7 @@ playground/src/
 - 根入口的 `Wikitext` 组件依赖 `parse`、`hast`、`view`，会加载 parser；`/view` 入口只依赖 `view`、`ast` 与 React，不加载 parser。
 - `src/` 不依赖 CodeMirror 或 playground；核心解析/准备不依赖 DOM。
 - playground 只通过 `@pg/*` 引用自身、通过 package 公共入口引用库；禁止 `@/` 或更深层导入。
-- 库样式只使用 `.wtr-*`；MediaWiki 兼容 class 是受控例外，见[渲染规范](./rendering-spec.md#14-样式)。
+- 库样式只使用 `.wikitext-*`；MediaWiki 兼容 class 是受控例外，见[渲染规范](./rendering-spec.md#14-样式)。
 
 `tests/parser/static.test.ts`、`tests/parser/entryIsolation.test.ts`、`tests/playground/imports.test.ts` 与 consumer 隔离脚本持续检查这些边界。
 

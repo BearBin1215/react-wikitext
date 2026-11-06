@@ -47,17 +47,17 @@ Use the tables to look up a construct; use the example to check the overall outp
 
 ## Text and blocks
 
-| Construct                         | Default output                    | Status | Notes                                                   |
-| --------------------------------- | --------------------------------- | ------ | ------------------------------------------------------- |
-| Paragraphs                        | `<p class="wtr-paragraph">`       | Render | Two or more blank lines split; single newlines collapse |
-| `'''bold'''`, `''italic''`        | `<b>`, `<i>`                      | Render | Both produce `<i><b>…</b></i>`                          |
-| `== Heading ==`, source `h1`–`h6` | `<h1>`–`<h6 class="wtr-heading">` | Render | Participates in anchors and the TOC                     |
-| `----`                            | `<hr class="wtr-hr">`             | Render |                                                         |
-| Leading spaces                    | Plain text                        | Render | No preformatted semantics                               |
-| `<!-- comment -->`                | No output                         | Ignore |                                                         |
-| `[[Category:…]]`                  | Category footer                   | Render | Not in the body; sort keys are hidden                   |
-| `__TOC__`, `__NOTOC__`            | TOC control                       | Render | Only affects the TOC                                    |
-| `#REDIRECT` on the first line     | Redirect banner                   | Render | Skips the body; does not load the target                |
+| Construct                         | Default output                         | Status | Notes                                                   |
+| --------------------------------- | -------------------------------------- | ------ | ------------------------------------------------------- |
+| Paragraphs                        | `<p class="wikitext-paragraph">`       | Render | Two or more blank lines split; single newlines collapse |
+| `'''bold'''`, `''italic''`        | `<b>`, `<i>`                           | Render | Both produce `<i><b>…</b></i>`                          |
+| `== Heading ==`, source `h1`–`h6` | `<h1>`–`<h6 class="wikitext-heading">` | Render | Participates in anchors and the TOC                     |
+| `----`                            | `<hr class="wikitext-hr">`             | Render |                                                         |
+| Leading spaces                    | Plain text                             | Render | No preformatted semantics                               |
+| `<!-- comment -->`                | No output                              | Ignore |                                                         |
+| `[[Category:…]]`                  | Category footer                        | Render | Not in the body; sort keys are hidden                   |
+| `__TOC__`, `__NOTOC__`            | TOC control                            | Render | Only affects the TOC                                    |
+| `#REDIRECT` on the first line     | Redirect banner                        | Render | Skips the body; does not load the target                |
 
 ## Lists and tables
 
@@ -73,46 +73,46 @@ Use the tables to look up a construct; use the example to check the overall outp
 
 ## Links and media
 
-| Construct                     | Default output                          | Status      | Notes                                           |
-| ----------------------------- | --------------------------------------- | ----------- | ----------------------------------------------- |
-| `[[Page]]`                    | Non-navigable `<span class="wtr-link">` | Render      | Becomes `<a>` when `resolveLink` returns `href` |
-| `[[Page\|label]]`             | Same, label is `label`                  | Render      | Namespace prefixes follow the parse result      |
-| `[https://example.com label]` | `<a>` with `rel` and `target`           | Render      | Only `http:`, `https:`, `mailto:`               |
-| Bare `https://…`              | `<a>` labelled with the URL             | Render      |                                                 |
-| `[https://example.com]`       | `<a>` labelled `[N]`                    | Render      | Numbering is independent of references          |
-| `[[File:…]]`                  | `<span>` or `<figure>` placeholder      | Placeholder | `<img>` only after `resolveImage`               |
-| `<gallery>`                   | Placeholder set of file labels          | Placeholder | No images are loaded                            |
-| `<math>`                      | `<code>` formula source placeholder     | Placeholder | No KaTeX                                        |
-| `<imagemap>`                  | Block-level source card                 | Degrade     | No clickable hotspots                           |
+| Construct                     | Default output                               | Status      | Notes                                           |
+| ----------------------------- | -------------------------------------------- | ----------- | ----------------------------------------------- |
+| `[[Page]]`                    | Non-navigable `<span class="wikitext-link">` | Render      | Becomes `<a>` when `resolveLink` returns `href` |
+| `[[Page\|label]]`             | Same, label is `label`                       | Render      | Namespace prefixes follow the parse result      |
+| `[https://example.com label]` | `<a>` with `rel` and `target`                | Render      | Only `http:`, `https:`, `mailto:`               |
+| Bare `https://…`              | `<a>` labelled with the URL                  | Render      |                                                 |
+| `[https://example.com]`       | `<a>` labelled `[N]`                         | Render      | Numbering is independent of references          |
+| `[[File:…]]`                  | `<span>` or `<figure>` placeholder           | Placeholder | `<img>` only after `resolveImage`               |
+| `<gallery>`                   | Placeholder set of file labels               | Placeholder | No images are loaded                            |
+| `<math>`                      | `<code>` formula source placeholder          | Placeholder | No KaTeX                                        |
+| `<imagemap>`                  | Block-level source card                      | Degrade     | No clickable hotspots                           |
 
 ## Templates and functions
 
-| Construct                                      | Default output                                   | Status      | Notes                                                         |
-| ---------------------------------------------- | ------------------------------------------------ | ----------- | ------------------------------------------------------------- |
-| `{{Template\|…}}`                              | `<details class="wtr-template">` or inline badge | Placeholder | Lists arguments; text comes from `labels.templateNotExpanded` |
-| Parser function `{{#if:…}}`                    | Placeholder structure                            | Placeholder | Explicitly marked as not evaluated                            |
-| Argument `{{{name\|default}}}`                 | Name and default value                           | Placeholder |                                                               |
-| Templates and functions supported by `/expand` | Expanded source is reparsed                      | Render      | Calls kept after a failure still render as placeholders       |
-| `#invoke`, Lua, `subst`                        | Source preserved                                 | Placeholder | Not executed; a diagnostic is recorded                        |
+| Construct                                      | Default output                                        | Status      | Notes                                                         |
+| ---------------------------------------------- | ----------------------------------------------------- | ----------- | ------------------------------------------------------------- |
+| `{{Template\|…}}`                              | `<details class="wikitext-template">` or inline badge | Placeholder | Lists arguments; text comes from `labels.templateNotExpanded` |
+| Parser function `{{#if:…}}`                    | Placeholder structure                                 | Placeholder | Explicitly marked as not evaluated                            |
+| Argument `{{{name\|default}}}`                 | Name and default value                                | Placeholder |                                                               |
+| Templates and functions supported by `/expand` | Expanded source is reparsed                           | Render      | Calls kept after a failure still render as placeholders       |
+| `#invoke`, Lua, `subst`                        | Source preserved                                      | Placeholder | Not executed; a diagnostic is recorded                        |
 
 Magic words inside templates, functions, and arguments do not affect TOC or category detection.
 
 ## HTML and extension tags
 
-| Construct                                         | Default output                                          | Status  | Notes                                                                                                          |
-| ------------------------------------------------- | ------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| Inline HTML (`b`, `i`, `u`, `span`, `code`, …)    | Corresponding elements                                  | Render  | Attributes are allowlisted                                                                                     |
-| Block-level HTML (`div`, `p`, `blockquote`, …)    | Corresponding elements                                  | Render  | May wrap headings; TOC position follows its block                                                              |
-| Void elements (`br`, `wbr`, `hr`)                 | Corresponding elements                                  | Render  |                                                                                                                |
-| `meta`, `link`                                    | No output                                               | Ignore  |                                                                                                                |
-| `script`, `style`, `iframe`, form controls, `svg` | Escaped text, or a readable hint when blocked           | Blocked | The default config does not parse these tags, so source stays text; if configured as HTML, the pair is dropped |
-| Unknown but not dangerous tags                    | Source card                                             | Degrade | Not rendered as real elements                                                                                  |
-| `<nowiki>`                                        | Plain text                                              | Render  | Links and templates are not parsed                                                                             |
-| `<pre>`                                           | Whitespace preserved                                    | Render  |                                                                                                                |
-| `<ref>`                                           | `<sup class="reference wtr-ref">` plus grouped endnotes | Render  | Named references are reused; `group` groups; duplicates produce diagnostics                                    |
-| `<references>`                                    | Marker                                                  | Render  | The matching group section is moved here; groups without markers stay at the end                               |
-| `<syntaxhighlight>`                               | `<pre><code class="language-*">` source                 | Render  | Emits a language class; no syntax highlighting                                                                 |
-| Other supported extensions                        | Handled per tag                                         | Render  | `semanticComponents.extension` can override                                                                    |
+| Construct                                         | Default output                                               | Status  | Notes                                                                                                          |
+| ------------------------------------------------- | ------------------------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------- |
+| Inline HTML (`b`, `i`, `u`, `span`, `code`, …)    | Corresponding elements                                       | Render  | Attributes are allowlisted                                                                                     |
+| Block-level HTML (`div`, `p`, `blockquote`, …)    | Corresponding elements                                       | Render  | May wrap headings; TOC position follows its block                                                              |
+| Void elements (`br`, `wbr`, `hr`)                 | Corresponding elements                                       | Render  |                                                                                                                |
+| `meta`, `link`                                    | No output                                                    | Ignore  |                                                                                                                |
+| `script`, `style`, `iframe`, form controls, `svg` | Escaped text, or a readable hint when blocked                | Blocked | The default config does not parse these tags, so source stays text; if configured as HTML, the pair is dropped |
+| Unknown but not dangerous tags                    | Source card                                                  | Degrade | Not rendered as real elements                                                                                  |
+| `<nowiki>`                                        | Plain text                                                   | Render  | Links and templates are not parsed                                                                             |
+| `<pre>`                                           | Whitespace preserved                                         | Render  |                                                                                                                |
+| `<ref>`                                           | `<sup class="reference wikitext-ref">` plus grouped endnotes | Render  | Named references are reused; `group` groups; duplicates produce diagnostics                                    |
+| `<references>`                                    | Marker                                                       | Render  | The matching group section is moved here; groups without markers stay at the end                               |
+| `<syntaxhighlight>`                               | `<pre><code class="language-*">` source                      | Render  | Emits a language class; no syntax highlighting                                                                 |
+| Other supported extensions                        | Handled per tag                                              | Render  | `semanticComponents.extension` can override                                                                    |
 
 ## Page-level structure
 
@@ -120,7 +120,7 @@ Magic words inside templates, functions, and arguments do not affect TOC or cate
 | ---------------------- | ------------------------------------------------------------------------------------------------- |
 | Table of contents      | `toc` adjusts the threshold; `__TOC__` sets the position; `__FORCETOC__` forces; `__NOTOC__` wins |
 | Reference section      | After the body and before categories by default; `<references/>` sets a group position            |
-| Categories             | Collected into `div.catlinks.wtr-categories` at the end                                           |
+| Categories             | Collected into `div.catlinks.wikitext-categories` at the end                                      |
 | Redirect               | First-line `#REDIRECT` renders a banner and skips the body                                        |
 | Unknown semantic nodes | Source card plus a diagnostic; the page keeps rendering                                           |
 

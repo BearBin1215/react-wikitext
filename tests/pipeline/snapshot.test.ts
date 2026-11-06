@@ -42,7 +42,7 @@ function modifyFirstFiller() {
       if (
         element.tagName === "td" &&
         Array.isArray(className) &&
-        className.includes("wtr-table__cell--filler")
+        className.includes("wikitext-table__cell--filler")
       ) {
         element.children?.push({ type: "text", value: "kept by plugin" });
         return true;

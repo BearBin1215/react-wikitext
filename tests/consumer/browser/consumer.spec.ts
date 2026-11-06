@@ -52,7 +52,7 @@ function expectParseResult(result: ConsumerResult): void {
 
 async function expectRootDom(page: Page): Promise<void> {
   await expect(page.locator("h2")).toHaveText("Head");
-  await expect(page.locator(".wtr-link").first()).toHaveText("label");
+  await expect(page.locator(".wikitext-link").first()).toHaveText("label");
   await expect(page.locator("table td").first()).toHaveText("a");
   await expect(page.locator("table td").nth(1)).toHaveText("b");
 }
@@ -134,7 +134,7 @@ test.describe("@consumer view", () => {
     const errors = collectErrors(page);
     await page.goto("/view-vite/");
     await expect(page.locator("h2")).toHaveText("Head");
-    await expect(page.locator(".wtr-link").first()).toHaveText("label");
+    await expect(page.locator(".wikitext-link").first()).toHaveText("label");
     expect(await parserInitialized(page)).toBe(false);
     expect(errors).toEqual([]);
   });
@@ -143,7 +143,7 @@ test.describe("@consumer view", () => {
     const errors = collectErrors(page);
     await page.goto("/view-webpack/");
     await expect(page.locator("h2")).toHaveText("Head");
-    await expect(page.locator(".wtr-link").first()).toHaveText("label");
+    await expect(page.locator(".wikitext-link").first()).toHaveText("label");
     expect(await parserInitialized(page)).toBe(false);
     expect(errors).toEqual([]);
   });

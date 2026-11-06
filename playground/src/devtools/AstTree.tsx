@@ -194,12 +194,12 @@ export function AstTree({
   };
 
   const focusId = selectedId ?? root?.id;
-  const classes = className ? `wtr-tree ${className}` : "wtr-tree";
+  const classes = className ? `wikitext-tree ${className}` : "wikitext-tree";
 
   if (!root) {
     return (
       <div className={classes} ref={container}>
-        <p className="wtr-tree__empty">{resolved.noSyntax}</p>
+        <p className="wikitext-tree__empty">{resolved.noSyntax}</p>
       </div>
     );
   }
@@ -221,13 +221,13 @@ export function AstTree({
         key={node.id}
       >
         <div
-          className={`wtr-tree__row${isSelected ? " is-selected" : ""}`}
+          className={`wikitext-tree__row${isSelected ? " is-selected" : ""}`}
           data-tree-node-id={node.id}
         >
           {hasChildren ? (
             <button
               type="button"
-              className="wtr-tree__toggle"
+              className="wikitext-tree__toggle"
               aria-expanded={isExpanded}
               aria-label={`${isExpanded ? resolved.collapse : resolved.expand} ${node.type}`}
               tabIndex={-1}
@@ -236,31 +236,31 @@ export function AstTree({
               {isExpanded ? "−" : "+"}
             </button>
           ) : (
-            <span className="wtr-tree__spacer" aria-hidden="true" />
+            <span className="wikitext-tree__spacer" aria-hidden="true" />
           )}
           <button
             type="button"
-            className="wtr-tree__label"
+            className="wikitext-tree__label"
             data-tree-label={node.id}
             tabIndex={node.id === focusId ? 0 : -1}
             aria-current={isSelected ? "true" : undefined}
             onClick={() => select(node)}
             title={nodeSource(document, node).slice(0, 200)}
           >
-            <span className="wtr-tree__type">{node.type}</span>
+            <span className="wikitext-tree__type">{node.type}</span>
             {range ? (
-              <span className="wtr-tree__range">
+              <span className="wikitext-tree__range">
                 [{range[0]}, {range[1]})
               </span>
             ) : (
-              <span className="wtr-tree__range">{resolved.noRange}</span>
+              <span className="wikitext-tree__range">{resolved.noRange}</span>
             )}
-            {extra ? <span className="wtr-tree__name">{extra}</span> : null}
+            {extra ? <span className="wikitext-tree__name">{extra}</span> : null}
           </button>
         </div>
         {hasChildren && isExpanded ? (
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-          <ul role="group" className="wtr-tree__children">
+          <ul role="group" className="wikitext-tree__children">
             {children.map(renderNode)}
           </ul>
         ) : null}
@@ -270,40 +270,42 @@ export function AstTree({
 
   return (
     <div className={classes} ref={container}>
-      <div className="wtr-tree__toolbar">
-        <label className="wtr-tree__search-label" htmlFor={searchId}>
+      <div className="wikitext-tree__toolbar">
+        <label className="wikitext-tree__search-label" htmlFor={searchId}>
           {resolved.searchLabel}
         </label>
         <input
           id={searchId}
-          className="wtr-tree__search"
+          className="wikitext-tree__search"
           type="search"
           value={search}
           placeholder={resolved.searchPlaceholder}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <button type="button" className="wtr-tree__action" onClick={expandAll}>
+        <button type="button" className="wikitext-tree__action" onClick={expandAll}>
           {resolved.expandAll}
         </button>
-        <button type="button" className="wtr-tree__action" onClick={collapseAll}>
+        <button type="button" className="wikitext-tree__action" onClick={collapseAll}>
           {resolved.collapseAll}
         </button>
       </div>
       {search.trim() ? (
-        <ul className="wtr-tree__results">
-          {results.length === 0 ? <li className="wtr-tree__empty">{resolved.noResults}</li> : null}
+        <ul className="wikitext-tree__results">
+          {results.length === 0 ? (
+            <li className="wikitext-tree__empty">{resolved.noResults}</li>
+          ) : null}
           {results.map((result) => (
             <li key={result.node.id}>
               <button
                 type="button"
-                className="wtr-tree__result"
+                className="wikitext-tree__result"
                 onClick={() => {
                   setSearch("");
                   select(result.node);
                 }}
               >
-                <span className="wtr-tree__type">{result.node.type}</span>
-                <span className="wtr-tree__snippet">
+                <span className="wikitext-tree__type">{result.node.type}</span>
+                <span className="wikitext-tree__snippet">
                   {result.source.replace(/\s+/gu, " ").slice(0, 80)}
                 </span>
               </button>
@@ -313,7 +315,7 @@ export function AstTree({
       ) : (
         <ul
           role="tree"
-          className="wtr-tree__root"
+          className="wikitext-tree__root"
           aria-label={tree === "syntax" ? resolved.syntaxTree : resolved.treeLabel}
           onKeyDown={handleKeyDown}
         >

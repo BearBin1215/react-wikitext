@@ -28,7 +28,7 @@ if (/require\(["']react["']\)/u.test(source) || /from\s+["']react["']/u.test(sou
 }
 
 const css = cssFiles.map((file) => readFileSync(join(dist, file), "utf8")).join("\n");
-if (!css.includes("wtr-view")) {
+if (!css.includes("wikitext-view")) {
   throw new Error("webpack consumer did not bundle the stylesheet entry.");
 }
 

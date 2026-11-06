@@ -24,7 +24,7 @@ function resolveInstancePrefix(
   if (strategy !== "instance") {
     return "";
   }
-  const fallback = `wtr-${reactId.replace(/[^A-Za-z0-9_-]/gu, "")}-`;
+  const fallback = `wikitext-${reactId.replace(/[^A-Za-z0-9_-]/gu, "")}-`;
   if (idPrefix === undefined) {
     return fallback;
   }
@@ -154,7 +154,7 @@ export function WikitextView({
   const containerClassName = containerRest.className;
   delete containerRest.className;
   delete containerRest.children;
-  const rootClassName = ["wtr-view", className, containerClassName].filter(Boolean).join(" ");
+  const rootClassName = ["wikitext-view", className, containerClassName].filter(Boolean).join(" ");
 
   const blocks = useMemo(
     () =>

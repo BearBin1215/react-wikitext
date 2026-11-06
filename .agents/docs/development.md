@@ -38,7 +38,7 @@ playground 的约束：
 
 ## 3. 代码与样式
 
-- 库样式只定义 `.wtr-*` 与受控的 MediaWiki 兼容 class；playground 的布局样式只定义 `.pg-*`，可以在布局选择器中引用库类，但不重定义库样式。
+- 库样式只定义 `.wikitext-*` 与受控的 MediaWiki 兼容 class；playground 的布局样式只定义 `.pg-*`，可以在布局选择器中引用库类，但不重定义库样式。
 - oxlint 不替代类型检查，两者都要通过。
 
 ## 4. 测试分工

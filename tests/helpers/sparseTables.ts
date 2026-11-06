@@ -1,4 +1,4 @@
-const FILLER_CLASS = "wtr-table__cell--filler";
+const FILLER_CLASS = "wikitext-table__cell--filler";
 
 /** 生成会触发 HAST 节点预算的稀疏语义表格样本。 */
 export function sparseTableSource(tables = 45): string {

@@ -233,3 +233,11 @@
 **约束**：`labels` 仍写入渲染快照，换文案需要重新准备；解析快照与渲染快照仍是两个类型，未引入 `kind` 判别字段；`document` 属性名未改。其余未实施方向见[路线图](./roadmap.md#3-api-审阅留下的方向)。
 
 **被否方案**：只做改名而不改变入口模型；把 `labels` 移出快照（服务端与客户端需要各自提供同一份文案，与当前快照自洽性冲突）；把 `<Wikitext>` 改成默认异步（需要 React 19 的 `use()`，与当前 React 18.2 下限冲突）。
+
+## 20. 类名与 CSS 变量前缀统一为 `wikitext-`（0.2.0）
+
+**决策**：自有类名、CSS 变量与内部 data 标记的前缀从 `wtr-` 改为 `wikitext-`，即 `.wtr-view` → `.wikitext-view`、`--wtr-text` → `--wikitext-text`、`[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`、默认标题锚点前缀 `wtr-heading-` → `wikitext-heading-`。内部标记 `dataWtrToc` / `dataWtrReferences` 同步改为 `dataWikitextToc` / `dataWikitextReferences`。不保留旧前缀别名。
+
+**理由**：`wtr` 是前身名 `wikitext-ast-renderer` 的首字母缩写；仓库早期 `README.md` 与 `.agents/docs/api.md` 曾把它当作包名和导入路径，`446c2cc` 统一措辞时只改了文字，标识符未同步。`wikitext-` 与包名核心词一致，读者不需要记第二套缩写，也不绑定 React，将来非 React 视图可以复用同一份样式。`rw-` 语义过载（read-write、rewrite、row），`rwt-` 与 `wtr-` 只差字母序、迁移期最容易肉眼混淆，`wt-` 过于通用，`wx-` 在中文语境与微信 API 冲突，均被否。类名是高度重复的固定字符串，gzip 后的长度代价可忽略。
+
+**约束**：`wikitext-` 同时覆盖类名、CSS 变量与 data 属性，宿主覆盖变量和深色主题选择器需要一并改写。class 集合仍是公开 DOM 承诺的一部分，改名属于 0.x 次版本的破坏性变更；`mw-`、`catlinks`、`reference` 等 MediaWiki 兼容类名不变。内部 data 标记与 Parsoid 的 `data-wikitext` 共享词根，但完整名称不同，清洗仍以精确名单排除源码注入。

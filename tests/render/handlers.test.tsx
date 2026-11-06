@@ -13,7 +13,7 @@ describe("HAST handlers", () => {
     const html = render("before {{Tpl}} after", {
       handlers: { template: () => undefined },
     });
-    expect(html).toContain("wtr-template");
+    expect(html).toContain("wikitext-template");
     expect(html).toContain("Template not expanded");
   });
 

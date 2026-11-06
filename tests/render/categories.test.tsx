@@ -6,7 +6,7 @@ import { WikitextView } from "@/view";
 import { prepare, renderView } from "../helpers/parse";
 
 function categoryFooter(html: string): string {
-  const start = html.indexOf('class="catlinks wtr-categories"');
+  const start = html.indexOf('class="catlinks wikitext-categories"');
   return start < 0 ? "" : html.slice(start);
 }
 
@@ -26,10 +26,10 @@ describe("category footer", () => {
     expect(footer).toContain(">中文<");
     expect(footer).not.toContain("Sort key");
     const dom = new JSDOM(html);
-    const paragraph = dom.window.document.querySelector("p.wtr-paragraph");
+    const paragraph = dom.window.document.querySelector("p.wikitext-paragraph");
     expect(paragraph?.textContent).toContain("before");
     expect(paragraph?.textContent).toContain("after");
-    expect(dom.window.document.querySelectorAll(".wtr-categories__item")).toHaveLength(3);
+    expect(dom.window.document.querySelectorAll(".wikitext-categories__item")).toHaveLength(3);
   });
 
   it("does not render categories from unexpanded template parameters", () => {

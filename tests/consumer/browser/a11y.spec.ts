@@ -120,9 +120,9 @@ test.describe("@a11y", () => {
   }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/a11y/");
-    await expect(page.locator(".wtr-view").first()).toBeVisible();
-    await expect(page.locator(".wtr-toc").first()).toBeVisible();
-    await expect(page.locator(".wtr-references").first()).toBeVisible();
+    await expect(page.locator(".wikitext-view").first()).toBeVisible();
+    await expect(page.locator(".wikitext-toc").first()).toBeVisible();
+    await expect(page.locator(".wikitext-references").first()).toBeVisible();
     await scan(page, "light");
     await testInfo.attach("a11y-light", {
       path: resolve(EVIDENCE_DIR, "light.json"),
@@ -134,7 +134,7 @@ test.describe("@a11y", () => {
   test("explicit dark theme has no WCAG 2.1 A/AA violations", async ({ page }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/a11y/dark.html");
-    const main = page.locator("main[data-wtr-theme='dark']");
+    const main = page.locator("main[data-wikitext-theme='dark']");
     await expect(main).toBeVisible();
     await expect
       .poll(() => main.evaluate((element) => getComputedStyle(element).backgroundColor))
@@ -150,27 +150,29 @@ test.describe("@a11y", () => {
   test("keyboard reaches TOC, reference and backlink with visible focus", async ({ page }) => {
     const errors = collectErrors(page);
     await page.goto("/a11y/");
-    await expect(page.locator(".wtr-toc").first()).toBeVisible();
+    await expect(page.locator(".wikitext-toc").first()).toBeVisible();
     const placeholder = page
-      .locator(".wtr-file")
-      .filter({ has: page.locator(".wtr-file__label") })
+      .locator(".wikitext-file")
+      .filter({ has: page.locator(".wikitext-file__label") })
       .first();
     await expect(placeholder).toBeVisible();
     await expect(placeholder.locator("a, button, [role='button'], [tabindex]")).toHaveCount(0);
 
-    const toc = await tabUntil(page, (value) => value.className.includes("wtr-toc__link"));
+    const toc = await tabUntil(page, (value) => value.className.includes("wikitext-toc__link"));
     expect(toc.outlineStyle).not.toBe("none");
     expect(toc.href).toMatch(/^#/u);
     await page.keyboard.press("Enter");
     await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toBe(toc.href);
 
-    const reference = await tabUntil(page, (value) => value.className.includes("wtr-ref__link"));
+    const reference = await tabUntil(page, (value) =>
+      value.className.includes("wikitext-ref__link"),
+    );
     expect(reference.outlineStyle).not.toBe("none");
     await page.keyboard.press("Enter");
     await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toMatch(/cite_note-/u);
 
     const backlink = await tabUntil(page, (value) =>
-      value.className.includes("wtr-references__backlink"),
+      value.className.includes("wikitext-references__backlink"),
     );
     expect(backlink.outlineStyle).not.toBe("none");
     await page.keyboard.press("Enter");

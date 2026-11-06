@@ -69,7 +69,7 @@
   font-size: 15px;
 }
 
-.home-example__preview .wtr-view {
+.home-example__preview .wikitext-view {
   font-size: 15px;
 }
 
@@ -99,14 +99,14 @@
   width: 66%;
 }
 
-html.dark .home-example__preview .wtr-view {
-  --wtr-text: #e6edf3;
-  --wtr-muted: #8b949e;
-  --wtr-border: #30363d;
-  --wtr-accent: #58a6ff;
-  --wtr-accent-soft: #172a45;
-  --wtr-placeholder-bg: #161b22;
-  --wtr-danger: #ff7b72;
+html.dark .home-example__preview .wikitext-view {
+  --wikitext-text: #e6edf3;
+  --wikitext-muted: #8b949e;
+  --wikitext-border: #30363d;
+  --wikitext-accent: #58a6ff;
+  --wikitext-accent-soft: #172a45;
+  --wikitext-placeholder-bg: #161b22;
+  --wikitext-danger: #ff7b72;
 }
 
 @media (min-width: 900px) {

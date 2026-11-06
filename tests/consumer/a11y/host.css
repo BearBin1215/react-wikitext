@@ -16,7 +16,7 @@ main {
   padding: 2rem 1.5rem 4rem;
 }
 
-main[data-wtr-theme="dark"] {
+main[data-wikitext-theme="dark"] {
   color-scheme: dark;
   background: #0d1117;
   color: #e6edf3;
@@ -24,7 +24,7 @@ main[data-wtr-theme="dark"] {
 
 section + section {
   margin-top: 3rem;
-  border-top: 1px solid var(--wtr-border);
+  border-top: 1px solid var(--wikitext-border);
   padding-top: 1.5rem;
 }
 

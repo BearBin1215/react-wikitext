@@ -11,12 +11,12 @@ By default, the library does not map internal wiki links to your site's routes, 
 
 ### Default behavior
 
-| Link type                               | Default output                                         |
-| --------------------------------------- | ------------------------------------------------------ |
-| Internal `[[Page]]`                     | Non-navigable `<span class="wtr-link">` with a `title` |
-| External with label `[https://… label]` | Sanitized `<a>` whose label is `label`                 |
-| Bare external `https://…`               | `<a>` whose label is the URL text                      |
-| Unlabeled external `[https://…]`        | `<a>` with `[N]` in document order                     |
+| Link type                               | Default output                                              |
+| --------------------------------------- | ----------------------------------------------------------- |
+| Internal `[[Page]]`                     | Non-navigable `<span class="wikitext-link">` with a `title` |
+| External with label `[https://… label]` | Sanitized `<a>` whose label is `label`                      |
+| Bare external `https://…`               | `<a>` whose label is the URL text                           |
+| Unlabeled external `[https://…]`        | `<a>` with `[N]` in document order                          |
 
 External links allow only `http:`, `https:`, and `mailto:`; addresses that cannot be parsed safely degrade to blocked, readable text. Absolute HTTP(S) / mailto links default to `target="_blank"` and `rel="nofollow noopener noreferrer"`.
 
@@ -83,7 +83,7 @@ export default function Demo() {
 
 ### Default behavior
 
-File nodes render as a placeholder plus caption: the placeholder is `labels.filePlaceholder` plus the file name, and the caption is still emitted as a `figcaption` or `span.wtr-file__caption`. Without `resolveImage`, the library never produces `<img>` and never requests an image URL.
+File nodes render as a placeholder plus caption: the placeholder is `labels.filePlaceholder` plus the file name, and the caption is still emitted as a `figcaption` or `span.wikitext-file__caption`. Without `resolveImage`, the library never produces `<img>` and never requests an image URL.
 
 ### resolveImage
 

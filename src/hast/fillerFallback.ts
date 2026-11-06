@@ -7,8 +7,8 @@ import type {
 } from "../ast/model";
 import { flattenNodes } from "../ast/query";
 
-const FILLER_CLASS = "wtr-table__cell--filler";
-const CELL_CLASS = "wtr-table__cell";
+const FILLER_CLASS = "wikitext-table__cell--filler";
+const CELL_CLASS = "wikitext-table__cell";
 
 interface FillerOmissionResult {
   readonly omitted: number;

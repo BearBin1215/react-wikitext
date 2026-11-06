@@ -26,7 +26,7 @@ function ThrowingTable(): never {
 function App({ dark }: { readonly dark: boolean }) {
   return createElement(
     "main",
-    dark ? { "data-wtr-theme": "dark" } : {},
+    dark ? { "data-wikitext-theme": "dark" } : {},
     createElement("h1", { className: "host-title" }, "Accessibility fixture"),
     createElement(
       "section",

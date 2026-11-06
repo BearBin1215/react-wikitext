@@ -11,12 +11,12 @@ description: 用 resolveLink 与 resolveImage 接入站内路由、外部链接�
 
 ### 默认行为
 
-| 链接类型                       | 默认输出                                               |
-| ------------------------------ | ------------------------------------------------------ |
-| 内部链接 `[[Page]]`            | 无法导航的 `<span class="wtr-link">`，`title` 为页面名 |
-| 带标签外链 `[https://… label]` | 经过安全校验的 `<a>`，标签为 `label`                   |
-| 裸外链 `https://…`             | `<a>`，标签为 URL 文本                                 |
-| 无标签外链 `[https://…]`       | `<a>`，标签按文档顺序生成 `[N]`                        |
+| 链接类型                       | 默认输出                                                    |
+| ------------------------------ | ----------------------------------------------------------- |
+| 内部链接 `[[Page]]`            | 无法导航的 `<span class="wikitext-link">`，`title` 为页面名 |
+| 带标签外链 `[https://… label]` | 经过安全校验的 `<a>`，标签为 `label`                        |
+| 裸外链 `https://…`             | `<a>`，标签为 URL 文本                                      |
+| 无标签外链 `[https://…]`       | `<a>`，标签按文档顺序生成 `[N]`                             |
 
 外链只允许 `http:`、`https:`、`mailto:`；无法安全解析的地址降级为被拦截的可读文本。绝对 HTTP(S) / mailto 外链默认带 `target="_blank"` 与 `rel="nofollow noopener noreferrer"`。
 
@@ -85,7 +85,7 @@ export default function Demo() {
 
 ### 默认行为
 
-文件节点默认渲染为占位加说明文字：占位由 `labels.filePlaceholder` 与文件名组成，说明文字仍然作为 `figcaption` 或 `span.wtr-file__caption` 输出。没有 `resolveImage` 时不会生成 `<img>`，库也不会请求任何图片地址。
+文件节点默认渲染为占位加说明文字：占位由 `labels.filePlaceholder` 与文件名组成，说明文字仍然作为 `figcaption` 或 `span.wikitext-file__caption` 输出。没有 `resolveImage` 时不会生成 `<img>`，库也不会请求任何图片地址。
 
 ### resolveImage
 

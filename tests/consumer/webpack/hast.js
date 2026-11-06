@@ -48,7 +48,7 @@ export function classNames(node) {
 export function summarize(root) {
   const heading = findElement(root, (element) => element.tagName === "h2");
   const paragraph = findElement(root, (element) => element.tagName === "p");
-  const link = findElement(root, (element) => classNames(element).includes("wtr-link"));
+  const link = findElement(root, (element) => classNames(element).includes("wikitext-link"));
   const table = findElement(root, (element) => element.tagName === "table");
   return {
     heading: heading ? textContent(heading) : null,

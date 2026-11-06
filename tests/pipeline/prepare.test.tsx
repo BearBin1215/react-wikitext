@@ -278,7 +278,7 @@ describe("prepare pipeline", () => {
       JSON.stringify(serializeWikitextRenderDocument(prepareWikitext(parse("text")))),
     );
     serialized.hast.children[0].properties = {
-      className: ["wtr-paragraph"],
+      className: ["wikitext-paragraph"],
       onclick: "alert(1)",
     };
     serialized.hast.children.push(
@@ -439,7 +439,7 @@ describe("prepare pipeline", () => {
         callout: () => ({
           type: "element",
           tagName: "span",
-          properties: { className: ["wtr-callout"] },
+          properties: { className: ["wikitext-callout"] },
           children: [{ type: "text", value: "handled" }],
         }),
       },

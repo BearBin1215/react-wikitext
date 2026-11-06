@@ -46,7 +46,7 @@ describe("Wikitext source component", () => {
       <Wikitext source="x" className="custom" containerProps={{ id: "host" }} />,
     );
     const host = container.querySelector("#host");
-    expect(host?.className).toBe("wtr-view custom");
+    expect(host?.className).toBe("wikitext-view custom");
     expect(host?.textContent).toBe("x");
   });
 

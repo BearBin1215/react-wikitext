@@ -165,7 +165,7 @@ describe("custom adapter integration", () => {
       const html = renderToStaticMarkup(createElement(view.WikitextView, { document: prepared }));
       expect(html).toContain("<h2");
       expect(html).toContain("Demo");
-      expect(html).toContain('class="wtr-link"');
+      expect(html).toContain('class="wikitext-link"');
       expect(html).toContain("label");
       expect((globalThis as { Parser?: unknown }).Parser).toBeUndefined();
     } finally {

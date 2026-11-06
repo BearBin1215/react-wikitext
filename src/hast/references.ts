@@ -1,13 +1,13 @@
 /** 文末引用列表的 class；最终整理据此写入条目 id。 */
-export const REFERENCE_LIST_CLASS = "wtr-references__list";
+export const REFERENCE_LIST_CLASS = "wikitext-references__list";
 /** 引用区的 class；每个分组一个引用区。 */
-export const REFERENCE_SECTION_CLASS = "wtr-references";
+export const REFERENCE_SECTION_CLASS = "wikitext-references";
 /** `<references>` 占位节点的 class；最终整理替换为对应分组引用区。 */
-export const REFERENCE_PLACEHOLDER_CLASS = "wtr-references-placeholder";
+export const REFERENCE_PLACEHOLDER_CLASS = "wikitext-references-placeholder";
 /** 引用分组属性；同时用于占位与生成的引用区。 */
-export const REFERENCE_GROUP_PROPERTY = "dataWtrReferences";
+export const REFERENCE_GROUP_PROPERTY = "dataWikitextReferences";
 /** 注释项回链的 class；恢复快照时先移除旧回链再重建。 */
-export const REFERENCE_BACKLINK_CLASS = "wtr-references__backlink";
+export const REFERENCE_BACKLINK_CLASS = "wikitext-references__backlink";
 
 /** 引用分组名；空分组使用默认组。 */
 export function referenceGroupName(group: string | undefined): string {

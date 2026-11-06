@@ -26,31 +26,31 @@ function render(source: string): string {
 describe("extension tags", () => {
   it("renders nowiki as decoded plain text without parsing markup", () => {
     const html = render("<nowiki>[[x]] &amp; {{y}}</nowiki>");
-    expect(html).toContain('class="wtr-nowiki"');
+    expect(html).toContain('class="wikitext-nowiki"');
     expect(html).toContain("[[x]] &amp; {{y}}");
-    expect(html).not.toContain('class="wtr-link"');
+    expect(html).not.toContain('class="wikitext-link"');
   });
 
   it("renders pre with preserved whitespace", () => {
     const html = render("<pre>line 1\n  line 2</pre>");
-    expect(html).toContain('<pre class="wtr-ext-pre"');
+    expect(html).toContain('<pre class="wikitext-ext-pre"');
     expect(html).toContain("line 1\n  line 2");
   });
 
   it("renders math and syntaxhighlight placeholders", () => {
     const math = render("<math>x^2</math>");
-    expect(math).toContain('class="wtr-math"');
+    expect(math).toContain('class="wikitext-math"');
     expect(math).toContain("x^2");
     const code = render('<syntaxhighlight lang="js">const a = 1;</syntaxhighlight>');
-    expect(code).toContain('class="wtr-ext-code language-js"');
+    expect(code).toContain('class="wikitext-ext-code language-js"');
     expect(code).toContain('class="language-js"');
     expect(code).toContain("const a = 1;");
   });
 
   it("renders gallery placeholders as caption cards", () => {
     const html = render("<gallery>File:A.png|Caption A\nFile:B.png</gallery>");
-    expect(html).toContain('class="wtr-gallery"');
-    expect(html.match(/class="wtr-gallery__item"/gu)).toHaveLength(2);
+    expect(html).toContain('class="wikitext-gallery"');
+    expect(html.match(/class="wikitext-gallery__item"/gu)).toHaveLength(2);
     expect(html).toContain("A.png");
     expect(html).toContain("B.png");
     expect(html).toContain("Caption A");
@@ -67,21 +67,21 @@ describe("extension tags", () => {
     expect(gallery).toContain("<figcaption");
 
     const poem = render("<poem>first\nsecond\n\nthird</poem>");
-    expect(poem).toContain('class="wtr-poem"');
-    expect(poem.match(/class="wtr-poem__stanza"/gu)).toHaveLength(2);
+    expect(poem).toContain('class="wikitext-poem"');
+    expect(poem.match(/class="wikitext-poem__stanza"/gu)).toHaveLength(2);
   });
 
   it("renders unknown extensions as block source cards when standalone", () => {
     const html = render('<templatestyles src="x"/>');
     expect(html).toContain("Unsupported node: ext");
     expect(html).toContain("templatestyles");
-    expect(html).toContain('class="wtr-unknown wtr-unknown--block"');
+    expect(html).toContain('class="wikitext-unknown wikitext-unknown--block"');
   });
 
   it("keeps unsupported inline extensions inside the paragraph", () => {
     const html = render("before <templatedata>x</templatedata> after");
-    expect(html).toContain('class="wtr-paragraph"');
-    expect(html).toContain('class="wtr-unknown wtr-unknown--inline"');
+    expect(html).toContain('class="wikitext-paragraph"');
+    expect(html).toContain('class="wikitext-unknown wikitext-unknown--inline"');
     expect(html).toContain("&lt;templatedata&gt;x&lt;/templatedata&gt;");
   });
 
@@ -103,7 +103,7 @@ describe("extension tags", () => {
       ),
     });
     expect(html).toContain('data-custom-extension="math"');
-    expect(html).not.toContain('class="wtr-math"');
+    expect(html).not.toContain('class="wikitext-math"');
   });
 
   it("bridges extraTags and plugin tags through components", () => {

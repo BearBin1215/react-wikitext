@@ -14,7 +14,7 @@ const FOUR_HEADINGS = "== A ==\n=== A1 ===\n== B ==\n== C ==";
 
 function tocOf(html: string): string {
   const dom = new JSDOM(html);
-  return dom.window.document.querySelector(".wtr-toc")?.outerHTML ?? "";
+  return dom.window.document.querySelector(".wikitext-toc")?.outerHTML ?? "";
 }
 
 describe("table of contents", () => {
@@ -30,9 +30,9 @@ describe("table of contents", () => {
     expect(toc).toContain('role="list"');
     expect(toc).toContain("toclevel-1");
     expect(toc).toContain("toclevel-2");
-    expect(toc).toContain('class="tocnumber wtr-toc__number">1</span>');
-    expect(toc).toContain('class="tocnumber wtr-toc__number">1.1</span>');
-    expect(html.indexOf('class="toc wtr-toc"')).toBeLessThan(html.indexOf('id="A"'));
+    expect(toc).toContain('class="tocnumber wikitext-toc__number">1</span>');
+    expect(toc).toContain('class="tocnumber wikitext-toc__number">1.1</span>');
+    expect(html.indexOf('class="toc wikitext-toc"')).toBeLessThan(html.indexOf('id="A"'));
   });
 
   it("keeps a TOC when __TOC__ sits inside another element", () => {
@@ -43,41 +43,41 @@ describe("table of contents", () => {
     ];
     for (const source of sources) {
       const html = renderView(source);
-      expect(html.match(/class="toc wtr-toc"/gu)).toHaveLength(1);
+      expect(html.match(/class="toc wikitext-toc"/gu)).toHaveLength(1);
       expect(html).toContain('href="#A"');
     }
   });
 
   it("generates an automatic TOC for headings wrapped in a block element", () => {
     const html = renderView(`<div>\n== A ==\n</div>\n=== B ===\n== C ==\n== D ==`);
-    expect(html.match(/class="toc wtr-toc"/gu)).toHaveLength(1);
+    expect(html.match(/class="toc wikitext-toc"/gu)).toHaveLength(1);
     expect(html).toContain('href="#A"');
   });
 
   it("does not auto-generate a TOC below the heading threshold", () => {
-    expect(renderView("== A ==\n== B ==\n== C ==")).not.toContain("wtr-toc");
+    expect(renderView("== A ==\n== B ==\n== C ==")).not.toContain("wikitext-toc");
   });
 
   it("places an explicit TOC at its source position", () => {
     const html = renderView("lead\n\n__TOC__\n\n== A ==\n== B ==");
-    expect(html).toContain('class="toc wtr-toc"');
-    expect(html.indexOf("lead")).toBeLessThan(html.indexOf('class="toc wtr-toc"'));
-    expect(html.indexOf('class="toc wtr-toc"')).toBeLessThan(html.indexOf('id="A"'));
+    expect(html).toContain('class="toc wikitext-toc"');
+    expect(html.indexOf("lead")).toBeLessThan(html.indexOf('class="toc wikitext-toc"'));
+    expect(html.indexOf('class="toc wikitext-toc"')).toBeLessThan(html.indexOf('id="A"'));
   });
 
   it("lets __NOTOC__ suppress automatic and explicit TOCs", () => {
-    expect(renderView(`${FOUR_HEADINGS}\n\n__NOTOC__`)).not.toContain("wtr-toc");
-    expect(renderView(`__TOC__\n\n${FOUR_HEADINGS}\n\n__NOTOC__`)).not.toContain("wtr-toc");
+    expect(renderView(`${FOUR_HEADINGS}\n\n__NOTOC__`)).not.toContain("wikitext-toc");
+    expect(renderView(`__TOC__\n\n${FOUR_HEADINGS}\n\n__NOTOC__`)).not.toContain("wikitext-toc");
   });
 
   it("ignores magic words inside unexpanded templates", () => {
-    expect(renderView("{{T|__TOC__|__NOTOC__}}\n\n== A ==\n== B ==")).not.toContain("wtr-toc");
+    expect(renderView("{{T|__TOC__|__NOTOC__}}\n\n== A ==\n== B ==")).not.toContain("wikitext-toc");
   });
 
   it("does not treat source data attributes as TOC markers", () => {
-    const html = renderView('<table data-wtr-toc="toc"><tr><td>x</td></tr></table>');
-    expect(html).toContain("wtr-html-table");
-    expect(html).not.toContain("wtr-toc");
+    const html = renderView('<table data-wikitext-toc="toc"><tr><td>x</td></tr></table>');
+    expect(html).toContain("wikitext-html-table");
+    expect(html).not.toContain("wikitext-toc");
   });
 
   it("maps TOC links through the instance prefix", () => {
@@ -93,7 +93,7 @@ describe("table of contents", () => {
   it("renders plain TOC labels when heading ids are disabled", () => {
     const html = renderView("__TOC__\n\n== A ==\n== B ==", {}, { headingIdStrategy: "none" });
     const toc = tocOf(html);
-    expect(toc).toContain('class="wtr-toc__link"');
+    expect(toc).toContain('class="wikitext-toc__link"');
     expect(toc).not.toContain("<a");
   });
 
@@ -101,7 +101,7 @@ describe("table of contents", () => {
     const prepared = prepare(FOUR_HEADINGS, { headingIdStrategy: "mediawiki" });
     const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
     const html = renderToStaticMarkup(<WikitextView document={restored} />);
-    expect(html.match(/class="toc wtr-toc"/gu)).toHaveLength(1);
+    expect(html.match(/class="toc wikitext-toc"/gu)).toHaveLength(1);
     expect(html).toContain('href="#A"');
   });
 
@@ -112,19 +112,27 @@ describe("table of contents", () => {
     });
     const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
     const html = renderToStaticMarkup(<WikitextView document={restored} />);
-    expect(html).toContain("wtr-toc--columns-3");
+    expect(html).toContain("wikitext-toc--columns-3");
   });
 
   it("honors the toc option for thresholds, columns and disabling", () => {
-    expect(renderView(FOUR_HEADINGS)).toContain("wtr-toc");
-    expect(renderView(FOUR_HEADINGS, {}, { toc: { minHeadings: 5 } })).not.toContain("wtr-toc");
-    expect(renderView("== A ==\n== B ==", {}, { toc: { minHeadings: 2 } })).toContain("wtr-toc");
-    expect(renderView(FOUR_HEADINGS, {}, { toc: { columns: 3 } })).toContain("wtr-toc--columns-3");
-    expect(renderView(`__TOC__\n\n${FOUR_HEADINGS}`, {}, { toc: false })).not.toContain("wtr-toc");
+    expect(renderView(FOUR_HEADINGS)).toContain("wikitext-toc");
+    expect(renderView(FOUR_HEADINGS, {}, { toc: { minHeadings: 5 } })).not.toContain(
+      "wikitext-toc",
+    );
+    expect(renderView("== A ==\n== B ==", {}, { toc: { minHeadings: 2 } })).toContain(
+      "wikitext-toc",
+    );
+    expect(renderView(FOUR_HEADINGS, {}, { toc: { columns: 3 } })).toContain(
+      "wikitext-toc--columns-3",
+    );
+    expect(renderView(`__TOC__\n\n${FOUR_HEADINGS}`, {}, { toc: false })).not.toContain(
+      "wikitext-toc",
+    );
   });
 
   it("supports __FORCETOC__ without the default threshold", () => {
-    expect(renderView("== A ==\n== B ==\n__FORCETOC__")).toContain("wtr-toc");
+    expect(renderView("== A ==\n== B ==\n__FORCETOC__")).toContain("wikitext-toc");
   });
 
   it("uses the final heading list for the automatic TOC threshold", () => {
@@ -136,7 +144,7 @@ describe("table of contents", () => {
             tree.children.push({
               type: "element",
               tagName: "h2",
-              properties: { className: ["wtr-heading"] },
+              properties: { className: ["wikitext-heading"] },
               children: [{ type: "text", value: text }],
             });
           }
@@ -144,7 +152,7 @@ describe("table of contents", () => {
       ],
     });
     const html = renderToStaticMarkup(<WikitextView document={document} />);
-    expect(html).toContain("wtr-toc");
+    expect(html).toContain("wikitext-toc");
     expect(html).toContain('href="#C"');
     expect(html).toContain('href="#D"');
   });

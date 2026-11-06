@@ -5,7 +5,11 @@ description: Theme variables, labels, heading anchors, plugins, and component ov
 
 # Styling and Components
 
-The library emits stable `wtr-*` classes and a set of CSS variables. Page structure, labels, heading anchors, and component appearance can all be adjusted without patching the library.
+The library emits stable `wikitext-*` classes and a set of CSS variables. Page structure, labels, heading anchors, and component appearance can all be adjusted without patching the library.
+
+:::warning Upgrading from 0.1
+Starting with 0.2.0 the prefix for library classes, CSS variables, and data attributes changed from `wtr-` to `wikitext-`: `.wtr-view` → `.wikitext-view`, `--wtr-text` → `--wikitext-text`, `[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`, and the default heading anchor prefix `wtr-heading-` → `wikitext-heading-`. The old prefix is no longer emitted; host styles and selectors must be updated.
+:::
 
 ## Styles
 
@@ -16,33 +20,33 @@ import "react-wikitext/styles.css";
 ```
 
 - The library sets no global element styles; page typography inherits from the host.
-- The root container is `div.wtr-view`; library classes start with `wtr-` and some MediaWiki compatibility classes are preserved.
+- The root container is `div.wikitext-view`; library classes start with `wikitext-` and some MediaWiki compatibility classes are preserved.
 - Inline styles keep only whitelisted layout and appearance declarations; unsafe values are dropped whole. Under strict CSP, allow `style-src` as needed.
 
 ### CSS variables
 
-| Variable               | Purpose                    |
-| ---------------------- | -------------------------- |
-| `--wtr-text`           | Body text                  |
-| `--wtr-muted`          | Secondary text             |
-| `--wtr-border`         | Borders and dividers       |
-| `--wtr-accent`         | Links and emphasis         |
-| `--wtr-accent-soft`    | Emphasis background        |
-| `--wtr-placeholder-bg` | Placeholder background     |
-| `--wtr-danger`         | Errors and blocked content |
-| `--wtr-font-mono`      | Monospace text             |
+| Variable                    | Purpose                    |
+| --------------------------- | -------------------------- |
+| `--wikitext-text`           | Body text                  |
+| `--wikitext-muted`          | Secondary text             |
+| `--wikitext-border`         | Borders and dividers       |
+| `--wikitext-accent`         | Links and emphasis         |
+| `--wikitext-accent-soft`    | Emphasis background        |
+| `--wikitext-placeholder-bg` | Placeholder background     |
+| `--wikitext-danger`         | Errors and blocked content |
+| `--wikitext-font-mono`      | Monospace text             |
 
 Variables are defined on `:root` and can be overridden on any ancestor:
 
 ```css
 .article-theme {
-  --wtr-text: #1f2328;
-  --wtr-accent: #0969da;
-  --wtr-border: #d0d7de;
+  --wikitext-text: #1f2328;
+  --wikitext-accent: #0969da;
+  --wikitext-border: #d0d7de;
 }
 ```
 
-Dark themes can override the same variables through `[data-wtr-theme="dark"]` or the host's own selector.
+Dark themes can override the same variables through `[data-wikitext-theme="dark"]` or the host's own selector.
 
 Variables are published separately in `react-wikitext/tokens.css`. When you need to inject them into another scope, or already load the full stylesheet elsewhere, import only that file instead of duplicating `styles.css`:
 
@@ -63,7 +67,7 @@ import "react-wikitext/tokens.css"; // variables only
 />
 ```
 
-`className` and `containerProps.className` merge with `wtr-view`. The `containerProps` type excludes `dangerouslySetInnerHTML`.
+`className` and `containerProps.className` merge with `wikitext-view`. The `containerProps` type excludes `dangerouslySetInnerHTML`.
 
 ## Labels
 

@@ -31,7 +31,7 @@ function browserHtml(source: string): string {
       idPrefix=""
     />,
   );
-  return rendered.replace(/^<div class="wtr-view">/u, "").replace(/<\/div>$/u, "");
+  return rendered.replace(/^<div class="wikitext-view">/u, "").replace(/<\/div>$/u, "");
 }
 
 describe("toHtml oracle for structure-stable fixtures", () => {

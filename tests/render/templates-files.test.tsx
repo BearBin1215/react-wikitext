@@ -12,16 +12,16 @@ function render(source: string, resolveImage?: WikitextImageResolver): string {
 describe("templates and parser functions", () => {
   it("renders standalone templates as block cards with parameters", () => {
     const html = render("{{Infobox|name=x|1|2}}");
-    expect(html).toContain("wtr-template--block");
+    expect(html).toContain("wikitext-template--block");
     expect(html).toContain("Template not expanded: Infobox");
-    expect(html).toContain("wtr-template__param-name");
+    expect(html).toContain("wikitext-template__param-name");
     expect(html).toContain("name");
     expect(html).toContain("1");
   });
 
   it("renders inline templates as compact badges", () => {
     const html = render("before {{Tpl}} after");
-    expect(html).toContain("wtr-template--inline");
+    expect(html).toContain("wikitext-template--inline");
     expect(html).toContain("before");
     expect(html).toContain("after");
   });
@@ -29,8 +29,8 @@ describe("templates and parser functions", () => {
   it("renders parser functions and arguments without evaluating them", () => {
     const html = render("{{#if:a|b}}\n\n{{{arg|fallback}}}");
     expect(html).toContain("Parser function not evaluated: if");
-    expect(html).toContain("wtr-template__param-name");
-    expect(html).toContain("wtr-argument");
+    expect(html).toContain("wikitext-template__param-name");
+    expect(html).toContain("wikitext-argument");
     expect(html).toContain("fallback");
   });
 
@@ -60,23 +60,23 @@ describe("templates and parser functions", () => {
       />,
     );
     expect(file).toContain('data-custom="file"');
-    expect(file).not.toContain("wtr-file__label");
+    expect(file).not.toContain("wikitext-file__label");
   });
 });
 
 describe("files", () => {
   it("renders a placeholder with file name and inline caption", () => {
     const html = render("[[File:X.png|thumb|9999px|Cap [[L]]]]");
-    expect(html).toContain("wtr-file--block");
+    expect(html).toContain("wikitext-file--block");
     expect(html).toContain("File: X.png");
-    expect(html).toContain("wtr-link");
+    expect(html).toContain("wikitext-link");
     expect(html).toContain("Cap");
     expect(html).not.toContain("<img");
   });
 
   it("renders inline file placeholders inside paragraphs", () => {
     const html = render("before [[File:X.png]] after");
-    expect(html).toContain("wtr-file--inline");
+    expect(html).toContain("wikitext-file--inline");
     expect(html).toContain("before");
     expect(html).toContain("after");
   });
@@ -90,7 +90,7 @@ describe("files", () => {
     expect(html).toContain('src="https://example.com/x.png"');
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('decoding="async"');
-    expect(html).toContain('class="wtr-file__image mw-file-element"');
+    expect(html).toContain('class="wikitext-file__image mw-file-element"');
     expect(html).toContain('width="4096"');
     expect(html).toContain('height="5"');
     expect(html).toContain('alt="Caption"');
@@ -100,8 +100,10 @@ describe("files", () => {
     const html = render("[[File:X.png|thumb|left|class=foo|Caption]]", () => ({
       src: "https://example.com/x.png",
     }));
-    expect(html).toContain('class="wtr-file wtr-file--block mw-default-size mw-halign-left foo"');
-    expect(html).toContain('class="wtr-file__image mw-file-element"');
+    expect(html).toContain(
+      'class="wikitext-file wikitext-file--block mw-default-size mw-halign-left foo"',
+    );
+    expect(html).toContain('class="wikitext-file__image mw-file-element"');
   });
 
   it("rejects unsafe resolver image URLs", () => {
@@ -112,9 +114,9 @@ describe("files", () => {
 
   it("renders block content in template parameter values", () => {
     const html = render("{{T\n|1=\n* a\n* b\n}}");
-    expect(html).toContain('class="wtr-template wtr-template--block"');
-    expect(html).toContain('class="wtr-list wtr-list--ul"');
-    expect(html.match(/class="wtr-list__item"/gu)).toHaveLength(2);
+    expect(html).toContain('class="wikitext-template wikitext-template--block"');
+    expect(html).toContain('class="wikitext-list wikitext-list--ul"');
+    expect(html.match(/class="wikitext-list__item"/gu)).toHaveLength(2);
     expect(html).not.toContain("Unsupported node");
   });
 

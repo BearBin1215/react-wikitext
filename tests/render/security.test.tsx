@@ -168,7 +168,7 @@ describe("security", () => {
       resolveImage: () => ({ src: "https://example.com/x.png" }),
     });
     const fileLink = collectAnchors(prepared.hast).find((anchor) =>
-      (anchor.properties.className as string[] | undefined)?.includes("wtr-file__link"),
+      (anchor.properties.className as string[] | undefined)?.includes("wikitext-file__link"),
     );
     expect(fileLink).toBeDefined();
     expect(new Set(fileLink?.properties.rel as string[])).toEqual(

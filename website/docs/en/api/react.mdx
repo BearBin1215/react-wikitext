@@ -51,7 +51,7 @@ interface WikitextProps extends Omit<WikitextViewProps, "document"> {
 | `semanticComponents` | Override by wiki semantic type                                                             |
 | `lang` / `dir`       | Language and direction on the root container                                               |
 | `idPrefix`           | Instance heading id prefix; only for `instance`; invalid/empty values fall back to `useId` |
-| `className`          | Merged with `wtr-view`                                                                     |
+| `className`          | Merged with `wikitext-view`                                                                |
 | `containerProps`     | Extra root attributes; the type excludes `dangerouslySetInnerHTML`                         |
 | `onRenderError`      | Called when a single block fails to render                                                 |
 
@@ -82,11 +82,11 @@ import { WikitextView } from "react-wikitext/view";
 | `semanticComponents` | Override by wiki semantic type                               |
 | `lang` / `dir`       | Language and direction on the root container                 |
 | `idPrefix`           | Instance prefix for `instance` strategy; defaults to `useId` |
-| `className`          | Merged with `wtr-view`                                       |
+| `className`          | Merged with `wikitext-view`                                  |
 | `containerProps`     | Root attributes; `dangerouslySetInnerHTML` is excluded       |
 | `onRenderError`      | Block-level render error callback                            |
 
-- The root is always `div.wtr-view`.
+- The root is always `div.wikitext-view`.
 - `idPrefix` affects heading ids, in-document `#fragment` links, and table `headers`.
 - Each top-level block is wrapped in an error boundary; one failing block does not affect others.
 - The view builds semantic and HAST indexes for components and `WikitextFragment`.
@@ -108,7 +108,7 @@ import { WikitextFragment } from "react-wikitext/view";
 - Must be used inside the `<WikitextView>` context, otherwise it throws.
 - `nodes` must be the **same node objects** from the current view document; matching ids are not enough.
 - It renders only nodes found in the prepared HAST index, which suits template parameters, file captions, and `ref` content.
-- Inline mode without `className` adds no wrapper; with `className` it uses `<span>`. Block mode uses a `wtr-fragment` container.
+- Inline mode without `className` adds no wrapper; with `className` it uses `<span>`. Block mode uses a `wikitext-fragment` container.
 - Rendering the same node twice in one view duplicates content and heading ids.
 
 ## Component overrides

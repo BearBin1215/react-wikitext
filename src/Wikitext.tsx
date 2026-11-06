@@ -125,7 +125,7 @@ export function Wikitext({
     }
     const renderFailed = resolveWikitextLabels(prepareOptions?.labels).renderFailed;
     return (
-      <div className="wtr-view wtr-view--error" role="alert">
+      <div className="wikitext-view wikitext-view--error" role="alert">
         {renderFailed}: {error.message}
       </div>
     );

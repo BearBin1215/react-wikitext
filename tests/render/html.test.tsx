@@ -63,30 +63,32 @@ describe("inline HTML pairing", () => {
 describe("block HTML pairing", () => {
   it("renders block div and nested paragraph without wrapping paragraphs twice", () => {
     const html = render('<div class="box"><p>para <b>b</b></p></div>');
-    expect(html).toContain('<div class="wtr-html-block wtr-html-div box"');
-    expect(html).toContain('<p class="wtr-html-block wtr-html-p"');
+    expect(html).toContain('<div class="wikitext-html-block wikitext-html-div box"');
+    expect(html).toContain('<p class="wikitext-html-block wikitext-html-p"');
     expect(html).toContain("<b>b</b>");
     expect(html.match(/<p /gu)).toHaveLength(1);
   });
 
   it("renders block tables with rows and cells", () => {
     const html = render('<table><tr><td class="c">a</td><td>b</td></tr></table>');
-    expect(html).toContain('<table class="wtr-html-block wtr-html-table"');
-    expect(html).toContain('<tr class="wtr-html-block wtr-html-tr"');
-    expect(html).toContain('<td class="wtr-html-block wtr-html-td c"');
+    expect(html).toContain('<table class="wikitext-html-block wikitext-html-table"');
+    expect(html).toContain('<tr class="wikitext-html-block wikitext-html-tr"');
+    expect(html).toContain('<td class="wikitext-html-block wikitext-html-td c"');
     expect(html.match(/<td /gu)).toHaveLength(2);
   });
 
   it("auto-closes unclosed block HTML", () => {
     const html = render("<div>text");
-    expect(html).toContain('<div class="wtr-html-block wtr-html-div"');
+    expect(html).toContain('<div class="wikitext-html-block wikitext-html-div"');
     expect(html).toContain("text");
   });
 
   it("closes unclosed block HTML at a blank line", () => {
     const html = render("before\n<div>one\n\ntwo");
-    expect(html).toContain('<div class="wtr-html-block wtr-html-div" data-node-id="0.1">one</div>');
-    expect(html).toContain('<p class="wtr-paragraph">two</p>');
+    expect(html).toContain(
+      '<div class="wikitext-html-block wikitext-html-div" data-node-id="0.1">one</div>',
+    );
+    expect(html).toContain('<p class="wikitext-paragraph">two</p>');
   });
 
   it("skips banned tag content and self-closing tags", () => {
@@ -100,8 +102,8 @@ describe("block HTML pairing", () => {
 
   it("keeps block HTML out of paragraphs", () => {
     const html = render("before\n<div>inside</div>\nafter");
-    expect(html).toContain('<p class="wtr-paragraph">before</p>');
-    expect(html).toContain('<p class="wtr-paragraph">after</p>');
+    expect(html).toContain('<p class="wikitext-paragraph">before</p>');
+    expect(html).toContain('<p class="wikitext-paragraph">after</p>');
     expect(html).not.toMatch(/<p[^>]*><div/gu);
   });
 

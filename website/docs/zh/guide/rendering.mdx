@@ -47,10 +47,10 @@ export default function Demo() {
 
 ## 段落、文本与格式
 
-- 连续行内内容聚合为 `<p class="wtr-paragraph">`；两个及以上空行切分段落，单个换行折叠为空格。
+- 连续行内内容聚合为 `<p class="wikitext-paragraph">`；两个及以上空行切分段落，单个换行折叠为空格。
 - 粗体、斜体来自 MediaWiki 引号语法，输出 `<b>` / `<i>`；粗斜同时开启时为 `<i><b>…</b></i>`。
-- 标题输出真实 `<h1>`–`<h6 class="wtr-heading">`，并参与标题锚点与目录。
-- 水平线输出 `<hr class="wtr-hr">`。
+- 标题输出真实 `<h1>`–`<h6 class="wikitext-heading">`，并参与标题锚点与目录。
+- 水平线输出 `<hr class="wikitext-hr">`。
 - 注释、分类与行为开关不进入正文；分类汇总到文末底栏，行为开关只影响目录。
 
 ## 列表
@@ -64,7 +64,7 @@ export default function Demo() {
 
 - 输出顺序为 `<table><caption>…</caption><tbody>…`；单元格使用 `<th>` / `<td>`。
 - 表格、行、单元格属性按白名单保留；`style` 只保留安全排版子集，事件属性与 `id` 始终丢弃。
-- 布局按逻辑网格计算：`colspan` / `rowspan` 会被限制在表格范围内，未被占用的位置会生成填充单元格（`wtr-table__cell--filler`）。
+- 布局按逻辑网格计算：`colspan` / `rowspan` 会被限制在表格范围内，未被占用的位置会生成填充单元格（`wikitext-table__cell--filler`）。
 - 最终 HAST 节点数超限时，语义 wiki 表格短行末尾的空填充格会被省略，并记录 `TABLE_FILLER_BUDGET_EXCEEDED` 警告；真实单元格、HTML 表格与插件内容不受影响。
 - `{|` 与 `|}` 标记不配对的 wikitext 嵌套表格会整表降级为源码卡片；标记配对完整的嵌套表格与 HTML `<table>` 嵌套可以正常渲染。
 - 表格属性允许安全的 `data-*`，但拒绝库保留的 `data-node-id`、`data-wikitext` 等名称。
@@ -78,13 +78,13 @@ export default function Demo() {
 文件节点默认输出占位结构：
 
 ```html
-<figure class="wtr-file wtr-file--block mw-default-size">
-  <span class="wtr-file__label">File: Example.png</span>
-  <figcaption class="wtr-file__caption">说明文字</figcaption>
+<figure class="wikitext-file wikitext-file--block mw-default-size">
+  <span class="wikitext-file__label">File: Example.png</span>
+  <figcaption class="wikitext-file__caption">说明文字</figcaption>
 </figure>
 ```
 
-- 行内文件用 `<span class="wtr-file">`，块级用 `<figure>`。
+- 行内文件用 `<span class="wikitext-file">`，块级用 `<figure>`。
 - 说明文字来自真实子树，内部链接与模板占位会递归渲染。
 - 只有 `resolveImage` 返回 `src` 且通过 `http:` / `https:` 校验时才生成 `<img loading="lazy" decoding="async">`；宽高限制在 1–4096。
 - 库不访问 `upload.wikimedia.org` 或任何图片地址。
@@ -93,7 +93,7 @@ export default function Demo() {
 
 默认管线**不求值**：
 
-- 模板：块级 `<details class="wtr-template">` 或行内徽标，列出参数；文案来自 `labels.templateNotExpanded`。
+- 模板：块级 `<details class="wikitext-template">` 或行内徽标，列出参数；文案来自 `labels.templateNotExpanded`。
 - 解析器函数：同样是占位结构，明确标记为未求值。
 - 参数 `{{{name|default}}}`：显示参数名与默认值。
 - 模板、函数与参数中的魔术字不参与目录与分类判断。
@@ -102,8 +102,8 @@ export default function Demo() {
 
 ## 参考文献
 
-- 每个 `<ref>` 在所属分组内按渲染顺序编号，生成 `<sup class="reference wtr-ref">` 与编号链接。
-- 引用内容汇总为 `<section class="wtr-references" role="doc-endnotes">`；命名引用复用同一条目，分组各自编号。
+- 每个 `<ref>` 在所属分组内按渲染顺序编号，生成 `<sup class="reference wikitext-ref">` 与编号链接。
+- 引用内容汇总为 `<section class="wikitext-references" role="doc-endnotes">`；命名引用复用同一条目，分组各自编号。
 - `<references/>` 或 `<references group="x"/>` 决定对应分组引用区的位置；没有占位的分组追加在正文之后、分类底栏之前。注释项带回链 `a[role="doc-backlink"]`。
 - 重复定义与空引用产生诊断；同一注释被多次引用时，上标 id 依次为 `cite_ref-N`、`cite_ref-N-2`。
 
@@ -117,7 +117,7 @@ export default function Demo() {
 
 ## 分类与重定向
 
-- 分类不进入正文，按源码顺序汇总到文末 `div.catlinks.wtr-categories`；分类名去掉命名空间前缀，下划线显示为空格，排序键不显示。
+- 分类不进入正文，按源码顺序汇总到文末 `div.catlinks.wikitext-categories`；分类名去掉命名空间前缀，下划线显示为空格，排序键不显示。
 - 首行 `#REDIRECT` 渲染为重定向横幅并跳过后续正文，不自动加载目标页。
 
 ## HTML

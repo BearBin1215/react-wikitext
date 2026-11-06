@@ -6,7 +6,7 @@ import { WikitextView } from "@/view";
 describe("WikitextView text and structure", () => {
   it("renders paragraphs, decodes entities, and folds single newlines", () => {
     const html = renderView("a &amp; b\nc\n\nd");
-    expect(html.match(/<p class="wtr-paragraph">/gu)).toHaveLength(2);
+    expect(html.match(/<p class="wikitext-paragraph">/gu)).toHaveLength(2);
     expect(html).toContain("a &amp; b c");
   });
 
@@ -19,7 +19,7 @@ describe("WikitextView text and structure", () => {
 
   it("generates an isolated prefix when idPrefix is omitted", () => {
     const html = renderToStaticMarkup(<WikitextView document={prepare("== A ==")} />);
-    expect(html).toMatch(/id="wtr-[A-Za-z0-9_-]+-A"/u);
+    expect(html).toMatch(/id="wikitext-[A-Za-z0-9_-]+-A"/u);
   });
 
   it("renders bold, italic, and combined quotes", () => {
@@ -45,7 +45,7 @@ describe("WikitextView text and structure", () => {
 describe("WikitextView links", () => {
   it("renders internal links as non-navigable text by default", () => {
     const html = renderView("[[Target|Label]]");
-    expect(html).toContain('class="wtr-link"');
+    expect(html).toContain('class="wikitext-link"');
     expect(html).toContain('title="Target"');
     expect(html).toContain("Label");
     expect(html).not.toContain("<a ");
@@ -105,9 +105,9 @@ describe("WikitextView links", () => {
 
   it("distinguishes external link kinds and numbers label-less links", () => {
     const html = renderView("[https://example.com] [https://example.com text] https://example.com");
-    expect(html).toContain('class="wtr-ext-link external autonumber"');
-    expect(html).toContain('class="wtr-ext-link external text"');
-    expect(html).toContain('class="wtr-ext-link external free"');
+    expect(html).toContain('class="wikitext-ext-link external autonumber"');
+    expect(html).toContain('class="wikitext-ext-link external text"');
+    expect(html).toContain('class="wikitext-ext-link external free"');
     expect(html).toContain(">[1]</a>");
   });
 
@@ -134,7 +134,7 @@ describe("WikitextView links", () => {
     expect(html).toContain("RFC 1234");
     expect(html).toContain("PMID 12345678");
     expect(html).not.toContain("<a ");
-    expect(html).not.toContain("wtr-unknown");
+    expect(html).not.toContain("wikitext-unknown");
   });
 
   it("keeps the target text for blocked external links without a label", () => {
@@ -207,9 +207,9 @@ describe("WikitextView fallbacks", () => {
 
   it("renders redirects only for the first semantic node", () => {
     const html = renderView("#REDIRECT [[Target#section]]\nbody");
-    expect(html).toContain('class="redirectMsg wtr-redirect"');
-    expect(html).toContain('class="wtr-redirect__label"');
-    expect(html).toContain('class="redirectText wtr-redirect__list"');
+    expect(html).toContain('class="redirectMsg wikitext-redirect"');
+    expect(html).toContain('class="wikitext-redirect__label"');
+    expect(html).toContain('class="redirectText wikitext-redirect__list"');
     expect(html).toContain("Target#section");
     expect(html).not.toContain("body");
   });
@@ -236,7 +236,7 @@ describe("WikitextView fallbacks", () => {
       { headingIdStrategy: "instance" },
     );
     expect(html).toContain('id="host-A"');
-    expect(html).toContain('class="wtr-view extra inner"');
+    expect(html).toContain('class="wikitext-view extra inner"');
     expect(html).toContain('id="root"');
     expect(html).toContain('role="region"');
     expect(html).toContain('aria-label="document"');
@@ -251,7 +251,7 @@ describe("WikitextView fallbacks", () => {
     expect(html).toContain('id="badprefixA"');
     const empty = renderView("== A ==", { idPrefix: "" }, { headingIdStrategy: "instance" });
     expect(empty).not.toContain('id="A"');
-    expect(empty).toMatch(/id="wtr-[^"]+-A"/u);
+    expect(empty).toMatch(/id="wikitext-[^"]+-A"/u);
   });
 
   it("keeps mediawiki anchors without an instance prefix", () => {
