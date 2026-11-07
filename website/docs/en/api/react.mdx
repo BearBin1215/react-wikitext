@@ -177,20 +177,7 @@ Precedence: an explicit semantic component replaces the entire semantic structur
 
 ### Custom template card
 
-```tsx
-import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
-
-function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
-  return (
-    <aside className="template-card">
-      <strong>{displayName}</strong>
-      <WikitextFragment nodes={node.children} mode="block" />
-    </aside>
-  );
-}
-
-<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
-```
+See [Styling and components](../guide/customization.mdx#semantic-components) and [Recipes](../guide/recipes.mdx#template-cards) for complete examples; `WikitextFragment` is described below.
 
 ### Custom link
 
@@ -245,6 +232,16 @@ function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): 
   onRenderError={(error, { node }) => {
     reportError(error, { nodeType: node.type, nodeId: node.id });
   }}
+/>
+```
+
+When parsing or preparation fails, `fallback` can take over the display:
+
+```tsx
+<Wikitext
+  source={source}
+  onError={(error, info) => console.error(info.stage, error.code)}
+  fallback={<p>Content failed to load</p>}
 />
 ```
 

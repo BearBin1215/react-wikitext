@@ -46,6 +46,22 @@ interface WikitextNodeBase<TType extends string> {
 - `data` 用于自定义扩展数据。
 - `WikitextNodeBase` 是公开类型；自定义节点可以扩展它，并把键写入 `WikitextNodeMap`，`handlers` 与查询函数会据此推导类型。
 
+```ts
+import type { WikitextNodeBase } from "react-wikitext/ast";
+
+interface Callout extends WikitextNodeBase<"callout"> {
+  readonly tone: "info" | "warn";
+}
+
+declare module "react-wikitext/ast" {
+  interface WikitextNodeMap {
+    callout: Callout;
+  }
+}
+```
+
+扩展之后，还需要在准备阶段注册对应的转换函数，否则该节点会产生诊断并降级为源码卡片。
+
 ## 节点类型
 
 | 节点                                                          | 关键字段                                                                                           |
@@ -173,7 +189,7 @@ import {
 } from "react-wikitext/hast";
 ```
 
-恢复函数会校验结构版本、源码字符串、根节点、meta（含 `limits`）、`headings`、`diagnostics` 与 policy/labels 的完整形状，以及固定节点预算；渲染快照还会重新执行最终清洗与整理。快照内的 policy、labels 与 `authorizedImages` 属于可信边界，重新清洗只用于重建派生结构。不合法时抛：
+恢复函数会校验结构版本、源码字符串、根节点、meta（含 `limits`）、`headings`、`diagnostics` 与 policy/labels 的完整结构，以及固定节点预算；渲染快照还会重新执行最终清洗与整理。快照内的 policy、labels 与 `authorizedImages` 属于可信边界，重新清洗只用于重建派生结构。不合法时抛：
 
 - 解析快照：`WikitextError("INVALID_DOCUMENT")`。
 - 渲染快照：`WikitextError("INVALID_DOCUMENT")`（与解析快照同一基类，不含 `stage` 字段）。

@@ -30,7 +30,7 @@ Installation is covered in [Quick start](../guide/quick-start.mdx).
 
 The Node floor comes from the dependency chain: `wikiparser-node` declares `^20.19.0 || ^22.13.0 || >=24.11.0`, and its transitive dependency `@bhsd/stylelint-util` requires `^22.13.0 || >=24.11.0`. Default installs only warn on a mismatch; `engine-strict` fails instead, so that setup needs Node `>=22.13`.
 
-The package's `files` field lists `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`; npm also includes the README and LICENSE automatically. See the [contributing guide](./contributing.mdx) for building from source.
+The published package contains `dist/`, `NOTICE`, and `THIRD_PARTY_LICENSES`; npm also includes the README and LICENSE. See the [contributing guide](./contributing.mdx) for building from source.
 
 ## Pinned upstream
 
@@ -62,7 +62,7 @@ A version change is a structural break. Include versions in cache keys; restore 
 - Cache keys should include the package version, schemas, parser/config, source, `pageName`, and the policy, labels, resolver, plugin, and template-data versions that affect preparation. Functions themselves cannot be written into a cache key.
 - Custom semantic nodes and plugin-private data are owned by the host; the library does not guarantee migration.
 
-The repository has no published release yet, so there is no compatibility baseline built from release artifacts; unit tests cover snapshot restore, stable rejection, and the rebuild path for now.
+  0.x has no cross-minor compatibility baseline: snapshot restore, explicit rejection, and rebuild behavior follow the rules on this page.
 
 ## Styling and security baseline
 
@@ -76,7 +76,7 @@ See [Security model](../guide/security.mdx) and [Rendering behavior](../guide/re
 
 ## Verifying compatibility
 
-After upgrading React, the parser, or the bundler config, run the checks listed in [`CONTRIBUTING.md`](https://github.com/BearBin1215/react-wikitext/blob/main/CONTRIBUTING.md). Benchmark execution and report validation failures block the pipeline; timing changes only appear in the summary.
+After upgrading this library, React, or the bundler config, revalidate rendering and snapshot restore in your own application; maintainers follow the checks in [`CONTRIBUTING.md`](https://github.com/BearBin1215/react-wikitext/blob/main/CONTRIBUTING.md).
 
 ## License
 

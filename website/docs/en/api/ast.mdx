@@ -46,6 +46,22 @@ interface WikitextNodeBase<TType extends string> {
 - `data` holds extension data.
 - `WikitextNodeBase` is a public type; custom nodes can extend it and add their key to `WikitextNodeMap`, and `handlers` plus query helpers will infer the concrete node type.
 
+```ts
+import type { WikitextNodeBase } from "react-wikitext/ast";
+
+interface Callout extends WikitextNodeBase<"callout"> {
+  readonly tone: "info" | "warn";
+}
+
+declare module "react-wikitext/ast" {
+  interface WikitextNodeMap {
+    callout: Callout;
+  }
+}
+```
+
+After the augmentation, register a matching converter during preparation; otherwise the node produces a diagnostic and degrades to a source card.
+
 ## Node types
 
 | Node                                                          | Key fields                                                                                             |
@@ -173,7 +189,7 @@ import {
 } from "react-wikitext/hast";
 ```
 
-Restore functions validate schema versions, the source string, the root, meta (including `limits`), `headings`, `diagnostics`, the full policy/labels shape, and the fixed node budget. Render snapshots are sanitized and finalized again. The snapshot's policy, labels, and `authorizedImages` belong to the trusted boundary; re-sanitizing only rebuilds derived structure. Invalid input throws:
+Restore functions validate schema versions, the source string, the root, meta (including `limits`), `headings`, `diagnostics`, the full policy/labels structure, and the fixed node budget. Render snapshots are sanitized and finalized again. The snapshot's policy, labels, and `authorizedImages` belong to the trusted boundary; re-sanitizing only rebuilds derived structure. Invalid input throws:
 
 - Parse snapshot: `WikitextError("INVALID_DOCUMENT")`.
 - Render snapshot: `WikitextError("INVALID_DOCUMENT")` (same base class as parse snapshots, without a `stage` field).

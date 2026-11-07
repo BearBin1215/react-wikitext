@@ -52,8 +52,8 @@ wikitextPlugins
 
 ### Attribute and URL whitelists
 
-- Source HTML keeps only `class`, `title`, `dir`, `lang`, and table-related attributes.
-- `style`, `id`, event attributes, and `srcdoc` never reach the DOM.
+- Source HTML keeps only `class`, `title`, `dir`, `lang`, whitelisted `style`, and table-related attributes.
+- `id`, event attributes, and `srcdoc` never reach the DOM; `style` keeps only whitelisted layout and appearance declarations.
 - `href` allows only `http:`, `https:`, and `mailto:`; `src` allows only `http:` and `https:`.
 - Entities are decoded before validation, preventing bypasses such as `&#106;avascript:`.
 - `class` is checked against the `[A-Za-z0-9_-]` safe character set; `colspan` / `rowspan` and similar values have bounds.

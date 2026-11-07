@@ -38,7 +38,10 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    socialLinks: [{ icon: "github", mode: "link", content: repository }],
+    socialLinks: [
+      { icon: "github", mode: "link", content: repository },
+      { icon: "npm", mode: "link", content: "https://www.npmjs.com/package/react-wikitext" },
+    ],
     editLink: { docRepoBaseUrl: `${repository}/blob/main/website/docs` },
     footer: { message: "GPL-3.0-or-later · react-wikitext" },
   },

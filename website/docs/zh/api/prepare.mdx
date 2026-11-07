@@ -47,7 +47,7 @@ const prepared = await prepareWikitextAsync(document, {
 准备阶段依次执行以下步骤：
 
 1. 克隆语义树，运行 `wikitextPlugins`。
-2. 校验工作树的结构、节点数与深度，重新分配路径式 id，并清除该 root 的查询缓存。
+2. 校验工作树的结构、节点数与深度，并重新分配节点 id。
 3. 调用 `resolveLink`、`resolveImage` 与 `handlers`，把语义树转换为 HAST。
 4. 运行 `rehypePlugins`。
 5. 执行最终清洗与整理，写入目录、引用区、分类底栏与图片授权，生成 `WikitextRenderDocument`。
@@ -145,7 +145,7 @@ interface WikitextResolvedImage {
 }
 ```
 
-- `null` 与 `undefined` 都保持占位；返回对象才授权资源。三个 resolver 共用同一条空值规则：`undefined` 表示没有意见，交给默认行为；`null` 表示明确不处理。
+- `null` 与 `undefined` 都保持占位；返回对象才授权资源。`resolveLink` 与 `resolveImage` 共用同一条空值规则：`undefined` 表示没有意见，交给默认行为；`null` 表示明确不处理。
 - `src` 只允许 `http:` / `https:`；相对图片默认关闭。
 - 尺寸限制在 1–4096，最终 `<img>` 固定带 `loading="lazy"`。
 - `context.document` 是原始解析快照，`context.ast` 与 `context.node` 是本次工作树。
@@ -187,7 +187,7 @@ interface WikitextPreparePolicy {
 - 数组字段整体替换；需要保留默认数组时以 `DEFAULT_PREPARE_POLICY` 为基准展开。
 - `class` 统一按 `[A-Za-z0-9_-]` 安全字符集过滤；不存在放宽或收窄 class 的 policy 选项。
 - `DEFAULT_PREPARE_POLICY` 已冻结。
-- 非法字段（policy 字段类型、labels 字段类型、`headingIdStrategy` 枚举、`handlers` 形状）在开始处理前抛 `WikitextPrepareError("PREPARE_FAILED")`。
+- 非法字段（policy 字段类型、labels 字段类型、`headingIdStrategy` 枚举、`handlers` 结构）在开始处理前抛 `WikitextPrepareError("PREPARE_FAILED")`。
 - 最终 HAST 与恢复快照共用同一组固定预算（50,000 节点、深度 1,000）；超限时准备阶段直接失败，库产生的合法快照总能被恢复。
 
 ## 文案与标题

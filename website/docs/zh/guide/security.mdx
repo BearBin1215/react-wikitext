@@ -52,8 +52,8 @@ wikitextPlugins
 
 ### 属性与 URL 白名单
 
-- 源码 HTML 只保留 `class`、`title`、`dir`、`lang` 与表格相关属性。
-- `style`、`id`、事件属性、`srcdoc` 不会进入 DOM。
+- 源码 HTML 只保留 `class`、`title`、`dir`、`lang`、白名单内的 `style` 与表格相关属性。
+- `id`、事件属性与 `srcdoc` 不会进入 DOM；`style` 只保留排版与外观相关的白名单声明。
 - `href` 只允许 `http:`、`https:`、`mailto:`；`src` 只允许 `http:`、`https:`。
 - 校验前会先解码实体，避免 `&#106;avascript:` 之类的绕过。
 - `class` 只经过 `[A-Za-z0-9_-]` 安全字符集过滤；`colspan` / `rowspan` 等有范围限制。

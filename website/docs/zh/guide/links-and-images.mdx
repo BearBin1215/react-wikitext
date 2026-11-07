@@ -150,7 +150,7 @@ export default function Demo() {
 
 准备阶段会记录解析回调实际返回并通过校验的图片地址。最终整理时：
 
-- 未授权的 `<img>` 会被删除；有 `alt` 时保留文本，并产生 `UNAUTHORIZED_IMAGE` 诊断。解析回调产物使用 `authorizedImages`，源码 HTML 使用 `policy.allowSourceImages`，插件产物使用 `policy.allowPluginImages`。
+- 未授权的 `<img>` 会被删除；有 `alt` 时保留文本，并产生 `UNAUTHORIZED_IMAGE` 诊断。解析回调返回的图片使用 `authorizedImages`，源码 HTML 使用 `policy.allowSourceImages`，插件产物使用 `policy.allowPluginImages`。
 - 插件不能通过插入任意 `<img>` 绕过默认不出图策略。
 - URL 在写入属性前会先进行实体解码、去除控制字符，再按协议白名单校验。
 

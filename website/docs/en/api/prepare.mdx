@@ -47,7 +47,7 @@ const prepared = await prepareWikitextAsync(document, {
 Preparation:
 
 1. Clones the semantic tree and runs `wikitextPlugins`.
-2. Validates the working tree structure, node count, and depth, reassigns path-style ids, and clears that root's query cache.
+2. Validates the working tree structure, node count, and depth, and reassigns node ids.
 3. Applies `resolveLink`, `resolveImage`, and `handlers`, converting the semantic tree to HAST.
 4. Runs `rehypePlugins`.
 5. Runs final sanitization and finalization, adding the TOC, references, category footer, and image authorization, and creates the `WikitextRenderDocument`.
@@ -143,7 +143,7 @@ interface WikitextResolvedImage {
 }
 ```
 
-- `null` and `undefined` both keep the placeholder; returning an object authorizes the resource. All three resolvers share one nullability rule: `undefined` means no opinion and falls back to built-in behavior; `null` means explicitly nothing.
+- `null` and `undefined` both keep the placeholder; returning an object authorizes the resource. `resolveLink` and `resolveImage` share one nullability rule: `undefined` means no opinion and falls back to built-in behavior; `null` means explicitly nothing.
 - `src` allows only `http:` / `https:`; relative images are disabled by default.
 - Dimensions are clamped to 1–4096 and the final `<img>` always has `loading="lazy"`.
 - `context.document` is the original parse snapshot; `context.ast` and `context.node` belong to the working tree.
@@ -185,7 +185,7 @@ Defaults:
 - Array fields are replaced wholesale; spread `DEFAULT_PREPARE_POLICY` to keep the defaults.
 - `class` is filtered by the `[A-Za-z0-9_-]` safe character set; there is no policy option to widen or narrow it.
 - `DEFAULT_PREPARE_POLICY` is frozen.
-- Invalid fields (policy field types, labels field types, `headingIdStrategy` values, `handlers` shape) throw `WikitextPrepareError("PREPARE_FAILED")` before any work starts.
+- Invalid fields (policy field types, labels field types, `headingIdStrategy` values, `handlers` structure) throw `WikitextPrepareError("PREPARE_FAILED")` before any work starts.
 - The final HAST and restored snapshots share the same fixed budget (50,000 nodes, depth 1,000). Prepare fails when it is exceeded, so every snapshot the library produces can be restored.
 
 ## Labels and headings

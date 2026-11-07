@@ -152,7 +152,7 @@ type WikitextHeadingIdStrategy = "instance" | "mediawiki" | "none";
 | `mediawiki`        | 写入裸锚点，视图不追加前缀；适合与宿主约定一致的单实例页面    |
 | `none`             | 不写 id，也不生成目录链接                                     |
 
-- 锚点由移除标记后的标题文本生成：空白转为 `_`，重复 id 按大小写不敏感追加 `_2`、`_3`，空标题使用 `section-{n}`。
+- 锚点由移除标记后的标题文本生成：空白字符转换为 `_`；重复 id 忽略大小写比较后依次追加 `_2`、`_3`；空标题使用 `section-{n}`。
 - 语义标题与源码 `h1`–`h6` 都参与锚点生成。
 - `idPrefix` 只在 `instance` 下生效；未传时使用 React `useId` 生成的实例前缀。
 - 视图同时映射标题 `id`、文档内 `#fragment` 链接和表格 `headers` 属性。

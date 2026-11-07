@@ -177,20 +177,7 @@ interface WikitextSemanticComponentProps<Node extends WikitextNode> {
 
 ### 自定义模板卡片
 
-```tsx
-import { WikitextFragment, type WikitextTemplateComponentProps } from "react-wikitext/view";
-
-function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
-  return (
-    <aside className="template-card">
-      <strong>{displayName}</strong>
-      <WikitextFragment nodes={node.children} mode="block" />
-    </aside>
-  );
-}
-
-<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
-```
+完整示例见[样式与组件定制](../guide/customization.mdx#语义组件)与[常用配方](../guide/recipes.mdx#模板卡片)；`WikitextFragment` 的用法见下文。
 
 ### 自定义链接
 
@@ -245,6 +232,16 @@ function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): 
   onRenderError={(error, { node }) => {
     reportError(error, { nodeType: node.type, nodeId: node.id });
   }}
+/>
+```
+
+解析或准备失败时，可以用 `fallback` 接管展示：
+
+```tsx
+<Wikitext
+  source={source}
+  onError={(error, info) => console.error(info.stage, error.code)}
+  fallback={<p>内容加载失败</p>}
 />
 ```
 

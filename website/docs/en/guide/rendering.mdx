@@ -48,7 +48,7 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 ## Paragraphs, text, and formatting
 
 - Consecutive inline content becomes `<p class="wikitext-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
-- Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When both are open, the output is `<i><b>…</b></i>`.
+- Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When bold and italic are both open, the output is `<i><b>…</b></i>`.
 - Headings render as real `<h1>`–`<h6 class="wikitext-heading">` and participate in anchors and the table of contents.
 - Horizontal rules render as `<hr class="wikitext-hr">`.
 - Comments, categories, and behavior switches do not enter the body. Categories go to the footer; behavior switches only affect the table of contents.
@@ -112,7 +112,7 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 - Once a page has four headings, a table of contents is generated before the top-level block that contains the first heading (headings may live inside block HTML).
 - The `toc` prepare option adjusts `minHeadings`, `columns`, or disables the TOC.
 - `__TOC__` forces a table of contents at its marker; `__FORCETOC__` forces an automatic one; `__NOTOC__` disables it anywhere and takes precedence.
-- The table includes levels, numbers, text, and `#anchor` links. Fragment-sensitive characters are encoded as `.HH`; with `headingIdStrategy: "none"` it contains text only.
+- The table includes levels, numbers, text, and `#anchor` links. `#`, `%`, `?`, and `/` inside fragments are encoded as `.HH`; with `headingIdStrategy: "none"` it contains text only.
 - It has no scroll synchronization, collapse, or sticky behavior.
 
 ## Categories and redirects

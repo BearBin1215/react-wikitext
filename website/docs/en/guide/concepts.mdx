@@ -24,12 +24,12 @@ source
 /view ─▶ React
 ```
 
-| Stage       | Entry               | Input                         | Output                   | Required         |
-| ----------- | ------------------- | ----------------------------- | ------------------------ | ---------------- |
-| Expansion   | `/expand`           | Source and host template data | Expanded parse document  | Optional         |
-| Parsing     | `/parse`, `/ast`    | Source                        | `WikitextDocument`       | Yes              |
-| Preparation | `/hast`             | Parse snapshot                | `WikitextRenderDocument` | Before rendering |
-| Rendering   | `/view`, root entry | Render snapshot               | React elements           | To render        |
+| Stage       | Entry                                                      | Input                         | Output                   | Required         |
+| ----------- | ---------------------------------------------------------- | ----------------------------- | ------------------------ | ---------------- |
+| Expansion   | `/expand`                                                  | Source and host template data | Expanded parse document  | Optional         |
+| Parsing     | `/parse` (`/ast` provides the factory for custom adapters) | Source                        | `WikitextDocument`       | Yes              |
+| Preparation | `/hast`                                                    | Parse snapshot                | `WikitextRenderDocument` | Before rendering |
+| Rendering   | `/view`, root entry                                        | Render snapshot               | React elements           | To render        |
 
 The result of `/expand` is already a parse document. Do not parse it again; pass it to `prepareWikitext`.
 
@@ -87,7 +87,7 @@ Each output can be traced back to its source, which makes issues easier to debug
 | `/unified` | No           | No          | Fixed-order processor with an injected parser |
 | `/configs` | No           | No          | Site config constants and override builder    |
 
-[Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, read the exports of each `src/` entry; `tests/api/exports.test.ts` pins the main runtime exports.
+[Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, see the export notes on each entry page.
 
 :::warning
 React entries create Context at module load and use `useId` / `useMemo`, so they only run in Client Components. The root entry and `/view` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse` and `/hast`.

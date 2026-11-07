@@ -152,7 +152,7 @@ type WikitextHeadingIdStrategy = "instance" | "mediawiki" | "none";
 | `mediawiki`          | Writes bare anchors and adds no prefix; suitable for a single page that matches host conventions                |
 | `none`               | Writes no ids and generates no table-of-contents links                                                          |
 
-- Anchors are generated from stripped heading text: whitespace becomes `_`, duplicate ids get `_2` / `_3` case-insensitively, and empty headings fall back to `section-{n}`.
+- Anchors are generated from stripped heading text: whitespace becomes `_`; duplicate ids are compared case-insensitively and then get `_2` / `_3`; empty headings fall back to `section-{n}`.
 - Semantic headings and source `h1`–`h6` both participate.
 - `idPrefix` applies only to `instance`; without it, the view uses a React `useId` prefix.
 - The view maps heading `id`, in-document `#fragment` links, and table `headers` attributes.

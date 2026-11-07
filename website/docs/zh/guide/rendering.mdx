@@ -48,7 +48,7 @@ export default function Demo() {
 ## 段落、文本与格式
 
 - 连续行内内容聚合为 `<p class="wikitext-paragraph">`；两个及以上空行切分段落，单个换行折叠为空格。
-- 粗体、斜体来自 MediaWiki 引号语法，输出 `<b>` / `<i>`；粗斜同时开启时为 `<i><b>…</b></i>`。
+- 粗体、斜体来自 MediaWiki 引号语法，输出 `<b>` / `<i>`；粗体与斜体同时开启时输出 `<i><b>…</b></i>`。
 - 标题输出真实 `<h1>`–`<h6 class="wikitext-heading">`，并参与标题锚点与目录。
 - 水平线输出 `<hr class="wikitext-hr">`。
 - 注释、分类与行为开关不进入正文；分类汇总到文末底栏，行为开关只影响目录。
@@ -112,7 +112,7 @@ export default function Demo() {
 - 同页标题达到 4 个时自动生成目录，放在首个标题所在的顶层块之前（标题可以在块级 HTML 内）。
 - 准备选项 `toc` 可以调整 `minHeadings`、`columns` 或设为 `false` 关闭目录。
 - `__TOC__` 在标记位置强制生成目录；`__FORCETOC__` 强制自动目录；`__NOTOC__` 在任何位置关闭目录，优先级更高。
-- 目录包含层级、编号、文本与 `#锚点` 链接；片段敏感字符会编码为 `.HH`，`headingIdStrategy: "none"` 时不生成链接。
+- 目录包含层级、编号、文本与 `#锚点` 链接；片段中的 `#`、`%`、`?`、`/` 会编码为 `.HH` 形式，`headingIdStrategy: "none"` 时不生成链接。
 - 目录不提供滚动联动、折叠或吸顶。
 
 ## 分类与重定向

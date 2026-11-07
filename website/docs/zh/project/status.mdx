@@ -30,7 +30,7 @@ description: 版本状态、运行时兼容矩阵、固定上游版本、快照�
 
 Node 下限来自依赖链路：`wikiparser-node` 声明 `^20.19.0 || ^22.13.0 || >=24.11.0`，其传递依赖 `@bhsd/stylelint-util` 要求 `^22.13.0 || >=24.11.0`。默认安装在版本不满足时只给出警告，启用 `engine-strict` 会直接失败，因此该场景需要 Node `>=22.13`。
 
-`package.json` 的 `files` 列出 `dist/`、`NOTICE` 与 `THIRD_PARTY_LICENSES`；npm 还会自动包含 README 与 LICENSE。从源码构建与本地调试流程见[贡献指南](./contributing.mdx)。
+发布包包含 `dist/`、`NOTICE` 与 `THIRD_PARTY_LICENSES`；npm 还会附带 README 与 LICENSE。从源码构建与本地调试流程见[贡献指南](./contributing.mdx)。
 
 ## 固定的上游
 
@@ -62,7 +62,7 @@ Node 下限来自依赖链路：`wikiparser-node` 声明 `^20.19.0 || ^22.13.0 |
 - 缓存键应包含包版本、schema、parser/config、源码、`pageName`，以及 policy、labels、resolver、插件与模板数据版本；函数本身不能直接写进缓存键。
 - 自定义语义节点与插件私有数据的格式由宿主管理，库不提供迁移保证。
 
-仓库尚未发布正式版本，因此暂时没有基于发布产物的兼容基线；快照恢复、稳定拒绝与重建路径目前由单元测试覆盖。
+  0.x 阶段还没有跨次版本的兼容基线：快照恢复、明确拒绝与重建规则以本节描述为准。
 
 ## 样式与安全基线
 
@@ -76,7 +76,7 @@ Node 下限来自依赖链路：`wikiparser-node` 声明 `^20.19.0 || ^22.13.0 |
 
 ## 验证兼容性
 
-升级 React、解析器或打包配置后，按仓库根目录的 [`CONTRIBUTING.md`](https://github.com/BearBin1215/react-wikitext/blob/main/CONTRIBUTING.md) 运行检查。benchmark 的执行或报告校验失败会阻塞流水线；耗时变化只进入摘要。
+升级本库、React 或打包配置后，请在你自己的应用中重新验证渲染与快照恢复；维护者的完整检查流程见仓库根目录的 [`CONTRIBUTING.md`](https://github.com/BearBin1215/react-wikitext/blob/main/CONTRIBUTING.md)。
 
 ## 许可
 

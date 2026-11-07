@@ -9,7 +9,7 @@ The default pipeline is synchronous: parsing and preparation run during the call
 
 ## Where the cost goes
 
-| Stage       | Main cost                                                  | Can it be avoided?                                       |
+| Stage       | Main cost                                                  | Can it be cached or skipped?                             |
 | ----------- | ---------------------------------------------------------- | -------------------------------------------------------- |
 | Parsing     | Upstream tokenization, syntax tree, semantic normalization | No; cache it or move it to a worker                      |
 | Preparation | Tree clone, plugins, HAST conversion, sanitize, finalize   | Reuse the render snapshot when only presentation changes |
@@ -130,4 +130,4 @@ async function loadViewer() {
 
 ## Measuring
 
-Numbers vary with source, config, browser, and hardware, so this documentation does not pin them. To compare before/after results, run `pnpm bench` in the repository; see [Contributing and feedback](../project/contributing.mdx) for the report details.
+Numbers vary with source, config, browser, and hardware, so this documentation does not pin them. To assess a change, sample your own application scenario; maintainers run the benchmark described in [Contributing and feedback](../project/contributing.mdx).

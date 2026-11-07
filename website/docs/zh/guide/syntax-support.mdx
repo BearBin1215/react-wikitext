@@ -129,6 +129,6 @@ export default function Demo() {
 1. 检查 `document.diagnostics` 的 `stage` 与 `code`。
 2. 用 `/ast` 的 `flattenNodes` 查看语义树，并与准备结果中的 HAST 对照。
 3. 用 `labels` 区分“未求值”“已拦截”“未知结构”等占位文案。
-4. 以 `src/` 与 `tests/` 为准；本页随默认行为更新。
+4. 本页描述默认配置下的行为；升级版本后，以实际诊断与渲染结果为准。
 
 行为细节与原因见[渲染行为](./rendering.mdx)；安全相关的拦截规则见[安全模型](./security.mdx)。
