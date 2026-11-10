@@ -6,6 +6,7 @@ import * as rootModule from "react-wikitext";
 import { WikitextView } from "react-wikitext";
 import * as ast from "react-wikitext/ast";
 import * as configs from "react-wikitext/configs";
+import * as devtools from "react-wikitext/devtools";
 import * as expand from "react-wikitext/expand";
 import * as hast from "react-wikitext/hast";
 import * as parseApi from "react-wikitext/parse";
@@ -34,6 +35,13 @@ assert.equal(typeof ast.WikitextError, "function");
 assert.equal("WikitextExpandError" in ast, false);
 assert.equal("WikitextPrepareError" in ast, false);
 assert.equal("WikitextError" in expand, true);
+assert.equal(typeof devtools.AstTree, "function");
+assert.equal(typeof devtools.NodeInspector, "function");
+assert.equal(typeof devtools.getNodeRange, "function");
+assert.equal(typeof devtools.getNodeSource, "function");
+assert.equal(typeof devtools.snapshotSelection, "function");
+assert.equal("WikitextView" in devtools, false);
+assert.equal("AstTree" in rootModule, false);
 
 const expanded = await expand.expandWikitext("{{T}}", {
   templates: { "Template:T": "hello" },
@@ -62,6 +70,17 @@ const viewSource = readFileSync(new URL("../../dist/view.js", import.meta.url), 
 assert.equal(viewSource.startsWith('"use client";'), true, "/view entry must be client-safe");
 const astSource = readFileSync(new URL("../../dist/ast.js", import.meta.url), "utf8");
 assert.equal(astSource.startsWith('"use client";'), false, "/ast must stay server-safe");
+const devtoolsSource = readFileSync(new URL("../../dist/devtools.js", import.meta.url), "utf8");
+assert.equal(
+  devtoolsSource.startsWith('"use client";'),
+  true,
+  "/devtools entry must be client-safe",
+);
+assert.equal(
+  devtoolsSource.includes("wikiparser-node"),
+  false,
+  "/devtools must not load the parser",
+);
 assert.equal(indexSource.includes('from "entities"'), false, "entities must be bundled");
 assert.match(indexSource, /from "react"/u, "root chunk should keep React external");
 

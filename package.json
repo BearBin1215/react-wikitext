@@ -65,6 +65,16 @@
         "default": "./dist/configs.cjs"
       }
     },
+    "./devtools": {
+      "import": {
+        "types": "./dist/devtools.d.ts",
+        "default": "./dist/devtools.js"
+      },
+      "require": {
+        "types": "./dist/devtools.d.cts",
+        "default": "./dist/devtools.cjs"
+      }
+    },
     "./expand": {
       "import": {
         "types": "./dist/expand.d.ts",
@@ -117,7 +127,8 @@
     },
     "./package.json": "./package.json",
     "./styles.css": "./dist/styles.css",
-    "./tokens.css": "./dist/tokens.css"
+    "./tokens.css": "./dist/tokens.css",
+    "./devtools.css": "./dist/devtools.css"
   },
   "publishConfig": {
     "access": "public"
@@ -140,7 +151,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs",
+    "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs && node tests/consumer/isolate-devtools.cjs",
     "test:types:consumer": "tsc -p tests/consumer/types/tsconfig.node16.json && tsc -p tests/consumer/types/tsconfig.bundler.json",
     "test:vite": "vite build --config tests/consumer/vite/vite.config.mjs && node tests/consumer/vite/check.mjs",
     "test:webpack": "webpack --config tests/consumer/webpack/webpack.config.mjs && node tests/consumer/webpack/check.mjs",

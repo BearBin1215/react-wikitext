@@ -34,6 +34,23 @@ describe("entry isolation", () => {
     }
   });
 
+  it("devtools entry does not initialize globalThis.Parser", async () => {
+    const original = (globalThis as { Parser?: unknown }).Parser;
+    (globalThis as { Parser?: unknown }).Parser = undefined;
+    vi.resetModules();
+    try {
+      const module = await import("@/devtools");
+      expect(typeof module.AstTree).toBe("function");
+      expect(typeof module.NodeInspector).toBe("function");
+      expect((globalThis as { Parser?: unknown }).Parser).toBeUndefined();
+    } finally {
+      vi.resetModules();
+      if (original !== undefined) {
+        (globalThis as { Parser?: unknown }).Parser = original;
+      }
+    }
+  });
+
   it("root entry exposes the source component and initializes globalThis.Parser", async () => {
     const original = (globalThis as { Parser?: unknown }).Parser;
     (globalThis as { Parser?: unknown }).Parser = undefined;

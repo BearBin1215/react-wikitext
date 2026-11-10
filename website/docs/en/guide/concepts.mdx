@@ -76,21 +76,22 @@ Each output can be traced back to its source, which makes issues easier to debug
 
 ## Entry boundaries
 
-| Entry      | Loads parser | Loads React | Typical use                                   |
-| ---------- | ------------ | ----------- | --------------------------------------------- |
-| Root entry | Yes          | Yes         | Render source on the client                   |
-| `/view`    | No           | Yes         | Render a prepared snapshot                    |
-| `/parse`   | Yes          | No          | Server, worker, cache                         |
-| `/expand`  | Yes          | No          | Expand templates before parse                 |
-| `/hast`    | No           | No          | Prepare, serialize, restore                   |
-| `/ast`     | No           | No          | AST queries and data pipelines                |
-| `/unified` | No           | No          | Fixed-order processor with an injected parser |
-| `/configs` | No           | No          | Site config constants and override builder    |
+| Entry       | Loads parser | Loads React | Typical use                                   |
+| ----------- | ------------ | ----------- | --------------------------------------------- |
+| Root entry  | Yes          | Yes         | Render source on the client                   |
+| `/view`     | No           | Yes         | Render a prepared snapshot                    |
+| `/parse`    | Yes          | No          | Server, worker, cache                         |
+| `/expand`   | Yes          | No          | Expand templates before parse                 |
+| `/hast`     | No           | No          | Prepare, serialize, restore                   |
+| `/ast`      | No           | No          | AST queries and data pipelines                |
+| `/unified`  | No           | No          | Fixed-order processor with an injected parser |
+| `/configs`  | No           | No          | Site config constants and override builder    |
+| `/devtools` | No           | Yes         | Debug parse results and render snapshots      |
 
 [Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, see the export notes on each entry page.
 
 :::warning
-React entries create Context at module load and use `useId` / `useMemo`, so they only run in Client Components. The root entry and `/view` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse` and `/hast`.
+React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse` and `/hast`.
 :::
 
 ## Glossary

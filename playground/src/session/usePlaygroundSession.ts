@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
-  findNodeById,
   findNodeAtOffset,
   type WikitextDocument,
   type WikitextNode,
@@ -8,12 +7,14 @@ import {
 } from "react-wikitext/ast";
 import type { WikitextExpansionInfo } from "react-wikitext/expand";
 import {
-  findDevtreeNode,
+  findAstTreeNode,
+  getNodeRange,
+  isSyntaxNode,
   restoreSelectedId,
   snapshotSelection,
-  type DevtreeKind,
-  type DevtreeNode,
-} from "@pg/devtools";
+  type AstTreeKind,
+  type AstTreeNode,
+} from "react-wikitext/devtools";
 import { sceneOf, sourceText } from "@pg/catalog";
 import type { ParseErrorInfo } from "@pg/parse/protocol";
 import { useParseScheduler } from "@pg/parse/useParseScheduler";
@@ -43,7 +44,7 @@ export interface PlaygroundSession {
   readonly prepareError?: ParseErrorInfo;
   readonly viewProps: ReturnType<typeof useViewProps>;
   readonly devtoolsLabels: ReturnType<typeof useDevtoolsLabels>;
-  readonly selectedNode?: DevtreeNode;
+  readonly selectedNode?: AstTreeNode;
   readonly selectedRange?: WikitextRange;
   readonly semanticSelected?: WikitextNode;
   readonly facts: StatusFacts;
@@ -55,8 +56,8 @@ export interface PlaygroundSession {
   patchOptions(patch: Partial<PlaygroundOptions>): void;
   resetOptions(): void;
   selectPanel(panel: RightPanel): void;
-  switchTree(kind: DevtreeKind): void;
-  selectNode(id: string | undefined, kind?: DevtreeKind): void;
+  switchTree(kind: AstTreeKind): void;
+  selectNode(id: string | undefined, kind?: AstTreeKind): void;
   selectAtOffset(offset: number): void;
 }
 
@@ -67,10 +68,6 @@ function flushDraft(target: { sourceId: string; source: string }): void {
   } else {
     writeDraft(target.sourceId, target.source);
   }
-}
-
-function rangeOf(node: DevtreeNode): WikitextRange | undefined {
-  return "props" in node ? node.range : node.origin?.range;
 }
 
 /** 会话层：唯一的状态来源，派生 doc / prepared / facts / repro 输入。 */
@@ -105,20 +102,18 @@ export function usePlaygroundSession(): PlaygroundSession {
   const viewProps = useViewProps(state.options);
   const devtoolsLabels = useDevtoolsLabels(state.options);
 
-  const selectedNode = useMemo<DevtreeNode | undefined>(() => {
+  const selectedNode = useMemo<AstTreeNode | undefined>(() => {
     if (!doc || !state.selectedId) {
       return undefined;
     }
-    return state.treeKind === "syntax"
-      ? findDevtreeNode(doc, state.selectedId, "syntax")
-      : findNodeById(doc, state.selectedId);
+    return findAstTreeNode(doc, state.selectedId, state.treeKind);
   }, [doc, state.selectedId, state.treeKind]);
   const selectedRange = useMemo(() => {
-    const range = selectedNode ? rangeOf(selectedNode) : undefined;
+    const range = selectedNode ? getNodeRange(selectedNode) : undefined;
     return range && range[0] !== range[1] ? range : undefined;
   }, [selectedNode]);
   const semanticSelected =
-    state.treeKind === "semantic" && selectedNode && !("props" in selectedNode)
+    state.treeKind === "semantic" && selectedNode && !isSyntaxNode(selectedNode)
       ? selectedNode
       : undefined;
 
@@ -153,14 +148,20 @@ export function usePlaygroundSession(): PlaygroundSession {
       return;
     }
     if (prev.doc === doc) {
-      if (state.selectedId && !findDevtreeNode(doc, state.selectedId, state.treeKind)) {
+      if (state.selectedId && !findAstTreeNode(doc, state.selectedId, state.treeKind)) {
         dispatch({ type: "selectNode", id: undefined });
       }
       return;
     }
-    const snapshot = prev.doc
-      ? snapshotSelection(prev.doc, state.selectedId, state.treeKind)
-      : undefined;
+    if (!prev.doc) {
+      // 首次解析完成时保留 URL 或持久化恢复的选区，只在节点不存在时清空。
+      previous.current = { key: state.sourceId, doc };
+      if (state.selectedId && !findAstTreeNode(doc, state.selectedId, state.treeKind)) {
+        dispatch({ type: "selectNode", id: undefined });
+      }
+      return;
+    }
+    const snapshot = snapshotSelection(prev.doc, state.selectedId, state.treeKind);
     previous.current = { key: state.sourceId, doc };
     dispatch({ type: "selectNode", id: restoreSelectedId(doc, snapshot, state.treeKind) });
   }, [doc, state.sourceId, state.selectedId, state.treeKind]);
@@ -223,10 +224,10 @@ export function usePlaygroundSession(): PlaygroundSession {
   const selectPanel = useCallback((panel: RightPanel) => {
     dispatch({ type: "selectPanel", panel });
   }, []);
-  const switchTree = useCallback((kind: DevtreeKind) => {
+  const switchTree = useCallback((kind: AstTreeKind) => {
     dispatch({ type: "switchTree", treeKind: kind });
   }, []);
-  const selectNode = useCallback((id: string | undefined, kind?: DevtreeKind) => {
+  const selectNode = useCallback((id: string | undefined, kind?: AstTreeKind) => {
     dispatch({
       type: "selectNode",
       ...(id === undefined ? {} : { id }),

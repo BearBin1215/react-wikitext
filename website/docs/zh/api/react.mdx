@@ -250,3 +250,7 @@ function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): 
 ## 相关类型
 
 根入口额外导出视图组件会用到的精选语义类型：`WikitextLink`、`WikitextTemplate`、`WikitextFile`、`WikitextReference`、`WikitextTable`、`WikitextUnknown` 等。完整节点子类型与 AST 工具从 [`/ast`](./ast.mdx) 导入。
+
+## 调试
+
+需要检查解析或渲染结果时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree` 与 `NodeInspector`；它们读取同一份快照，不参与正式渲染。

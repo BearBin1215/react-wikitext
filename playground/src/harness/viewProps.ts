@@ -1,6 +1,6 @@
 import type { WikitextPrepareOptions } from "react-wikitext/hast";
 import type { WikitextViewProps } from "react-wikitext/view";
-import type { AstTreeLabels, NodeInspectorLabels } from "@pg/devtools";
+import type { AstTreeLabels, NodeInspectorLabels } from "react-wikitext/devtools";
 import type { PlaygroundOptions } from "@pg/state/options";
 import { inspectorLabels, treeLabels, viewLabels } from "@pg/ui/labels";
 import {

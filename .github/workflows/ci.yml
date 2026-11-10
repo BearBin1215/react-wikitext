@@ -86,4 +86,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm add -D react@18.3.1 react-dom@18.3.1 @types/react@18.3.12 @types/react-dom@18.3.1
       - run: pnpm run typecheck
-      - run: pnpm exec vitest run tests/render/WikitextView.test.tsx tests/render/templates-files.test.tsx tests/render/html.test.tsx tests/playground/AstTree.test.tsx
+      - run: pnpm exec vitest run tests/render/WikitextView.test.tsx tests/render/templates-files.test.tsx tests/render/html.test.tsx tests/devtools/AstTree.test.tsx

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { WikitextDocument } from "react-wikitext/ast";
 import { prepareWikitext, type WikitextRenderDocument } from "react-wikitext/hast";
 import type { WikitextViewProps } from "react-wikitext/view";
-import type { AstTreeLabels, NodeInspectorLabels } from "@pg/devtools";
+import type { AstTreeLabels, NodeInspectorLabels } from "react-wikitext/devtools";
 import { serializeParseError } from "@pg/parse/errors";
 import type { ParseErrorInfo } from "@pg/parse/protocol";
 import { buildDevtoolsLabels, buildPrepareOptions, buildViewProps } from "@pg/harness/viewProps";

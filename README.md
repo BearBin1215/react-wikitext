@@ -15,6 +15,7 @@ parser → source syntax tree (optional) → typed wiki AST → HAST → React
 - **No external services**: no dependency on Wikimedia, font CDNs, or any external API at runtime.
 - **Pluggable parser**: uses `wikiparser-node` by default; inject your own implementation with `createWikitextParser` from `react-wikitext/ast`.
 - **Optional template expansion**: expand supported templates and pure wikitext functions with a host `templates` table or `resolveTemplate` callback before parsing.
+- **Debug panels**: inspect parse or render snapshots with `AstTree` and `NodeInspector` from the optional `/devtools` entry.
 - **Load only what you need**: ESM and CJS builds, type declarations, and subpath entry points.
 
 ## Installation
@@ -71,18 +72,20 @@ The prepared document is serializable, so preparation can run on the server or i
 
 ## Entry points
 
-| Entry point                 | Purpose                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| `react-wikitext`            | Source component `Wikitext` and view component `WikitextView`                |
-| `react-wikitext/view`       | Render a prepared document without loading a parser                          |
-| `react-wikitext/parse`      | Parsers and parse options                                                    |
-| `react-wikitext/ast`        | Semantic model, queries, serialization, and custom parsers                   |
-| `react-wikitext/hast`       | `prepareWikitext`, plugins, resolvers, policies, and labels                  |
-| `react-wikitext/expand`     | Template expansion                                                           |
-| `react-wikitext/unified`    | Fixed-order unified processor with the final sanitize stage owned by the library |
-| `react-wikitext/configs`    | Site configuration snapshot and override builder                             |
-| `react-wikitext/styles.css` | Page rendering styles                                                        |
-| `react-wikitext/tokens.css` | Theme variables only                                                         |
+| Entry point                   | Purpose                                                                      |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `react-wikitext`              | Source component `Wikitext` and view component `WikitextView`                |
+| `react-wikitext/view`         | Render a prepared document without loading a parser                          |
+| `react-wikitext/parse`        | Parsers and parse options                                                    |
+| `react-wikitext/ast`          | Semantic model, queries, serialization, and custom parsers                   |
+| `react-wikitext/hast`         | `prepareWikitext`, plugins, resolvers, policies, and labels                  |
+| `react-wikitext/expand`       | Template expansion                                                           |
+| `react-wikitext/unified`      | Fixed-order unified processor with the final sanitize stage owned by the library |
+| `react-wikitext/configs`      | Site configuration snapshot and override builder                             |
+| `react-wikitext/devtools`     | AST tree, node inspector, and selection restore helpers                      |
+| `react-wikitext/styles.css`   | Page rendering styles                                                        |
+| `react-wikitext/tokens.css`   | Theme variables only                                                         |
+| `react-wikitext/devtools.css` | Debug component styles                                                       |
 
 The root entry is the main entry. Hosts that prepare documents on the server, parse in a worker, or only render should use `react-wikitext/view`, which does not load the default parser. See [Entry points](https://react-wikitext.pages.dev/api/) for the public types and exports of each subpath.
 

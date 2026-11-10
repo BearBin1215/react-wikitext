@@ -118,6 +118,25 @@ import {
 } from "react-wikitext/expand";
 import { createWikiparser, parseWikitext, type WikitextParserLimits } from "react-wikitext/parse";
 import { createWikitextProcessor } from "react-wikitext/unified";
+import {
+  AstTree,
+  NodeInspector,
+  findAstTreeNode,
+  getNodeRange,
+  getNodeSource,
+  isSyntaxNode,
+  remapExpandedIds,
+  restoreSelectedId,
+  snapshotSelection,
+  type AstTreeDocument,
+  type AstTreeKind,
+  type AstTreeLabels,
+  type AstTreeNode,
+  type AstTreeProps,
+  type NodeInspectorLabels,
+  type NodeInspectorProps,
+  type SelectionSnapshot,
+} from "react-wikitext/devtools";
 
 const parser: WikitextParser = createWikiparser();
 const parserLimits: WikitextParserLimits = { maxSyntaxNodes: 1_000, maxDepth: 100 };
@@ -182,6 +201,52 @@ void expandErrorCode;
 void ExpandWikitextError;
 const parsedDocument = parseWikitext("text");
 void parsedDocument;
+
+const astTreeDocument: AstTreeDocument = parsedDocument;
+const astTreeKind: AstTreeKind = "semantic";
+const astTreeLabels: Partial<AstTreeLabels> = { treeLabel: "AST" };
+const astTreeProps: AstTreeProps = {
+  document: astTreeDocument,
+  kind: astTreeKind,
+  selectedId: null,
+  labels: astTreeLabels,
+  getNodeLabel: (_node, fallback) => fallback,
+  style: { height: 480 },
+};
+const astTreeNode: AstTreeNode | undefined = findAstTreeNode(
+  astTreeDocument,
+  parsedDocument.ast.id,
+  astTreeKind,
+);
+const selection: SelectionSnapshot | undefined = snapshotSelection(
+  astTreeDocument,
+  astTreeNode?.id,
+  astTreeKind,
+);
+const restoredId: string | undefined = restoreSelectedId(astTreeDocument, selection);
+const remapped: ReadonlySet<string> = remapExpandedIds(astTreeDocument, astTreeDocument, new Set());
+if (astTreeNode) {
+  const range: readonly [number, number] | undefined = getNodeRange(astTreeNode);
+  const source: string = getNodeSource(astTreeDocument, astTreeNode);
+  const syntax: boolean = isSyntaxNode(astTreeNode);
+  void range;
+  void source;
+  void syntax;
+}
+const inspectorLabels: Partial<NodeInspectorLabels> = { copyJson: "Copy" };
+const inspectorProps: NodeInspectorProps = {
+  document: astTreeDocument,
+  ...(astTreeNode ? { node: astTreeNode } : {}),
+  labels: inspectorLabels,
+  style: { height: 480 },
+};
+const renderedTreeProps: AstTreeProps = { document: prepareWikitext(parsedDocument) };
+export const astTreeElement = createElement(AstTree, astTreeProps);
+export const inspectorElement = createElement(NodeInspector, inspectorProps);
+void renderedTreeProps;
+void selection;
+void restoredId;
+void remapped;
 
 const semanticNodes: readonly WikitextNode[] = flattenNodes(document.ast);
 const link = semanticNodes.find((node) => isNodeType(node, "link"));

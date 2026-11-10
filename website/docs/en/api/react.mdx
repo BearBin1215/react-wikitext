@@ -250,3 +250,7 @@ Error boundaries isolate top-level HAST blocks. The placeholder shows `labels.re
 ## Related types
 
 The root entry additionally exports selected semantic types used by view props: `WikitextLink`, `WikitextTemplate`, `WikitextFile`, `WikitextReference`, `WikitextTable`, `WikitextUnknown`, and more. Import the full node subtypes and AST tools from [`/ast`](./ast.mdx).
+
+## Debugging
+
+To inspect parse or render results, use `AstTree` and `NodeInspector` from [`/devtools`](./devtools.mdx). They read the same snapshot and are outside the regular rendering pipeline.

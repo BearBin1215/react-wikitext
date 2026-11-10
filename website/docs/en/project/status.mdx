@@ -70,7 +70,7 @@ A version change is a structural break. Include versions in cache keys; restore 
 - Inline styles keep only whitelisted layout and appearance declarations; values using `url()`, `expression()`, or `!important` are dropped whole and reported as diagnostics. There is no `eval` dependency; under strict CSP, allow `style-src` as needed for them to apply.
 - No `dangerouslySetInnerHTML`; the final HAST comes from the sanitizer and wiki policy.
 - Images are not loaded by default; only authorized URLs (from a resolver, or an explicitly enabled plugin-image policy) become `<img>`.
-- React entries depend on Context and only run in Client Components; the root entry and `/view` ship a `"use client"` directive, so the host does not need to repeat it.
+- React entries only run in Client Components; the root entry, `/view`, and `/devtools` ship a `"use client"` directive, so the host does not need to repeat it.
 
 See [Security model](../guide/security.mdx) and [Rendering behavior](../guide/rendering.mdx) for the full boundaries.
 

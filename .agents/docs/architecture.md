@@ -20,6 +20,7 @@
 playground 负责：
 
 - 源码编辑、语义/语法树切换、节点检查、预览、API 探查、诊断与复现导出。
+- AST 树与节点检查器来自公开的 `/devtools`，playground 只负责布局与会话状态。
 - 输入源与解析/准备/视图选项解耦；Worker 解析、防抖与过期结果丢弃。
 - 源码、树、预览之间的定位与选中；URL 状态与 localStorage 草稿。
 
@@ -65,6 +66,7 @@ Worker 只属于 playground 调度层；库的解析与准备 API 保持同步�
 | 解析 | `/parse` | 源码 → `WikitextDocument` | LF 归一化、预算、语法树校验、语义归一化、诊断 | 显示结构、HTML 清洗 |
 | 准备 | `/hast`、`/unified` | `WikitextDocument` → `WikitextRenderDocument` | 插件、resolver、HAST 转换、清洗、最终整理 | 解析源码、React 渲染 |
 | 视图 | `/view`、根入口 | `WikitextRenderDocument` → React | 组件映射、实例 id、错误隔离 | 解析、运行插件或 resolver |
+| 调试 | `/devtools` | `WikitextDocument` 或 `WikitextRenderDocument` → React 调试面板 | AST 树、节点详情与选择恢复 | 解析、准备、正式渲染 |
 
 固定处理链为 parser → 可选的源码语法树 → 强类型 wiki 语义 AST → HAST → React。结构归一化在语义阶段完成；HAST 只表达 HTML 结构；React 只做组件映射与实例化。
 
@@ -143,9 +145,11 @@ src/
   unified/      createWikitextProcessor 与 VFile data 读取 helper；
                 无 React、parser
   view/         WikitextView、WikitextFragment、context、bridge、render、错误边界、类型
+  devtools/     AstTree、NodeInspector、tree、selection、展开/搜索 hooks 与文案；
+                只依赖 ast 的普通数据、查询与 React
   configs/      默认配置与配置类型；无 React、parser
   shared/       HTML 标签表、HAST 与 URL 谓词；无解析、清洗或 React 依赖
-  styles/       view.css、tokens.css；页面渲染样式与主题 token
+  styles/       view.css、devtools.css、tokens.css；页面渲染与调试组件样式、主题 token
   types/        上游深层导入与 VFile 的 ambient 声明
   Wikitext.tsx  根入口的源码组件；依赖 parse、hast、view
   index.ts      根入口：view + Wikitext + 精选语义类型
@@ -161,8 +165,6 @@ playground/src/
                 Worker/主线程回退、过期结果）；不持有输入源身份
   session/      唯一状态来源：reducer、usePlaygroundSession、selectors、persistence（URL 与草稿）
   harness/      示例 resolver/组件、复现生成、选项到 props 映射、剪贴板
-  devtools/     AstTree、NodeInspector、tree、selection、展开/搜索 hooks 与文案；
-                只依赖 `react-wikitext/ast` 与 React
   ui/           场景菜单与参数栏、顶栏、状态栏、诊断、API、复现面板与文案
   state/        PlaygroundOptions 类型与 URL 编解码、系统主题
 ```
@@ -175,9 +177,11 @@ playground/src/
 - `hast` 依赖 `ast`、`shared` 与打包的 unified/hast 工具；不依赖 parser、`normalize`、React 或 `/ast` 桶。
 - `unified` 依赖 `hast` 的共享阶段模块与 `ast`，不隐式创建默认 parser。
 - `view` 依赖 `ast`、`shared`、React 与打包的 `hast-util-to-jsx-runtime`（`@types/hast` 只用于类型），不 import `parse`、`configs` 或 `loadParser`，也不通过值导入获取清洗实现。
+- `devtools` 依赖 `ast` 的普通数据与查询以及 React，不依赖 parser、`normalize`、`hast`、`unified` 或 `view`；playground 通过公共入口复用这些组件。
 - 根入口的 `Wikitext` 组件依赖 `parse`、`hast`、`view`，会加载 parser；`/view` 入口只依赖 `view`、`ast` 与 React，不加载 parser。
 - `src/` 不依赖 CodeMirror 或 playground；核心解析/准备不依赖 DOM。
 - playground 只通过 `@pg/*` 引用自身、通过 package 公共入口引用库；禁止 `@/` 或更深层导入。
+- `/devtools` 是公开调试入口，不进入正式渲染链；根入口、`/view` 与 `/hast` 都不依赖它。
 - 库样式只使用 `.wikitext-*`；MediaWiki 兼容 class 是受控例外，见[渲染规范](./rendering-spec.md#14-样式)。
 
 `tests/parser/static.test.ts`、`tests/parser/entryIsolation.test.ts`、`tests/playground/imports.test.ts` 与 consumer 隔离脚本持续检查这些边界。

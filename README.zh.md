@@ -15,6 +15,7 @@ parser → 源码语法树（可选）→ 强类型 wiki 语义 AST → HAST →
 - **不依赖外部服务**：运行时不依赖 Wikimedia、字体 CDN 或任何外部 API。
 - **可注入解析器**：默认使用 `wikiparser-node`，也可以通过 `react-wikitext/ast` 的 `createWikitextParser` 注入自己的解析器实现。
 - **可选模板展开**：解析前用宿主提供的模板表或获取回调展开受支持的模板与纯 wikitext 函数。
+- **调试面板**：可选 `/devtools` 入口提供 `AstTree` 与 `NodeInspector`，用于检查解析快照或渲染快照。
 - **按需加载**：库同时提供 ESM 与 CJS 产物、类型声明与子路径入口，宿主可以只加载需要的部分。
 
 ## 安装
@@ -71,18 +72,20 @@ export function Article() {
 
 ## 入口
 
-| 子路径                      | 用途                                            |
-| --------------------------- | ----------------------------------------------- |
-| `react-wikitext`            | 源码组件 `Wikitext` 与视图组件 `WikitextView`   |
-| `react-wikitext/view`       | 只渲染已准备好的文档（不加载解析器）            |
-| `react-wikitext/parse`      | 解析器与解析选项                                |
-| `react-wikitext/ast`        | 语义模型、查询、序列化与自定义解析器            |
-| `react-wikitext/hast`       | `prepareWikitext`、插件、resolver、策略与文案   |
-| `react-wikitext/expand`     | 模板展开                                        |
-| `react-wikitext/unified`    | 固定顺序的 unified 处理器，收尾清洗由库内部追加 |
-| `react-wikitext/configs`    | 站点配置快照与覆盖构造器                        |
-| `react-wikitext/styles.css` | 页面渲染样式                                    |
-| `react-wikitext/tokens.css` | 仅主题变量                                      |
+| 子路径                        | 用途                                            |
+| ----------------------------- | ----------------------------------------------- |
+| `react-wikitext`              | 源码组件 `Wikitext` 与视图组件 `WikitextView`   |
+| `react-wikitext/view`         | 只渲染已准备好的文档（不加载解析器）            |
+| `react-wikitext/parse`        | 解析器与解析选项                                |
+| `react-wikitext/ast`          | 语义模型、查询、序列化与自定义解析器            |
+| `react-wikitext/hast`         | `prepareWikitext`、插件、resolver、策略与文案   |
+| `react-wikitext/expand`       | 模板展开                                        |
+| `react-wikitext/unified`      | 固定顺序的 unified 处理器，收尾清洗由库内部追加 |
+| `react-wikitext/configs`      | 站点配置快照与覆盖构造器                        |
+| `react-wikitext/devtools`     | AST 树、节点检查器与选择恢复辅助函数            |
+| `react-wikitext/styles.css`   | 页面渲染样式                                    |
+| `react-wikitext/tokens.css`   | 仅主题变量                                      |
+| `react-wikitext/devtools.css` | 调试组件样式                                    |
 
 根入口是主入口。服务端预准备、Worker 解析或只做渲染的宿主应当使用 `react-wikitext/view`，这个入口不会加载默认解析器。各子路径的公共类型与导出见文档[入口](https://react-wikitext.pages.dev/zh/api/)。
 

@@ -35,7 +35,9 @@ const sourceAliases = [
   { find: /^react-wikitext\/unified$/u, replacement: librarySource("unified/index.ts") },
   { find: /^react-wikitext\/view$/u, replacement: librarySource("view/index.ts") },
   { find: /^react-wikitext\/configs$/u, replacement: librarySource("configs/index.ts") },
+  { find: /^react-wikitext\/devtools$/u, replacement: librarySource("devtools/index.ts") },
   { find: /^react-wikitext\/styles\.css$/u, replacement: librarySource("styles/view.css") },
+  { find: /^react-wikitext\/devtools\.css$/u, replacement: librarySource("styles/devtools.css") },
 ];
 
 const distAliases = [
@@ -47,7 +49,9 @@ const distAliases = [
   { find: /^react-wikitext\/unified$/u, replacement: libraryDist("unified.js") },
   { find: /^react-wikitext\/view$/u, replacement: libraryDist("view.js") },
   { find: /^react-wikitext\/configs$/u, replacement: libraryDist("configs.js") },
+  { find: /^react-wikitext\/devtools$/u, replacement: libraryDist("devtools.js") },
   { find: /^react-wikitext\/styles\.css$/u, replacement: libraryDist("styles.css") },
+  { find: /^react-wikitext\/devtools\.css$/u, replacement: libraryDist("devtools.css") },
 ];
 
 export default defineConfig(({ mode }) => ({

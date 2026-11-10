@@ -27,6 +27,15 @@ assert.equal(typeof ast.WikitextError, "function");
 assert.equal(ast.WikitextExpandError, undefined);
 assert.equal(ast.WikitextPrepareError, undefined);
 
+const devtools = require("react-wikitext/devtools");
+assert.equal(typeof devtools.AstTree, "function");
+assert.equal(typeof devtools.NodeInspector, "function");
+assert.equal(typeof devtools.findAstTreeNode, "function");
+assert.equal(typeof devtools.getNodeRange, "function");
+assert.equal(typeof devtools.getNodeSource, "function");
+assert.equal(typeof devtools.isSyntaxNode, "function");
+assert.equal(devtools.WikitextView, undefined);
+
 const hast = require("react-wikitext/hast");
 assert.equal(typeof hast.prepareWikitext, "function");
 assert.equal(hast.collectHeadings, undefined);
@@ -68,8 +77,11 @@ for (const file of [
   "unified.js",
   "view.js",
   "configs.js",
+  "devtools.js",
+  "devtools.cjs",
   "styles.css",
   "tokens.css",
+  "devtools.css",
 ]) {
   assert.equal(existsSync(join(dist, file)), true, `${file} should exist in dist`);
 }
@@ -78,8 +90,9 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, "../../package.json"
 assert.equal(packageJson.peerDependencies.react, ">=18.2 <20");
 assert.equal(packageJson.peerDependencies["react-dom"], ">=18.2 <20");
 assert.equal(packageJson.exports["./tokens.css"], "./dist/tokens.css");
-assert.equal(packageJson.exports["./devtools"], undefined);
-assert.equal(packageJson.exports["./devtools.css"], undefined);
+assert.equal(packageJson.exports["./devtools"].import.default, "./dist/devtools.js");
+assert.equal(packageJson.exports["./devtools"].require.default, "./dist/devtools.cjs");
+assert.equal(packageJson.exports["./devtools.css"], "./dist/devtools.css");
 
 let resolveCalls = 0;
 expandApi

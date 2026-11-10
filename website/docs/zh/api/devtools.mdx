@@ -1,0 +1,198 @@
+---
+title: 调试组件 /devtools
+description: 用 AstTree 与 NodeInspector 检查解析快照和渲染快照的 AST。
+---
+
+# 调试组件 `/devtools`
+
+`/devtools` 提供开发期的 AST 调试面板：`AstTree` 展示可展开、搜索与键盘导航的语义树或源码语法树，`NodeInspector` 显示节点的字段、属性和源码。两个组件只读取快照，不修改节点，也不参与正式渲染。
+
+适合排查解析结果、插件输出和源码区间，不适合面向最终用户的页面。入口只加载 React 与 `/ast` 的查询函数，不加载解析器、准备阶段或 `WikitextView`。
+
+## 快速开始
+
+下面的预览使用固定源码展示左右联动。点击左侧节点，右侧显示对应节点的详情。预览为了生成快照还导入了 `/parse`；`/devtools` 自身不加载解析器。
+
+```tsx preview
+import { useMemo, useState } from "react";
+import { parseWikitext } from "react-wikitext/parse";
+import { AstTree, NodeInspector, type AstTreeNode } from "react-wikitext/devtools";
+import "react-wikitext/devtools.css";
+
+const source = `== 示例 ==
+这是一段 '''wikitext'''，包含 [[示例页面|内部链接]]。
+
+{{Infobox|title=模板占位}}`;
+
+export default function Demo() {
+  const document = useMemo(() => parseWikitext(source, { pageName: "Demo" }), []);
+  const [selected, setSelected] = useState<AstTreeNode | null>(null);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: 16,
+        height: 420,
+      }}
+    >
+      <AstTree
+        document={document}
+        selectedId={selected?.id ?? null}
+        onSelect={(node) => setSelected(node)}
+      />
+      <NodeInspector document={document} node={selected ?? undefined} />
+    </div>
+  );
+}
+```
+
+## 快照结构
+
+```ts
+interface AstTreeDocument {
+  readonly source: string;
+  readonly ast: WikitextRoot;
+  readonly syntax?: WikitextSyntaxRoot;
+}
+```
+
+解析快照 `WikitextDocument` 与渲染快照 `WikitextRenderDocument` 都满足这个结构。语义树读取 `ast`；源码语法树读取 `syntax`，只有解析时设置 `retainSyntax: true` 才会保留。渲染快照由 `/hast` 的 [`prepareWikitext`](./prepare.mdx) 产生，`ast` 是插件处理后的工作树，没有 `syntax`，因此只能查看语义树。
+
+节点 id 在一份快照内唯一，不承诺跨解析稳定。默认解析器为语义树与源码语法树都生成路径式 id，同一个 id 在两棵树中可能指向不同节点，不要跨树复用选中或展开状态。
+
+## AstTree
+
+```tsx
+import { parseWikitext } from "react-wikitext/parse";
+import { AstTree } from "react-wikitext/devtools";
+
+const document = parseWikitext(source, { retainSyntax: true });
+
+<AstTree document={document} onSelect={(node) => console.log(node)} />;
+```
+
+### 属性
+
+| 属性                   | 类型                         | 默认值       | 说明                                                        |
+| ---------------------- | ---------------------------- | ------------ | ----------------------------------------------------------- |
+| `document`             | `AstTreeDocument`            | —            | 解析快照或渲染快照                                          |
+| `kind`                 | `"semantic" \| "syntax"`     | `"semantic"` | 展示语义树或源码语法树                                      |
+| `selectedId`           | `string \| null`             | —            | 受控选中；`null` 表示受控且没有选中，`undefined` 表示非受控 |
+| `defaultSelectedId`    | `string`                     | —            | 非受控模式的初始选中节点                                    |
+| `onSelect`             | `(node, kind) => void`       | —            | 选中节点时触发；第二参数是当前树类型                        |
+| `defaultExpandedDepth` | `number`                     | `2`          | 初始展开深度；非受控模式在挂载或切换 `kind` 时使用          |
+| `expandedIds`          | `ReadonlySet<string>`        | —            | 受控展开集合；提供后由调用方维护                            |
+| `onExpandedChange`     | `(ids) => void`              | —            | 展开集合变化时触发；受控与非受控模式都会调用                |
+| `getNodeLabel`         | `(node, fallback) => string` | 内置说明     | 覆盖节点说明；第二个参数是内置文字，返回空字符串表示不显示  |
+| `labels`               | `Partial<AstTreeLabels>`     | 英文默认文案 | 覆盖面板文案                                                |
+| `className`            | `string`                     | —            | 追加到 `.wikitext-tree`                                     |
+| `style`                | `CSSProperties`              | —            | 设置树容器的样式                                            |
+
+### 选中
+
+- 默认是非受控模式：点击节点会选中并高亮，组件按树类型分别保留选区。
+- 文档更新后，非受控选区会按节点类型与源码区间尝试恢复；没有区间的生成节点不会恢复。受控模式由调用方决定何时清空或恢复。
+- 受控时必须在 `onSelect` 中更新 `selectedId`，否则点击后不会高亮。`null` 和字符串都属于受控模式，`undefined` 表示非受控，不要在两种模式之间切换。
+- 选中的节点如果被折叠，组件会请求展开祖先并滚动到可见位置；受控展开需要调用方把 `onExpandedChange` 的新集合写回 `expandedIds`。如果该节点不在当前树中，组件只保留一个可聚焦的行，不报错。
+
+### 展开
+
+- 非受控模式默认展开两层。切换 `kind` 时按新树的默认深度重新展开；同一类型的新快照会按节点类型与源码区间尽量保留展开项。
+- `expandedIds` 提供后展开集合完全由调用方维护；`onExpandedChange` 仍会在请求变化时触发，调用方需要把新集合写回。
+- 非受控模式下，文档更新后的自动重映射和外部选中导致的展开也会触发 `onExpandedChange`。
+- 展开全部会一次性渲染整棵树；文档很大时优先逐层展开或配合搜索。
+
+### 搜索与键盘
+
+- 搜索不区分大小写，匹配节点类型、节点说明与源码片段；节点较大时只匹配源码开头部分。匹配过多时只显示前 80 条，并提示缩小范围。
+- 搜索时结果列表会替换树视图。从输入框按向下键进入结果；在结果上按回车选中，按 `Escape` 清空搜索，按方向键在结果之间移动。选中结果后焦点回到对应的树行。
+- 树中按上下方向键移动、`Home` / `End` 跳到首尾、左右方向键展开或折叠并跳到父子节点，`Enter` / 空格选中当前节点。
+- 树使用 `role="tree"`、`role="treeitem"`、`aria-expanded` 与 `aria-selected`；键盘焦点落在当前 `treeitem` 行上。
+
+## NodeInspector
+
+```tsx
+<NodeInspector document={document} node={selected ?? undefined} />
+```
+
+| 属性        | 类型                           | 说明                           |
+| ----------- | ------------------------------ | ------------------------------ |
+| `document`  | `AstTreeDocument`              | 解析快照或渲染快照             |
+| `node`      | `AstTreeNode`                  | 要检查的节点；省略时显示空状态 |
+| `labels`    | `Partial<NodeInspectorLabels>` | 覆盖面板文案                   |
+| `className` | `string`                       | 追加到 `.wikitext-inspector`   |
+| `style`     | `CSSProperties`                | 设置面板样式                   |
+
+- 组件按节点形状区分语义节点与源码语法节点，不需要传入树类型。
+- 语法节点显示 `props`、`attributes` 与源码；语义节点显示除 `children` 外的字段与源码。
+- 没有源码区间的生成节点显示 `labels.generated`。
+- 复制优先使用 `navigator.clipboard`，不可用时回退到 `document.execCommand("copy")`；节点没有源码时复制源码按钮禁用。
+- 语义值分组不显示 `children`；复制 JSON 在点击时序列化完整节点，包含 `children`。节点字段无法序列化时显示 `labels.unserializable`，复制按钮显示 `labels.copyFailed`。
+- `node` 必须来自同一份 `document`，否则源码切片可能不匹配。
+
+## 与编辑器联动
+
+`onSelect` 给出节点，`getNodeRange(node)` 给出 `[start, end)` 区间，`getNodeSource(document, node)` 给出源码文本，可以直接用于编辑器选区。受控 `selectedId` 变化后，树会请求展开祖先并滚动到选中行；受控 `expandedIds` 需要调用方接受 `onExpandedChange` 的新集合。
+
+源码修改并重新解析后，节点 id 会变化。需要保留选区或展开集合时，使用快照辅助函数：
+
+```ts
+import { parseWikitext } from "react-wikitext/parse";
+import {
+  findAstTreeNode,
+  remapExpandedIds,
+  restoreSelectedId,
+  snapshotSelection,
+  type AstTreeKind,
+} from "react-wikitext/devtools";
+
+// 与 <AstTree kind={...}> 保持一致；语法树要使用 "syntax"。
+const kind: AstTreeKind = "semantic";
+const snapshot = snapshotSelection(document, selected?.id, kind);
+const next = parseWikitext(nextSource, { retainSyntax: true });
+const restoredId = restoreSelectedId(next, snapshot);
+const restoredNode = findAstTreeNode(next, restoredId, kind);
+const expanded = remapExpandedIds(document, next, expandedIds, kind);
+```
+
+| 函数                                                     | 行为                                                                                      |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `findAstTreeNode(document, id, kind)`                    | 按 id 在指定树中查找节点；id 为空或不存在时返回 `undefined`                               |
+| `getNodeRange(node)`                                     | 返回节点区间；语法节点读取 `range`，语义节点读取 `origin.range`，生成节点返回 `undefined` |
+| `getNodeSource(document, node)`                          | 返回节点对应的源码；生成节点返回空字符串                                                  |
+| `isSyntaxNode(node)`                                     | 判断节点是否来自源码语法树                                                                |
+| `snapshotSelection(document, id, kind?)`                 | 记录树类型、节点类型与源码区间；节点没有非空区间时返回 `undefined`                        |
+| `restoreSelectedId(document, snapshot, kind?)`           | 在新文档中按类型与区间寻找最接近的节点；默认沿用快照的树类型                              |
+| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | 按类型与区间把展开集合映射到新文档；没有区间的节点会被丢弃                                |
+
+`SelectionSnapshot` 保存 `kind`、`id`、`type`、`start` 与 `end`。`restoreSelectedId` 默认使用 `snapshot.kind`；传入不同的 `kind` 会返回 `undefined`，避免把一棵树的选中项套到另一棵树上。
+
+## 文案与样式
+
+`AstTreeLabels` 与 `NodeInspectorLabels` 描述面板的全部文案，默认值从 `DEFAULT_AST_TREE_LABELS` 与 `DEFAULT_NODE_INSPECTOR_LABELS` 导出。默认文案是英文，按需覆盖字段即可：
+
+```tsx
+<AstTree
+  document={document}
+  labels={{
+    treeLabel: "语义树",
+    searchLabel: "搜索节点",
+    searchPlaceholder: "搜索节点",
+    expandAll: "展开全部",
+    collapseAll: "折叠全部",
+  }}
+/>
+```
+
+默认值对象已冻结。需要扩展时创建新对象，不要修改默认值。
+
+`react-wikitext/devtools.css` 需要显式导入一次，自带 `--wikitext-*` 主题变量。除这些变量外，它只定义 `.wikitext-tree` 与 `.wikitext-inspector` 及其子类，不设置全局元素样式。树在容器内滚动，宿主需要给面板设置高度。
+
+## 边界
+
+- `/devtools` 加载 React 与 `/ast`，不加载解析器、`/hast` 或 `/view`。
+- 构建产物的入口带 `"use client"` 指令，组件只能在客户端组件中使用。
+- 调试组件不属于渲染管线，不运行插件、解析回调或清洗；节点来自可信快照，输出使用 React 元素与文本节点，不使用 `dangerouslySetInnerHTML`。
+- 组件不编辑源码，也不与编辑器双向同步；宿主通过 `onSelect`、节点区间与选择恢复辅助函数完成编辑器联动。

@@ -11,6 +11,7 @@
   { "type": "section-header", "label": "Extended entries" },
   { "type": "file", "name": "unified", "label": "unified" },
   { "type": "file", "name": "configs", "label": "configs" },
+  { "type": "file", "name": "devtools", "label": "Devtools /devtools" },
   { "type": "section-header", "label": "Errors" },
   { "type": "file", "name": "errors", "label": "Errors and Diagnostics" }
 ]

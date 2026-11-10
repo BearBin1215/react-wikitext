@@ -13,20 +13,22 @@ See [How it works](../guide/concepts.mdx) for the stages, the optional expansion
 
 ## Subpaths
 
-| Subpath                     | Contents                                                                                                                               | Loads parser                 | Loads React |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
-| `react-wikitext`            | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
-| `react-wikitext/ast`        | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
-| `react-wikitext/parse`      | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
-| `react-wikitext/expand`     | `expandWikitext`, expansion types and errors                                                                                           | Yes                          | No          |
-| `react-wikitext/hast`       | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
-| `react-wikitext/unified`    | `createWikitextProcessor`, a unified integration with a finalize stage owned by the library                                            | No (parser must be injected) | No          |
-| `react-wikitext/view`       | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
-| `react-wikitext/configs`    | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
-| `react-wikitext/styles.css` | Page rendering styles                                                                                                                  | —                            | —           |
-| `react-wikitext/tokens.css` | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
+| Subpath                       | Contents                                                                                                                               | Loads parser                 | Loads React |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
+| `react-wikitext`              | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
+| `react-wikitext/ast`          | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
+| `react-wikitext/parse`        | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
+| `react-wikitext/expand`       | `expandWikitext`, expansion types and errors                                                                                           | Yes                          | No          |
+| `react-wikitext/hast`         | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
+| `react-wikitext/unified`      | `createWikitextProcessor`, a unified integration with a finalize stage owned by the library                                            | No (parser must be injected) | No          |
+| `react-wikitext/view`         | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
+| `react-wikitext/configs`      | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
+| `react-wikitext/devtools`     | `AstTree`, `NodeInspector`, node range/source queries, selection restore helpers, and debug label types                                | No                           | Yes         |
+| `react-wikitext/styles.css`   | Page rendering styles                                                                                                                  | —                            | —           |
+| `react-wikitext/tokens.css`   | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
+| `react-wikitext/devtools.css` | Debug component styles; includes theme variables                                                                                       | —                            | —           |
 
-The root entry does not export anything from the parse, expand, hast, or unified subpaths. `/ast`, `/hast`, `/unified`, and `/configs` do not load the default parser; `/parse` and `/expand` do; `/view` loads only React and an already prepared document.
+The root entry does not export anything from the parse, expand, hast, unified, or devtools subpaths. `/ast`, `/hast`, `/unified`, and `/configs` do not load the default parser; `/parse` and `/expand` do; `/view` loads only React and an already prepared document.
 
 ## Parse and render snapshots
 
@@ -44,6 +46,7 @@ Query transformed nodes with the render snapshot. Do not use ids from the render
 | Render source directly on the client        | Root `Wikitext`                       |
 | Prepare on the server, render on the client | `/parse` + `/hast` + `/view`          |
 | Parse only or inspect the AST               | `/parse` + `/ast`                     |
+| Debug parse results                         | `/parse` + `/devtools`                |
 | Expand templates, then render               | `/expand` + `/hast` + `/view`         |
 | Integrate with a unified processor          | `/unified` (inject parser explicitly) |
 | Swap site configuration only                | `/configs` + `/parse`                 |
@@ -66,11 +69,13 @@ Query transformed nodes with the render snapshot. Do not use ids from the render
 | `/expand`     | [Expansion](./expand.mdx)       |
 | `/unified`    | [unified](./unified.mdx)        |
 | `/configs`    | [configs](./configs.mdx)        |
+| `/devtools`   | [Devtools](./devtools.mdx)      |
 
 ## Next steps
 
 - [React components](./react.mdx): source component, view, Fragment, and context hooks.
 - [Parsing `/parse`](./parse.mdx): parsers, budgets, and custom adapters.
 - [Preparation `/hast`](./prepare.mdx): plugins, resolvers, policy, and snapshot restore.
+- [Devtools `/devtools`](./devtools.mdx): AST tree, node details, and selection restore.
 - [Errors and diagnostics](./errors.mdx): codes and handling advice.
 - [Status and compatibility](../project/status.mdx): versions, snapshot versions, and runtime requirements.

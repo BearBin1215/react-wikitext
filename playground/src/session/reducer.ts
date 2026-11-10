@@ -1,4 +1,4 @@
-import type { DevtreeKind } from "@pg/devtools";
+import type { AstTreeKind } from "react-wikitext/devtools";
 import { DEFAULT_SCENE_ID, resolveSceneOptions, sceneOf, sourceText } from "@pg/catalog";
 import { DEFAULT_OPTIONS, type PlaygroundOptions } from "@pg/state/options";
 import { loadSource, type InitialLocation, type RightPanel } from "./persistence";
@@ -9,7 +9,7 @@ export interface SessionState {
   readonly source: string;
   readonly options: PlaygroundOptions;
   readonly panel: RightPanel;
-  readonly treeKind: DevtreeKind;
+  readonly treeKind: AstTreeKind;
   readonly selectedId?: string;
   /** 编辑器重挂载计数；切源或重置时递增。 */
   readonly editorReset: number;
@@ -22,8 +22,8 @@ export type SessionAction =
   | { readonly type: "patchOptions"; readonly patch: Partial<PlaygroundOptions> }
   | { readonly type: "resetOptions" }
   | { readonly type: "selectPanel"; readonly panel: RightPanel }
-  | { readonly type: "selectNode"; readonly id?: string; readonly treeKind?: DevtreeKind }
-  | { readonly type: "switchTree"; readonly treeKind: DevtreeKind };
+  | { readonly type: "selectNode"; readonly id?: string; readonly treeKind?: AstTreeKind }
+  | { readonly type: "switchTree"; readonly treeKind: AstTreeKind };
 
 export function createInitialState(location: InitialLocation): SessionState {
   return {

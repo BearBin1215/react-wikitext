@@ -13,20 +13,22 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 
 ## 子路径
 
-| 子路径                      | 内容                                                                                                | 加载解析器         | 加载 React |
-| --------------------------- | --------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
-| `react-wikitext`            | `Wikitext`、`WikitextView`、`WikitextFragment`、Context Hook、组件类型与精选语义类型                | 是                 | 是         |
-| `react-wikitext/ast`        | 语义模型、查询、辅助函数、纯解析器工厂、源码归一化、序列化                                          | 否                 | 否         |
-| `react-wikitext/parse`      | 默认解析器、`parseWikitext`、解析选项、解析错误                                                     | 是                 | 否         |
-| `react-wikitext/expand`     | `expandWikitext`、模板展开类型与错误                                                                | 是                 | 否         |
-| `react-wikitext/hast`       | `prepareWikitext`、`prepareWikitextAsync`、解析回调、策略、文案、标题策略、URL 工具、渲染快照序列化 | 否                 | 否         |
-| `react-wikitext/unified`    | `createWikitextProcessor`、进程内固定 finalize 的 unified 集成                                      | 否（需注入解析器） | 否         |
-| `react-wikitext/view`       | `WikitextView`、`WikitextFragment`、Context Hook、组件类型                                          | 否                 | 是         |
-| `react-wikitext/configs`    | `MEDIAWIKI_CONFIG`、`createMediaWikiConfig`、`ParserConfig`                                         | 否                 | 否         |
-| `react-wikitext/styles.css` | 页面渲染样式                                                                                        | —                  | —          |
-| `react-wikitext/tokens.css` | 主题变量；只覆盖变量时单独导入，避免重复样式                                                        | —                  | —          |
+| 子路径                        | 内容                                                                                                | 加载解析器         | 加载 React |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
+| `react-wikitext`              | `Wikitext`、`WikitextView`、`WikitextFragment`、Context Hook、组件类型与精选语义类型                | 是                 | 是         |
+| `react-wikitext/ast`          | 语义模型、查询、辅助函数、纯解析器工厂、源码归一化、序列化                                          | 否                 | 否         |
+| `react-wikitext/parse`        | 默认解析器、`parseWikitext`、解析选项、解析错误                                                     | 是                 | 否         |
+| `react-wikitext/expand`       | `expandWikitext`、模板展开类型与错误                                                                | 是                 | 否         |
+| `react-wikitext/hast`         | `prepareWikitext`、`prepareWikitextAsync`、解析回调、策略、文案、标题策略、URL 工具、渲染快照序列化 | 否                 | 否         |
+| `react-wikitext/unified`      | `createWikitextProcessor`、进程内固定 finalize 的 unified 集成                                      | 否（需注入解析器） | 否         |
+| `react-wikitext/view`         | `WikitextView`、`WikitextFragment`、Context Hook、组件类型                                          | 否                 | 是         |
+| `react-wikitext/configs`      | `MEDIAWIKI_CONFIG`、`createMediaWikiConfig`、`ParserConfig`                                         | 否                 | 否         |
+| `react-wikitext/devtools`     | `AstTree`、`NodeInspector`、节点区间/源码查询、选择恢复辅助函数与调试文案类型                       | 否                 | 是         |
+| `react-wikitext/styles.css`   | 页面渲染样式                                                                                        | —                  | —          |
+| `react-wikitext/tokens.css`   | 主题变量；只覆盖变量时单独导入，避免重复样式                                                        | —                  | —          |
+| `react-wikitext/devtools.css` | 调试组件样式，自带主题变量                                                                          | —                  | —          |
 
-根入口不导出 parse、expand、hast 与 unified 的功能。`/ast`、`/hast`、`/unified`、`/configs` 不加载默认解析器；`/parse` 与 `/expand` 会加载；`/view` 只加载 React 与已准备好的文档。
+根入口不导出 parse、expand、hast、unified 与 devtools 的功能。`/ast`、`/hast`、`/unified`、`/configs` 不加载默认解析器；`/parse` 与 `/expand` 会加载；`/view` 只加载 React 与已准备好的文档。
 
 ## 解析快照与渲染快照
 
@@ -44,6 +46,7 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 | 客户端直接渲染源码       | 根入口 `Wikitext`             |
 | 服务端准备、客户端只渲染 | `/parse` + `/hast` + `/view`  |
 | 只做解析或 AST 分析      | `/parse` + `/ast`             |
+| 调试解析结果             | `/parse` + `/devtools`        |
 | 展开模板后再渲染         | `/expand` + `/hast` + `/view` |
 | 接入 unified 处理器      | `/unified`（显式注入解析器）  |
 | 只替换站点配置           | `/configs` + `/parse`         |
@@ -57,20 +60,22 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 
 ## 参考页面
 
-| 子路径          | 页面                      |
-| --------------- | ------------------------- |
-| 根入口、`/view` | [React 组件](./react.mdx) |
-| `/parse`        | [解析](./parse.mdx)       |
-| `/ast`          | [AST](./ast.mdx)          |
-| `/hast`         | [准备](./prepare.mdx)     |
-| `/expand`       | [展开](./expand.mdx)      |
-| `/unified`      | [unified](./unified.mdx)  |
-| `/configs`      | [configs](./configs.mdx)  |
+| 子路径          | 页面                       |
+| --------------- | -------------------------- |
+| 根入口、`/view` | [React 组件](./react.mdx)  |
+| `/parse`        | [解析](./parse.mdx)        |
+| `/ast`          | [AST](./ast.mdx)           |
+| `/hast`         | [准备](./prepare.mdx)      |
+| `/expand`       | [展开](./expand.mdx)       |
+| `/unified`      | [unified](./unified.mdx)   |
+| `/configs`      | [configs](./configs.mdx)   |
+| `/devtools`     | [调试组件](./devtools.mdx) |
 
 ## 下一步
 
 - [React 组件](./react.mdx)：源码组件、视图、Fragment 与 Context Hook。
 - [解析 `/parse`](./parse.mdx)：解析器、预算与自定义适配器。
 - [准备 `/hast`](./prepare.mdx)：插件、解析回调、策略与快照恢复。
+- [调试组件 `/devtools`](./devtools.mdx)：AST 树、节点详情与选择恢复。
 - [错误与诊断](./errors.mdx)：错误码与处理建议。
 - [状态与兼容性](../project/status.mdx)：版本、快照版本与运行时要求。

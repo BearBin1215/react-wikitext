@@ -111,7 +111,7 @@ interface WikitextSyntaxNode {
 }
 ```
 
-源码语法树是上游 token 的调试视图：语义节点的 `position`、`origin.range`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部始终构建语法树，因此该选项在展开入口只控制是否公开。
+源码语法树是上游 token 的调试视图：语义节点的 `position`、`origin.range`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部始终构建语法树，因此该选项在展开入口只控制是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
 
 ## 查询
 

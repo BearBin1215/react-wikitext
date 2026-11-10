@@ -1,4 +1,4 @@
-import type { DevtreeKind } from "@pg/devtools";
+import type { AstTreeKind } from "react-wikitext/devtools";
 import { DEFAULT_SCENE_ID, hasScene, resolveSceneOptions, sceneOf, sourceText } from "@pg/catalog";
 import { readOptions, writeOptions, type PlaygroundOptions } from "@pg/state/options";
 
@@ -20,7 +20,7 @@ function isRightPanel(value: string | null): value is RightPanel {
   return value !== null && PANEL_IDS.has(value);
 }
 
-function isTreeKind(value: string | null): value is DevtreeKind {
+function isTreeKind(value: string | null): value is AstTreeKind {
   return value === "semantic" || value === "syntax";
 }
 
@@ -28,7 +28,7 @@ function isTreeKind(value: string | null): value is DevtreeKind {
 export interface InitialLocation {
   readonly sourceId: string;
   readonly panel: RightPanel;
-  readonly treeKind: DevtreeKind;
+  readonly treeKind: AstTreeKind;
   readonly selectedId?: string;
   readonly options: PlaygroundOptions;
 }
@@ -53,7 +53,7 @@ export function readLocation(search: string = window.location.search): InitialLo
 export interface LocationState {
   readonly sourceId: string;
   readonly panel: RightPanel;
-  readonly treeKind: DevtreeKind;
+  readonly treeKind: AstTreeKind;
   readonly selectedId?: string;
   readonly options: PlaygroundOptions;
 }

@@ -11,6 +11,7 @@
   { "type": "section-header", "label": "扩展入口" },
   { "type": "file", "name": "unified", "label": "unified" },
   { "type": "file", "name": "configs", "label": "configs" },
+  { "type": "file", "name": "devtools", "label": "调试组件 /devtools" },
   { "type": "section-header", "label": "错误" },
   { "type": "file", "name": "errors", "label": "错误与诊断" }
 ]

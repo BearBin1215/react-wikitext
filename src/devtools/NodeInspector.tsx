@@ -1,27 +1,33 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
-import type { WikitextDocument, WikitextNode, WikitextSyntaxNode } from "react-wikitext/ast";
-import { getSourceText } from "react-wikitext/ast";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import { resolveNodeInspectorLabels, type NodeInspectorLabels } from "./labels";
-import { isSyntaxNode, nodeRange } from "./tree";
-import type { DevtreeKind } from "./tree";
+import {
+  isSyntaxNode,
+  nodeRange,
+  nodeSource,
+  type AstTreeDocument,
+  type AstTreeNode,
+} from "./tree";
 
 /** `<NodeInspector>` 的属性。 */
 export interface NodeInspectorProps {
-  /** 解析结果。 */
-  readonly document: WikitextDocument;
-  /** 要检查的节点。 */
-  readonly node?: WikitextNode | WikitextSyntaxNode;
-  /** 节点来自哪棵树，默认语义树。 */
-  readonly tree?: DevtreeKind;
+  /** 解析快照或渲染快照；用于读取源码与判断节点来源。 */
+  readonly document: AstTreeDocument;
+  /** 要检查的节点；语义节点与源码语法节点都可以，省略时显示空状态。 */
+  readonly node?: AstTreeNode;
   /** 覆盖面板文案。 */
   readonly labels?: Partial<NodeInspectorLabels>;
   readonly className?: string;
+  readonly style?: CSSProperties;
 }
 
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // 权限被拒绝或 API 不可用时继续使用 execCommand 回退。
+    }
   }
   const area = document.createElement("textarea");
   area.value = text;
@@ -30,17 +36,28 @@ async function copyText(text: string): Promise<void> {
   area.style.opacity = "0";
   document.body.append(area);
   area.select();
-  const copied = document.execCommand("copy");
-  area.remove();
-  if (!copied) {
-    throw new Error("document.execCommand('copy') failed.");
+  try {
+    const copied = document.execCommand("copy");
+    if (!copied) {
+      throw new Error("document.execCommand('copy') failed.");
+    }
+  } finally {
+    area.remove();
   }
 }
 
-type CopyState = { kind: "json" | "source"; ok: boolean } | undefined;
+function stringify(value: unknown): string | undefined {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return undefined;
+  }
+}
+
+type CopyState = { kind: "json" | "source"; ok: boolean; nodeId: string } | undefined;
 
 /**
- * 查看节点的源码、属性与 JSON，并支持复制，供 playground 调试使用。
+ * 查看节点的源码、属性与 JSON，并支持复制。
  * 属性说明见 {@link NodeInspectorProps}。
  */
 export function NodeInspector({
@@ -48,6 +65,7 @@ export function NodeInspector({
   node,
   labels,
   className,
+  style,
 }: NodeInspectorProps): ReactElement {
   const resolved = resolveNodeInspectorLabels(labels);
   const [copyState, setCopyState] = useState<CopyState>(undefined);
@@ -60,45 +78,54 @@ export function NodeInspector({
     return () => clearTimeout(timer);
   }, [copyState]);
 
-  // 以节点形状为唯一判据：传入与 `tree` 不匹配的节点时降级显示，而不是断言后崩溃。
+  // 以节点形状为唯一判据：传入任意来源的节点时降级显示，而不是断言后崩溃。
   const syntax = node && isSyntaxNode(node) ? node : undefined;
   const semantic = node && !syntax ? node : undefined;
 
-  const source = useMemo(() => {
-    if (syntax) {
-      return doc.source.slice(syntax.range[0], syntax.range[1]);
-    }
-    return semantic ? getSourceText(doc, semantic) : "";
-  }, [doc, syntax, semantic]);
-  const json = useMemo(() => (node ? JSON.stringify(node, null, 2) : ""), [node]);
+  const source = useMemo(() => (node ? nodeSource(doc, node) : ""), [doc, node]);
+  const semanticJson = useMemo(
+    () => (semantic ? stringify({ ...semantic, children: undefined }) : undefined),
+    [semantic],
+  );
 
   const classes = className ? `wikitext-inspector ${className}` : "wikitext-inspector";
   if (!node) {
     return (
-      <div className={classes}>
+      <section className={classes} aria-label={resolved.regionLabel} style={style}>
         <p className="wikitext-inspector__empty">{resolved.noSelection}</p>
-      </div>
+      </section>
     );
   }
 
   const copy = (kind: "json" | "source", text: string): void => {
+    const nodeId = node.id;
     void copyText(text).then(
-      () => setCopyState({ kind, ok: true }),
-      () => setCopyState({ kind, ok: false }),
+      () => setCopyState({ kind, ok: true, nodeId }),
+      () => setCopyState({ kind, ok: false, nodeId }),
     );
   };
 
+  const copyJson = (): void => {
+    // 完整 JSON 可能包含整棵子树；等到用户点击时再序列化，避免选中根节点就卡住。
+    const json = stringify(node);
+    if (json === undefined) {
+      setCopyState({ kind: "json", ok: false, nodeId: node.id });
+      return;
+    }
+    copy("json", json);
+  };
+
   const actionLabel = (kind: "json" | "source"): string => {
-    if (copyState?.kind === kind) {
+    if (copyState?.kind === kind && copyState.nodeId === node.id) {
       return copyState.ok ? resolved.copied : resolved.copyFailed;
     }
     return kind === "json" ? resolved.copyJson : resolved.copySource;
   };
 
-  const range = node ? nodeRange(node) : undefined;
+  const range = nodeRange(node);
 
   return (
-    <div className={classes}>
+    <section className={classes} aria-label={resolved.regionLabel} style={style}>
       <div className="wikitext-inspector__header">
         <strong className="wikitext-inspector__type">{node.type}</strong>
         {range ? (
@@ -111,16 +138,13 @@ export function NodeInspector({
         <span className="wikitext-inspector__id">{node.id}</span>
       </div>
       <div className="wikitext-inspector__actions">
-        <button
-          type="button"
-          className="wikitext-inspector__action"
-          onClick={() => copy("json", json)}
-        >
+        <button type="button" className="wikitext-inspector__action" onClick={copyJson}>
           {actionLabel("json")}
         </button>
         <button
           type="button"
           className="wikitext-inspector__action"
+          disabled={!source}
           onClick={() => copy("source", source)}
         >
           {actionLabel("source")}
@@ -159,15 +183,13 @@ export function NodeInspector({
       ) : (
         <section className="wikitext-inspector__section">
           <h4 className="wikitext-inspector__title">{resolved.semanticValue}</h4>
-          <pre className="wikitext-inspector__code">
-            {JSON.stringify({ ...semantic, children: undefined }, null, 2)}
-          </pre>
+          <pre className="wikitext-inspector__code">{semanticJson ?? resolved.unserializable}</pre>
         </section>
       )}
       <section className="wikitext-inspector__section">
         <h4 className="wikitext-inspector__title">{resolved.source}</h4>
         <pre className="wikitext-inspector__code">{source || resolved.generated}</pre>
       </section>
-    </div>
+    </section>
   );
 }

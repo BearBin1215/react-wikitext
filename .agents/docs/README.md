@@ -33,6 +33,7 @@
 - 修改解析或升级 `wikiparser-node`：读[解析器接入](./parser-integration.md)，按版本升级清单执行。
 - 接入 unified 或自定义 HAST 处理：读文档站的 [unified](../../website/docs/zh/api/unified.mdx) 页面；最终安全阶段只能由库完成。
 - 需要在渲染前展开模板或部分解析器函数：读文档站的 [expand](../../website/docs/zh/api/expand.mdx) 页面。
+- 需要查看解析结果或节点详情：读文档站的 [devtools](../../website/docs/zh/api/devtools.mdx) 页面。
 - 查“为什么这样做”：[设计决策](./decisions.md)；查“还不能做什么”：[路线图](./roadmap.md)。
 
 ## 文档约定

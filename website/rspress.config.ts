@@ -50,6 +50,7 @@ export default defineConfig({
     resolve: {
       alias: {
         "react-wikitext/styles.css": path.join(__dirname, "../src/styles/view.css"),
+        "react-wikitext/devtools.css": path.join(__dirname, "../src/styles/devtools.css"),
         "react-wikitext/ast": path.join(__dirname, "../src/ast/index.ts"),
         "react-wikitext/parse": path.join(__dirname, "../src/parse/index.ts"),
         "react-wikitext/expand": path.join(__dirname, "../src/expand/index.ts"),
@@ -57,6 +58,7 @@ export default defineConfig({
         "react-wikitext/unified": path.join(__dirname, "../src/unified/index.ts"),
         "react-wikitext/view": path.join(__dirname, "../src/view/index.ts"),
         "react-wikitext/configs": path.join(__dirname, "../src/configs/index.ts"),
+        "react-wikitext/devtools": path.join(__dirname, "../src/devtools/index.ts"),
         "react-wikitext": path.join(__dirname, "../src/index.ts"),
       },
     },

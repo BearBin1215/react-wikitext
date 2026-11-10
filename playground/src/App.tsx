@@ -1,7 +1,12 @@
 import { useMemo, useRef } from "react";
 import { WikitextView } from "react-wikitext";
-import type { WikitextRange } from "react-wikitext/ast";
-import { AstTree, NodeInspector, type DevtreeKind, type DevtreeNode } from "@pg/devtools";
+import {
+  AstTree,
+  NodeInspector,
+  getNodeRange,
+  type AstTreeKind,
+  type AstTreeNode,
+} from "react-wikitext/devtools";
 import { SCENES } from "@pg/catalog";
 import { EditorPane, type EditorPaneHandle } from "@pg/editor/EditorPane";
 import type { ReproInput } from "@pg/harness/repro";
@@ -17,10 +22,6 @@ import { SceneBar } from "@pg/ui/SceneBar";
 import { SceneMenu } from "@pg/ui/SceneMenu";
 import { StatusBar } from "@pg/ui/StatusBar";
 import { TopBar } from "@pg/ui/TopBar";
-
-function rangeOf(node: DevtreeNode): WikitextRange | undefined {
-  return "props" in node ? node.range : node.origin?.range;
-}
 
 /** 只负责组合会话与布局；状态与派生值都在 `usePlaygroundSession` 里。 */
 export function App() {
@@ -47,12 +48,12 @@ export function App() {
   const editorRef = useRef<EditorPaneHandle>(null);
   const dark = useSystemDark();
 
-  const handleSelect = (node: DevtreeNode, kind: DevtreeKind): void => {
+  const handleSelect = (node: AstTreeNode, kind: AstTreeKind): void => {
     session.selectNode(node.id, kind);
     if (!doc || doc.source !== state.source) {
       return;
     }
-    const range = rangeOf(node);
+    const range = getNodeRange(node);
     if (range && range[0] !== range[1]) {
       editorRef.current?.selectRange(range);
     }
@@ -212,8 +213,8 @@ export function App() {
                     <AstTree
                       key={`${state.sourceId}:${state.options.expandedDepth}`}
                       document={doc}
-                      tree={state.treeKind}
-                      selectedId={state.selectedId}
+                      kind={state.treeKind}
+                      selectedId={state.selectedId ?? null}
                       onSelect={handleSelect}
                       defaultExpandedDepth={state.options.expandedDepth}
                       labels={devtoolsLabels.tree}
@@ -227,7 +228,6 @@ export function App() {
                       <NodeInspector
                         document={doc}
                         node={selectedNode}
-                        tree={state.treeKind}
                         labels={devtoolsLabels.inspector}
                       />
                     ) : (

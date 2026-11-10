@@ -15,7 +15,11 @@ export default defineConfig({
       "react-wikitext/unified": fileURLToPath(new URL("./src/unified/index.ts", import.meta.url)),
       "react-wikitext/view": fileURLToPath(new URL("./src/view/index.ts", import.meta.url)),
       "react-wikitext/configs": fileURLToPath(new URL("./src/configs/index.ts", import.meta.url)),
+      "react-wikitext/devtools": fileURLToPath(new URL("./src/devtools/index.ts", import.meta.url)),
       "react-wikitext/styles.css": fileURLToPath(new URL("./src/styles/view.css", import.meta.url)),
+      "react-wikitext/devtools.css": fileURLToPath(
+        new URL("./src/styles/devtools.css", import.meta.url),
+      ),
       "react-wikitext": fileURLToPath(new URL("./src/index.ts", import.meta.url)),
     },
   },

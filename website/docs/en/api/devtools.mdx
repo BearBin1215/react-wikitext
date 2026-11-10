@@ -1,0 +1,198 @@
+---
+title: Devtools /devtools
+description: Inspect parse and render snapshots with AstTree and NodeInspector.
+---
+
+# Devtools `/devtools`
+
+`/devtools` provides development-time AST panels: `AstTree` renders an expandable, searchable, keyboard-navigable semantic tree or source syntax tree, and `NodeInspector` shows a node's fields, attributes, and source. Both components only read snapshots; they never mutate nodes and are not part of the rendering pipeline.
+
+Use them to inspect parse results, plugin output, and source ranges, not to build end-user pages. The entry loads React and `/ast` query helpers, but not the parser, the preparation stage, or `WikitextView`.
+
+## Quick start
+
+The preview below uses fixed source and connects the two panels. Select a node on the left to inspect it on the right. The preview imports `/parse` to create a snapshot; `/devtools` itself does not load the parser.
+
+```tsx preview
+import { useMemo, useState } from "react";
+import { parseWikitext } from "react-wikitext/parse";
+import { AstTree, NodeInspector, type AstTreeNode } from "react-wikitext/devtools";
+import "react-wikitext/devtools.css";
+
+const source = `== Example ==
+This is '''wikitext''' with an [[Example page|internal link]].
+
+{{Infobox|title=Template placeholder}}`;
+
+export default function Demo() {
+  const document = useMemo(() => parseWikitext(source, { pageName: "Demo" }), []);
+  const [selected, setSelected] = useState<AstTreeNode | null>(null);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: 16,
+        height: 420,
+      }}
+    >
+      <AstTree
+        document={document}
+        selectedId={selected?.id ?? null}
+        onSelect={(node) => setSelected(node)}
+      />
+      <NodeInspector document={document} node={selected ?? undefined} />
+    </div>
+  );
+}
+```
+
+## Snapshot shape
+
+```ts
+interface AstTreeDocument {
+  readonly source: string;
+  readonly ast: WikitextRoot;
+  readonly syntax?: WikitextSyntaxRoot;
+}
+```
+
+Both a parse snapshot (`WikitextDocument`) and a render snapshot (`WikitextRenderDocument`) satisfy this shape. The semantic tree reads `ast`; the source syntax tree reads `syntax`, which is retained only when parsing with `retainSyntax: true`. A render snapshot is produced by [`prepareWikitext`](./prepare.mdx) from `/hast`; its `ast` is the working tree after plugins, and it has no `syntax`, so only the semantic tree is available.
+
+Node ids are unique within one snapshot and are not stable across parses. The default parser assigns path-like ids to both trees, so the same id may identify different nodes in the semantic and syntax trees. Do not reuse selection or expansion state across trees.
+
+## AstTree
+
+```tsx
+import { parseWikitext } from "react-wikitext/parse";
+import { AstTree } from "react-wikitext/devtools";
+
+const document = parseWikitext(source, { retainSyntax: true });
+
+<AstTree document={document} onSelect={(node) => console.log(node)} />;
+```
+
+### Props
+
+| Prop                   | Type                         | Default          | Description                                                                                     |
+| ---------------------- | ---------------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
+| `document`             | `AstTreeDocument`            | —                | Parse snapshot or render snapshot                                                               |
+| `kind`                 | `"semantic" \| "syntax"`     | `"semantic"`     | Show the semantic tree or the source syntax tree                                                |
+| `selectedId`           | `string \| null`             | —                | Controlled selection; `null` means controlled and empty, `undefined` is uncontrolled            |
+| `defaultSelectedId`    | `string`                     | —                | Initial selection in uncontrolled mode                                                          |
+| `onSelect`             | `(node, kind) => void`       | —                | Fires when a node is selected; the second argument is the current tree kind                     |
+| `defaultExpandedDepth` | `number`                     | `2`              | Initial expansion depth; used on mount or when `kind` changes in uncontrolled mode              |
+| `expandedIds`          | `ReadonlySet<string>`        | —                | Controlled expanded set; the caller maintains it                                                |
+| `onExpandedChange`     | `(ids) => void`              | —                | Fires when expansion changes; called in both controlled and uncontrolled modes                  |
+| `getNodeLabel`         | `(node, fallback) => string` | Built-in label   | Overrides the node description; the fallback is the built-in text, and an empty string hides it |
+| `labels`               | `Partial<AstTreeLabels>`     | English defaults | Overrides panel text                                                                            |
+| `className`            | `string`                     | —                | Appended to `.wikitext-tree`                                                                    |
+| `style`                | `CSSProperties`              | —                | Sets the tree container style                                                                   |
+
+### Selection
+
+- Uncontrolled by default: clicking a node selects and highlights it, and the component keeps a separate selection for each tree kind.
+- When the document changes, an uncontrolled selection is restored by node type and source range. Generated nodes without ranges are not restored. In controlled mode, the caller decides when to clear or restore.
+- In controlled mode, update `selectedId` from `onSelect`; otherwise clicking does not highlight. Both `null` and a string are controlled, while `undefined` is uncontrolled. Do not switch between the two modes.
+- When a selected node is collapsed, the component requests expansion of its ancestors and scrolls it into view. Controlled expansion requires the caller to write the new set from `onExpandedChange` back to `expandedIds`. If the node is not in the current tree, the component keeps a focusable row and does not throw.
+
+### Expansion
+
+- Uncontrolled mode expands two levels by default. Switching `kind` recomputes expansion from the new tree's default depth, while a new snapshot of the same kind keeps entries by node type and source range where possible.
+- When `expandedIds` is provided, the caller owns the set. `onExpandedChange` still fires for requested changes, and the caller must write the new set back.
+- In uncontrolled mode, automatic remapping after a document update and expansion caused by an external selection also trigger `onExpandedChange`.
+- Expand all renders the entire tree at once. For large documents, prefer expanding level by level or using search.
+
+### Search and keyboard
+
+- Search is case-insensitive and matches node type, node description, and source snippets; for large nodes, only the beginning of the source is matched. When there are too many matches, only the first 80 are shown with a prompt to narrow the search.
+- Results replace the tree while searching. Press Down in the search box to enter the results; press Enter on a result to select it, Escape to clear the search, and the arrow keys to move between results. Focus returns to the matching tree row after selection.
+- In the tree, Up/Down move, Home/End jump to the ends, Left/Right expand or collapse and move to parent or child, and Enter/Space select the current node.
+- The tree uses `role="tree"`, `role="treeitem"`, `aria-expanded`, and `aria-selected`; keyboard focus sits on the current `treeitem` row.
+
+## NodeInspector
+
+```tsx
+<NodeInspector document={document} node={selected ?? undefined} />
+```
+
+| Prop        | Type                           | Description                                        |
+| ----------- | ------------------------------ | -------------------------------------------------- |
+| `document`  | `AstTreeDocument`              | Parse snapshot or render snapshot                  |
+| `node`      | `AstTreeNode`                  | Node to inspect; shows an empty state when omitted |
+| `labels`    | `Partial<NodeInspectorLabels>` | Overrides panel text                               |
+| `className` | `string`                       | Appended to `.wikitext-inspector`                  |
+| `style`     | `CSSProperties`                | Sets the panel style                               |
+
+- The component detects semantic and source syntax nodes by shape; no tree kind is required.
+- Syntax nodes show `props`, `attributes`, and source. Semantic nodes show all fields except `children`, plus source.
+- Generated nodes without source ranges show `labels.generated`.
+- Copy prefers `navigator.clipboard` and falls back to `document.execCommand("copy")`. The source button is disabled when the node has no source.
+- The semantic value section omits `children`; Copy JSON serializes the complete node, including `children`, when clicked. When node fields cannot be serialized, the panel shows `labels.unserializable` and the copy button shows `labels.copyFailed`.
+- `node` must come from the same `document`; otherwise the source slice may not match.
+
+## Editor integration
+
+`onSelect` provides the node, `getNodeRange(node)` provides the `[start, end)` range, and `getNodeSource(document, node)` provides the source text; use them to move the editor selection. When a controlled `selectedId` changes, the tree requests ancestor expansion and scrolls the selected row into view; with controlled `expandedIds`, the caller must accept the new set from `onExpandedChange`.
+
+Node ids change after source edits and reparsing. Use the snapshot helpers to keep a selection or expansion set:
+
+```ts
+import { parseWikitext } from "react-wikitext/parse";
+import {
+  findAstTreeNode,
+  remapExpandedIds,
+  restoreSelectedId,
+  snapshotSelection,
+  type AstTreeKind,
+} from "react-wikitext/devtools";
+
+// Match <AstTree kind={...}>; use "syntax" for the source syntax tree.
+const kind: AstTreeKind = "semantic";
+const snapshot = snapshotSelection(document, selected?.id, kind);
+const next = parseWikitext(nextSource, { retainSyntax: true });
+const restoredId = restoreSelectedId(next, snapshot);
+const restoredNode = findAstTreeNode(next, restoredId, kind);
+const expanded = remapExpandedIds(document, next, expandedIds, kind);
+```
+
+| Function                                                 | Behavior                                                                                                                    |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `findAstTreeNode(document, id, kind)`                    | Finds a node by id in the selected tree; returns `undefined` for an empty or missing id                                     |
+| `getNodeRange(node)`                                     | Returns the node range; syntax nodes use `range`, semantic nodes use `origin.range`, and generated nodes return `undefined` |
+| `getNodeSource(document, node)`                          | Returns the node source; generated nodes return an empty string                                                             |
+| `isSyntaxNode(node)`                                     | Reports whether a node comes from the source syntax tree                                                                    |
+| `snapshotSelection(document, id, kind?)`                 | Records tree kind, type, and source range; returns `undefined` without a non-empty range                                    |
+| `restoreSelectedId(document, snapshot, kind?)`           | Finds the closest node by type and range; defaults to the snapshot's tree kind                                              |
+| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | Maps expanded ids to the new document by type and range; range-less nodes are dropped                                       |
+
+`SelectionSnapshot` stores `kind`, `id`, `type`, `start`, and `end`. `restoreSelectedId` uses `snapshot.kind` by default; passing a different `kind` returns `undefined` so a selection from one tree is not applied to another.
+
+## Labels and styles
+
+`AstTreeLabels` and `NodeInspectorLabels` describe all panel text. Defaults are exported as `DEFAULT_AST_TREE_LABELS` and `DEFAULT_NODE_INSPECTOR_LABELS`. Defaults are English; override only the fields you need:
+
+```tsx
+<AstTree
+  document={document}
+  labels={{
+    treeLabel: "Semantic tree",
+    searchLabel: "Search nodes",
+    searchPlaceholder: "Search nodes",
+    expandAll: "Expand all",
+    collapseAll: "Collapse all",
+  }}
+/>
+```
+
+The default objects are frozen. Create a new object to extend them; do not mutate the defaults.
+
+`react-wikitext/devtools.css` must be imported once and includes `--wikitext-*` theme variables. Apart from those variables, it defines only `.wikitext-tree` and `.wikitext-inspector` and their children; it sets no global element styles. The tree scrolls inside its container, so give the panel a height.
+
+## Boundaries
+
+- `/devtools` loads React and `/ast`. It does not load the parser, `/hast`, or `/view`.
+- Built entry points carry a `"use client"` directive; the components run only in Client Components.
+- The debug components are outside the rendering pipeline and do not run plugins, resolvers, or sanitization. Nodes come from trusted snapshots and render as React elements and text, never through `dangerouslySetInnerHTML`.
+- The components do not edit source or synchronize an editor. Hosts connect an editor through `onSelect`, node ranges, and the selection restore helpers.

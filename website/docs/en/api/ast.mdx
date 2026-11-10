@@ -111,7 +111,7 @@ interface WikitextSyntaxNode {
 }
 ```
 
-The syntax tree is a debugging view of upstream tokens: semantic node `position`, `origin.range`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand` always builds the syntax tree internally, so there the option only controls whether it is published.
+The syntax tree is a debugging view of upstream tokens: semantic node `position`, `origin.range`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand` always builds the syntax tree internally, so there the option only controls whether it is published. To visualize the semantic tree or source syntax tree, use `AstTree` from [`/devtools`](./devtools.mdx).
 
 ## Queries
 

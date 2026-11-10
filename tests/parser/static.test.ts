@@ -113,6 +113,18 @@ describe("layer boundaries", () => {
     expect(values).toEqual(["./view", "./Wikitext", "./ast/errors"]);
     // 错误类只能依赖类型与自身，不能把解析器带进根入口。
     expect(readFileSync("src/ast/errors.ts", "utf8")).not.toMatch(/wikiparser-node|loadParser/u);
+    expect(code).not.toMatch(/devtools|AstTree|NodeInspector/u);
+  });
+
+  it("keeps devtools independent from parser orchestration and the render pipeline", () => {
+    const sources = readSourceFiles("src/devtools");
+    expect(sources.length).toBeGreaterThan(0);
+    for (const { file, specifier } of valueReferences("src/devtools")) {
+      expect(specifier, `${file}: ${specifier}`).not.toMatch(
+        /wikiparser-node|loadParser|(?:^|\/)parse(?:\/|$)|(?:^|\/)configs(?:\/|$)|(?:^|\/)normalize(?:\/|$)|(?:^|\/)hast(?:\/|$)|(?:^|\/)view(?:\/|$)/u,
+      );
+      expect(specifier, `${file}: ${specifier}`).not.toMatch(/^react-dom(?:\/|$)/u);
+    }
   });
 
   it("keeps the expand layer independent from React, HAST and view", () => {

@@ -7,6 +7,7 @@ import * as hast from "@/hast";
 import * as unified from "@/unified";
 import * as view from "@/view";
 import * as configs from "@/configs";
+import * as devtools from "@/devtools";
 
 /**
  * 公共导出面：新增或删除这些符号时，同步更新文档站的 API 参考页。
@@ -59,6 +60,19 @@ const SURFACE = {
     "useWikitextLabels",
   ],
   configs: ["MEDIAWIKI_CONFIG", "createMediaWikiConfig"],
+  devtools: [
+    "AstTree",
+    "NodeInspector",
+    "DEFAULT_AST_TREE_LABELS",
+    "DEFAULT_NODE_INSPECTOR_LABELS",
+    "findAstTreeNode",
+    "getNodeRange",
+    "getNodeSource",
+    "isSyntaxNode",
+    "remapExpandedIds",
+    "restoreSelectedId",
+    "snapshotSelection",
+  ],
 } as const;
 
 describe("public export surface", () => {
@@ -71,6 +85,7 @@ describe("public export surface", () => {
     ["unified", unified],
     ["view", view],
     ["configs", configs],
+    ["devtools", devtools],
   ] as const)("%s keeps its runtime exports", (name, module) => {
     const exported = new Set(Object.keys(module));
     for (const symbol of SURFACE[name]) {

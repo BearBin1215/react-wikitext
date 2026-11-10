@@ -10,9 +10,13 @@ export interface AstTreeLabels {
   searchLabel: string;
   /** 搜索框的占位提示。 */
   searchPlaceholder: string;
+  /** 搜索结果列表的标签。 */
+  searchResults: string;
   /** 没有匹配结果时的提示。 */
   noResults: string;
-  /** 树的整体标签。 */
+  /** 匹配过多、只显示部分结果时的提示。 */
+  resultsTruncated: string;
+  /** 语义树的整体标签。 */
   treeLabel: string;
   /** 源码语法树的名称。 */
   syntaxTree: string;
@@ -22,19 +26,22 @@ export interface AstTreeLabels {
   noRange: string;
 }
 
-const DEFAULT_AST_TREE_LABELS: AstTreeLabels = {
+/** 默认英文文案；冻结以避免宿主修改默认值影响后续渲染。 */
+export const DEFAULT_AST_TREE_LABELS: AstTreeLabels = Object.freeze({
   expand: "Expand",
   collapse: "Collapse",
   expandAll: "Expand all",
   collapseAll: "Collapse all",
   searchLabel: "Search nodes",
   searchPlaceholder: "Search nodes",
+  searchResults: "Search results",
   noResults: "No matching nodes",
-  treeLabel: "AST",
+  resultsTruncated: "More matches are hidden. Refine the search.",
+  treeLabel: "Semantic AST",
   syntaxTree: "Syntax tree",
   noSyntax: "Syntax tree was not retained for this document",
   noRange: "No source range",
-};
+});
 
 /** 用传入的文案覆盖默认值。 */
 export function resolveAstTreeLabels(labels?: Partial<AstTreeLabels>): AstTreeLabels {
@@ -47,6 +54,8 @@ export interface NodeInspectorLabels {
   copySource: string;
   copied: string;
   copyFailed: string;
+  /** 面板的区域名称。 */
+  regionLabel: string;
   /** 未选中节点时的提示。 */
   noSelection: string;
   /** 语法节点属性分组的标题。 */
@@ -61,13 +70,17 @@ export interface NodeInspectorLabels {
   semanticValue: string;
   /** 生成内容没有源码时的说明。 */
   generated: string;
+  /** 节点字段无法序列化为 JSON 时的说明。 */
+  unserializable: string;
 }
 
-const DEFAULT_NODE_INSPECTOR_LABELS: NodeInspectorLabels = {
+/** 默认英文文案；冻结以避免宿主修改默认值影响后续渲染。 */
+export const DEFAULT_NODE_INSPECTOR_LABELS: NodeInspectorLabels = Object.freeze({
   copyJson: "Copy JSON",
   copySource: "Copy source",
   copied: "Copied",
   copyFailed: "Copy failed",
+  regionLabel: "Node inspector",
   noSelection: "Select a node to inspect it",
   props: "props",
   attributes: "attributes",
@@ -75,7 +88,8 @@ const DEFAULT_NODE_INSPECTOR_LABELS: NodeInspectorLabels = {
   booleanAttribute: "(boolean)",
   semanticValue: "semantic value",
   generated: "Generated content",
-};
+  unserializable: "Node data cannot be serialized",
+});
 
 /** 用传入的文案覆盖默认值。 */
 export function resolveNodeInspectorLabels(

@@ -1,6 +1,16 @@
 import { defineConfig } from "tsdown";
 
-const subpaths = ["index", "ast", "parse", "expand", "hast", "unified", "view", "configs"] as const;
+const subpaths = [
+  "index",
+  "ast",
+  "parse",
+  "expand",
+  "hast",
+  "unified",
+  "view",
+  "configs",
+  "devtools",
+] as const;
 
 function subpathExports() {
   return Object.fromEntries(
@@ -36,6 +46,7 @@ export default defineConfig({
     unified: "src/unified/index.ts",
     view: "src/view/index.ts",
     configs: "src/configs/index.ts",
+    devtools: "src/devtools/index.ts",
   },
   format: ["esm", "cjs"],
   // 统一按浏览器条件解析，避免 CJS 产物取到 vfile 的 `#minproc`/`#minpath`/`#minurl` Node 分支，
@@ -48,15 +59,16 @@ export default defineConfig({
   dts: {
     tsconfig: "./tsconfig.build.json",
   },
-  // 根入口与 /view 会调用 React hooks；在入口产物顶部声明 client 组件边界。
+  // 根入口、/view 与 /devtools 会调用 React hooks；在入口产物顶部声明 client 组件边界。
   banner: ({ fileName }) =>
-    /^(?:index|view)\.(?:js|cjs)$/u.test(fileName) ? '"use client";' : undefined,
+    /^(?:index|view|devtools)\.(?:js|cjs)$/u.test(fileName) ? '"use client";' : undefined,
   sourcemap: true,
   exports: {
     customExports(pkg) {
       Object.assign(pkg, subpathExports());
       pkg["./styles.css"] = "./dist/styles.css";
       pkg["./tokens.css"] = "./dist/tokens.css";
+      pkg["./devtools.css"] = "./dist/devtools.css";
       pkg["./package.json"] = "./package.json";
       return pkg;
     },
@@ -75,5 +87,6 @@ export default defineConfig({
   copy: [
     { from: "src/styles/tokens.css", to: "dist" },
     { from: "src/styles/view.css", to: "dist", rename: "styles.css" },
+    { from: "src/styles/devtools.css", to: "dist" },
   ],
 });

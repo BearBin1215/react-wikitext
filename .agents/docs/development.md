@@ -24,9 +24,9 @@
 
 构建完成后按以下结果检查产物，检查范围与 `tests/consumer/` 保持一致：
 
-- 各入口的 ESM/CJS、类型声明与 sourcemap 齐全，`styles.css` 与 `tokens.css` 随包发布。
+- 各入口的 ESM/CJS、类型声明与 sourcemap 齐全，`styles.css`、`tokens.css` 与 `devtools.css` 随包发布。
 - React 与 `wikiparser-node` 保持外部导入；ESM-only 的工具已打包进 CJS 产物，产物里不出现 `require("node:*")`。
-- 子路径隔离成立：只渲染的入口不加载 parser，只解析的入口不加载 React；playground 的 AST 检查器不进入产物。
+- 子路径隔离成立：只渲染的入口不加载 parser，只解析的入口不加载 React；`/devtools` 只加载 React 与 `/ast`，不进入根入口或 `/view`。
 - 产物不含测试文件、原始源码目录或 `.test.` 文件。
 
 playground 的约束：
@@ -34,6 +34,7 @@ playground 的约束：
 - 只通过 package 公共入口消费库，`tests/playground/imports.test.ts` 检查这条边界。
 - 解析与可选模板展开在 Web Worker 中执行；首次解析立即执行，后续输入防抖并丢弃过期结果；Worker 不可用时回退主线程。
 - 语义树与语法树面板可以随时切换，因此解析始终开启 `retainSyntax`。
+- AST 调试面板直接使用公开的 `/devtools`，playground 不维护私有副本。
 - playground 不构建、不部署、不进入 npm 包。
 
 ## 3. 代码与样式
@@ -55,6 +56,7 @@ playground 的约束：
 | `tests/pipeline/` | 准备阶段插件、工作树隔离、id 重分配、缓存失效、policy、图片授权、诊断与序列化恢复 |
 | `tests/unified/` | unified 插件组合、VFile 状态、树替换、诊断阶段与高层准备的等价性 |
 | `tests/expand/` | 展开语义、失败与回退、预算、取消、与准备阶段的集成、上游 oracle 对比 |
+| `tests/devtools/` | `AstTree`、`NodeInspector`、选择恢复与调试树的无障碍与交互 |
 | `tests/components/`、`tests/playground/` | 组件行为，以及 playground 只能通过 package 公共入口导入 |
 | `tests/oracle/` | 浏览器语法树与 Node 完整版的 range、稳定 fixture 的 `toHtml` 对比 |
 | `tests/samples/` | 条目样本的 range 回归与安全渲染 |

@@ -241,3 +241,13 @@
 **理由**：`wtr` 是前身名 `wikitext-ast-renderer` 的首字母缩写；仓库早期 `README.md` 与 `.agents/docs/api.md` 曾把它当作包名和导入路径，`446c2cc` 统一措辞时只改了文字，标识符未同步。`wikitext-` 与包名核心词一致，读者不需要记第二套缩写，也不绑定 React，将来非 React 视图可以复用同一份样式。`rw-` 语义过载（read-write、rewrite、row），`rwt-` 与 `wtr-` 只差字母序、迁移期最容易肉眼混淆，`wt-` 过于通用，`wx-` 在中文语境与微信 API 冲突，均被否。类名是高度重复的固定字符串，gzip 后的长度代价可忽略。
 
 **约束**：`wikitext-` 同时覆盖类名、CSS 变量与 data 属性，宿主覆盖变量和深色主题选择器需要一并改写。class 集合仍是公开 DOM 承诺的一部分，改名属于 0.x 次版本的破坏性变更；`mw-`、`catlinks`、`reference` 等 MediaWiki 兼容类名不变。内部 data 标记与 Parsoid 的 `data-wikitext` 共享词根，但完整名称不同，清洗仍以精确名单排除源码注入。
+
+## 21. 调试组件作为独立 `/devtools` 入口
+
+**决策**：将 playground 的 AST 调试树与节点检查器迁入 `src/devtools`，以 `react-wikitext/devtools` 与 `react-wikitext/devtools.css` 发布。公开 `AstTree`、`NodeInspector`、`AstTreeDocument`、`AstTreeKind`、`AstTreeNode`、选择恢复辅助函数、节点区间/源码查询与文案默认值。`AstTree` 接受解析快照或渲染快照；`NodeInspector` 删除未使用的 `tree` 属性；`AstTree` 的树类型属性命名为 `kind`，受控选中用 `string | null` 表示，非受控选中按树类型分别保存并在文档更新后按类型与区间恢复。
+
+**理由**：调试面板已有真实实现，但只存在于 playground，消费方无法使用；直接导出内部名称会把 `Devtree` 一类实现术语带进公共 API。解析快照与渲染快照的结构足够接近，统一为 `AstTreeDocument` 后，两种快照都能检查。选择与展开状态在重新解析后会失效，公开按类型与 range 恢复的辅助函数，宿主不必复制 playground 的恢复逻辑。独立入口让 `/devtools` 只加载 React 与 `/ast`，根入口、`/view` 与 `/hast` 不增加依赖。
+
+**被否方案**：从根入口或 `/view` 直接导出（把调试代码带进正式渲染入口）；只导出组件而不导出恢复辅助函数（消费方仍需复制内部逻辑）；在组件内部忽略受控属性（无法与编辑器或 URL 状态同步）。
+
+**约束**：`/devtools` 不依赖 parser、`normalize`、`hast`、`unified` 或 `view`；构建产物 `/devtools` 带 `"use client"`。调试组件不进入正式渲染链，不运行插件、resolver 或清洗。节点 id 只在一份快照内唯一；语义树与源码语法树都使用路径式 id，跨树同名不代表同一个节点。选择恢复只按类型与区间匹配，生成节点没有区间时无法恢复。默认文案为英文，宿主通过 `labels` 覆盖。

@@ -11,7 +11,9 @@ const ALLOWED_SUBPATHS = new Set([
   "unified",
   "view",
   "configs",
+  "devtools",
   "styles.css",
+  "devtools.css",
 ]);
 
 const LIBRARY_SOURCE = resolve("src");
