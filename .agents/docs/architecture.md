@@ -149,7 +149,8 @@ src/
                 只依赖 ast 的普通数据、查询与 React
   configs/      默认配置与配置类型；无 React、parser
   shared/       HTML 标签表、HAST 与 URL 谓词；无解析、清洗或 React 依赖
-  styles/       view.css、devtools.css、tokens.css；页面渲染与调试组件样式、主题 token
+  styles/       view.css、devtools.css、tokens.css；页面渲染与调试组件样式、主题 token；
+                源码使用原生嵌套，构建时展开
   types/        上游深层导入与 VFile 的 ambient 声明
   Wikitext.tsx  根入口的源码组件；依赖 parse、hast、view
   index.ts      根入口：view + Wikitext + 精选语义类型
@@ -241,7 +242,7 @@ playground/src/
 - 默认不启用图片；只有 resolver 返回并通过 URL 校验的 `src` 会被授权。源码 HTML `img` 由 `allowSourceImages` 控制，插件新增或替换的 `img` 由 `allowPluginImages` 控制，未授权时移除并产生诊断。
 - 默认相对链接规则与 policy 默认值见[文档站 prepare 页面](../../website/docs/zh/api/prepare.mdx)。
 - 自定义组件与插件属于可信程序；库保证它们收到的数据经过约定处理，但不会再次清洗任意自定义组件输出的 HTML。
-- 库自身不发起网络请求、不依赖远程字体或 CDN；内联样式只来自源码 HTML 与插件的白名单声明，`url()` 一类声明会被丢弃，不会借样式加载资源；resolver 授权的图片由浏览器按普通 `<img>` 加载。
+- 库自身不发起网络请求、不依赖远程字体或 CDN；内联样式只来自源码 HTML、插件的白名单声明与目录折叠 checkbox 的固定 `display:none`，`url()` 一类声明会被丢弃，不会借样式加载资源；resolver 授权的图片由浏览器按普通 `<img>` 加载。
 
 ## 8. 性能与规模
 

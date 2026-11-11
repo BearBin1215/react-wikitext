@@ -1,72 +1,120 @@
 @import "./tokens.css";
 
+/* 根容器与基础排版 */
 .wikitext-view {
+  display: flow-root;
   color: var(--wikitext-text);
   font-family: inherit;
   font-size: 16px;
   line-height: 1.6;
   overflow-wrap: break-word;
-  display: flow-root;
+
+  /* :where(&) 保持 `:where(.wikitext-view) p` 的零特异性。 */
+  :where(&) p {
+    margin: 0.4em 0 0.5em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    display: flow-root;
+    margin: 0;
+    padding-top: 0.5em;
+    padding-bottom: 0.17em;
+    color: var(--wikitext-text);
+    font-weight: bold;
+    word-break: break-word;
+  }
+
+  h1,
+  h2 {
+    margin-bottom: 0.6em;
+    border-bottom: 1px solid var(--wikitext-border-strong);
+    font-weight: normal;
+  }
+
+  h3,
+  h4,
+  h5 {
+    margin-bottom: 0.3em;
+  }
+
+  h1 {
+    font-size: 188%;
+  }
+  h2 {
+    font-size: 150%;
+  }
+  h3 {
+    font-size: 128%;
+  }
+  h4 {
+    font-size: 116%;
+  }
+  h5 {
+    font-size: 108%;
+  }
+  h6 {
+    font-size: 100%;
+  }
+
+  hr {
+    height: 1px;
+    margin: 0.2em 0;
+    border: 0;
+    background: var(--wikitext-border-strong);
+  }
 }
 
-:where(.wikitext-view) p {
-  margin: 0.4em 0 0.5em;
+/* 基础元素：零特异性，宿主元素样式优先。 */
+:where(.wikitext-view) {
+  img {
+    border: 0;
+    vertical-align: middle;
+  }
+
+  code,
+  kbd,
+  samp,
+  tt,
+  pre {
+    font-family: monospace;
+  }
+
+  code {
+    padding: 1px 4px;
+    border: 1px solid var(--wikitext-border);
+    border-radius: 0;
+    background-color: var(--wikitext-placeholder-bg);
+    color: var(--wikitext-text);
+  }
+
+  pre {
+    overflow-x: hidden;
+    padding: 1em;
+    border: 1px solid var(--wikitext-border);
+    background-color: var(--wikitext-placeholder-bg);
+    color: var(--wikitext-text);
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+
+    code {
+      padding: 0;
+      border: 0;
+      background: none;
+    }
+  }
 }
 
-.wikitext-view h1,
-.wikitext-view h2,
-.wikitext-view h3,
-.wikitext-view h4,
-.wikitext-view h5,
-.wikitext-view h6 {
-  color: var(--wikitext-text);
-  font-weight: bold;
-  margin: 0;
-  padding-top: 0.5em;
-  padding-bottom: 0.17em;
-  display: flow-root;
-  word-break: break-word;
+/* 结构辅助 */
+.wikitext-fragment {
+  display: contents;
 }
 
-.wikitext-view h1,
-.wikitext-view h2 {
-  margin-bottom: 0.6em;
-  border-bottom: 1px solid var(--wikitext-border-strong);
-  font-weight: normal;
-}
-
-.wikitext-view h3,
-.wikitext-view h4,
-.wikitext-view h5 {
-  margin-bottom: 0.3em;
-}
-
-.wikitext-view h1 {
-  font-size: 188%;
-}
-.wikitext-view h2 {
-  font-size: 150%;
-}
-.wikitext-view h3 {
-  font-size: 128%;
-}
-.wikitext-view h4 {
-  font-size: 116%;
-}
-.wikitext-view h5 {
-  font-size: 108%;
-}
-.wikitext-view h6 {
-  font-size: 100%;
-}
-
-.wikitext-view hr {
-  height: 1px;
-  background: var(--wikitext-border-strong);
-  border: 0;
-  margin: 0.2em 0;
-}
-
+/* 链接 */
 .wikitext-link {
   color: var(--wikitext-accent);
   text-decoration: none;
@@ -78,48 +126,16 @@
   cursor: pointer;
 }
 
-.wikitext-link--resolved:hover,
-.wikitext-link--resolved:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+.wikitext-link--resolved {
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
 }
 
 .wikitext-link.new {
   color: var(--wikitext-danger);
-}
-
-.wikitext-ext-link {
-  color: var(--wikitext-accent);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-.wikitext-ext-link:hover,
-.wikitext-ext-link:focus-visible {
-  text-decoration-thickness: 2px;
-}
-
-.wikitext-ext-link.external.free {
-  overflow-wrap: anywhere;
-}
-
-/* MediaWiki 外链图标；用 mask 跟随文字颜色，深色主题无需额外资源。 */
-.wikitext-ext-link.external::after {
-  content: "";
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  margin-inline-start: 2px;
-  background-color: currentColor;
-  vertical-align: -1px;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 13'%3E%3Cpath d='M5 1h7v7l-2-2-3 2v-1l3-2.25 1 1V2H7.25l1 1L6 6H5l2-3z'/%3E%3Cpath d='M7 3H2v8h8V6H9v4H3V4h4z'/%3E%3C/svg%3E")
-    center / 13px 13px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 13'%3E%3Cpath d='M5 1h7v7l-2-2-3 2v-1l3-2.25 1 1V2H7.25l1 1L6 6H5l2-3z'/%3E%3Cpath d='M7 3H2v8h8V6H9v4H3V4h4z'/%3E%3C/svg%3E")
-    center / 13px 13px no-repeat;
-}
-
-[dir="rtl"] .wikitext-ext-link.external::after {
-  transform: scaleX(-1);
 }
 
 .wikitext-link--blocked {
@@ -127,28 +143,41 @@
   text-decoration: line-through;
 }
 
-.wikitext-view .plainlinks .wikitext-ext-link.external::after {
-  display: none;
+.wikitext-ext-link {
+  color: var(--wikitext-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-thickness: 2px;
+  }
+
+  &.external.free {
+    overflow-wrap: anywhere;
+  }
+
+  /* MediaWiki 外链图标；用 mask 跟随文字颜色，深色主题无需额外资源。 */
+  &.external::after {
+    content: "";
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    margin-inline-start: 2px;
+    background-color: currentColor;
+    vertical-align: -1px;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 13'%3E%3Cpath d='M5 1h7v7l-2-2-3 2v-1l3-2.25 1 1V2H7.25l1 1L6 6H5l2-3z'/%3E%3Cpath d='M7 3H2v8h8V6H9v4H3V4h4z'/%3E%3C/svg%3E")
+      center / 13px 13px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 13'%3E%3Cpath d='M5 1h7v7l-2-2-3 2v-1l3-2.25 1 1V2H7.25l1 1L6 6H5l2-3z'/%3E%3Cpath d='M7 3H2v8h8V6H9v4H3V4h4z'/%3E%3C/svg%3E")
+      center / 13px 13px no-repeat;
+  }
+
+  :dir(rtl) &.external::after {
+    transform: scaleX(-1);
+  }
 }
 
-.wikitext-view .center {
-  width: 100%;
-  text-align: center;
-}
-
-.wikitext-view .center * {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.wikitext-view .small {
-  font-size: 94%;
-}
-
-.wikitext-view table.small {
-  font-size: 100%;
-}
-
+/* 重定向 */
 .wikitext-redirect {
   margin: 0 0 1em;
   padding: 0.5em 0.75em;
@@ -167,45 +196,70 @@
   padding-left: 1.5em;
 }
 
-.wikitext-unknown--inline {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35em;
-  max-width: 100%;
-  padding: 0.05em 0.4em;
-  border: 1px dashed var(--wikitext-border);
-  border-radius: 4px;
-  background: var(--wikitext-placeholder-bg);
-  vertical-align: baseline;
-  font-size: 0.8em;
+.wikitext-redirect__target {
+  color: var(--wikitext-accent);
+  text-decoration: none;
 }
 
-.wikitext-unknown__label {
-  color: var(--wikitext-muted);
-  white-space: nowrap;
+a.wikitext-redirect__target {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
 }
 
-.wikitext-unknown__source {
-  font-family: var(--wikitext-font-mono);
-  font-size: 0.95em;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 原始 HTML 辅助 */
+.wikitext-view {
+  .plainlinks .wikitext-ext-link.external::after {
+    display: none;
+  }
+
+  .center {
+    width: 100%;
+    text-align: center;
+
+    & * {
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+
+  .small {
+    font-size: 94%;
+  }
+
+  table.small {
+    font-size: 100%;
+  }
+
+  ul.wikitext-html-ul {
+    margin-top: 0.3em;
+    margin-bottom: 0;
+    margin-inline-start: 1.6em;
+    padding: 0;
+  }
+
+  ol.wikitext-html-ol {
+    margin-top: 0.3em;
+    margin-bottom: 0;
+    margin-inline-start: 3.2em;
+    padding: 0;
+  }
+
+  dl.wikitext-html-dl {
+    margin-top: 0.2em;
+    margin-bottom: 0.5em;
+  }
 }
 
-.wikitext-unknown--block {
-  margin: 0 0 1em;
-  padding: 0.6em 0.75em;
-  border: 1px dashed var(--wikitext-border);
-  border-radius: 6px;
-  background: var(--wikitext-placeholder-bg);
+.wikitext-html-block {
+  margin: 0.6em 0;
 }
 
-.wikitext-unknown--block .wikitext-unknown__source {
-  margin: 0.4em 0 0;
-  white-space: pre-wrap;
-  overflow: auto;
-}
-
+/* 列表 */
 .wikitext-list {
   margin-top: 0.3em;
   margin-bottom: 0;
@@ -234,35 +288,19 @@
   margin-inline-start: 0;
 }
 
-dl.wikitext-list dt.wikitext-list__item {
-  font-weight: bold;
-  margin-bottom: 0.1em;
+dl.wikitext-list {
+  dt.wikitext-list__item {
+    margin-bottom: 0.1em;
+    font-weight: bold;
+  }
+
+  dd.wikitext-list__item {
+    margin-bottom: 0.1em;
+    margin-inline-start: 1.6em;
+  }
 }
 
-dl.wikitext-list dd.wikitext-list__item {
-  margin-inline-start: 1.6em;
-  margin-bottom: 0.1em;
-}
-
-.wikitext-view ul.wikitext-html-ul {
-  margin-top: 0.3em;
-  margin-bottom: 0;
-  margin-inline-start: 1.6em;
-  padding: 0;
-}
-
-.wikitext-view ol.wikitext-html-ol {
-  margin-top: 0.3em;
-  margin-bottom: 0;
-  margin-inline-start: 3.2em;
-  padding: 0;
-}
-
-.wikitext-view dl.wikitext-html-dl {
-  margin-top: 0.2em;
-  margin-bottom: 0.5em;
-}
-
+/* 表格 */
 .wikitext-table {
   margin: 1em 0;
   max-width: 100%;
@@ -274,8 +312,8 @@ dl.wikitext-list dd.wikitext-list__item {
 }
 
 .wikitext-table__cell--filler {
-  border: 0;
   padding: 0;
+  border: 0;
 }
 
 .wikitext-table.wikitable {
@@ -285,32 +323,21 @@ dl.wikitext-list dd.wikitext-list__item {
   color: var(--wikitext-text);
 }
 
-.wikitable .wikitext-table__cell {
-  border: 1px solid var(--wikitext-border-strong);
-  padding: 0.2em 0.4em;
-}
-
-.wikitable .wikitext-table__row > th,
-.wikitable th.wikitext-table__cell {
-  background-color: var(--wikitext-neutral);
-  color: var(--wikitext-text);
-  text-align: center;
-}
-
-.wikitable .wikitext-table__caption {
-  font-weight: bold;
-}
-
-@media (max-width: 639px) {
-  .wikitext-view .wikitext-table,
-  .wikitext-view table.wikitext-html-table {
-    display: block;
-    overflow: auto;
-    max-width: 100%;
+.wikitable {
+  & .wikitext-table__cell {
+    padding: 0.2em 0.4em;
+    border: 1px solid var(--wikitext-border-strong);
   }
 
-  .wikitext-view .noresize table {
-    display: table;
+  & .wikitext-table__row > th,
+  & th.wikitext-table__cell {
+    background-color: var(--wikitext-neutral);
+    color: var(--wikitext-text);
+    text-align: center;
+  }
+
+  & .wikitext-table__caption {
+    font-weight: bold;
   }
 }
 
@@ -322,17 +349,25 @@ dl.wikitext-list dd.wikitext-list__item {
   background: var(--wikitext-placeholder-bg);
 }
 
-.wikitext-table--degraded .wikitext-unknown__source {
-  margin: 0.4em 0 0;
-  white-space: pre-wrap;
-  overflow: auto;
+@media (max-width: 639px) {
+  .wikitext-view {
+    & .wikitext-table,
+    & table.wikitext-html-table {
+      display: block;
+      max-width: 100%;
+      overflow: auto;
+    }
+
+    & .noresize table {
+      display: table;
+    }
+  }
 }
 
-.wikitext-fragment {
-  display: contents;
-}
-
-.wikitext-template {
+/* 模板、解析器函数与参数 */
+.wikitext-template,
+.wikitext-magic-word--block {
+  display: block;
   margin: 0.5em 0;
   border: 1px solid var(--wikitext-border);
   border-radius: 6px;
@@ -341,7 +376,7 @@ dl.wikitext-list dd.wikitext-list__item {
 }
 
 .wikitext-template--inline,
-.wikitext-magic-word,
+.wikitext-magic-word:not(.wikitext-magic-word--block),
 .wikitext-argument {
   display: inline-block;
   padding: 0 0.35em;
@@ -354,8 +389,8 @@ dl.wikitext-list dd.wikitext-list__item {
 
 .wikitext-template__summary {
   padding: 0.4em 0.6em;
-  cursor: pointer;
   color: var(--wikitext-muted);
+  cursor: pointer;
 }
 
 .wikitext-template__params {
@@ -381,15 +416,31 @@ dl.wikitext-list dd.wikitext-list__item {
   color: var(--wikitext-muted);
 }
 
-.wikitext-file {
-  margin: 0.8em 0;
+/* 文件与画廊共享的标签、说明与占位卡片 */
+.wikitext-file__label,
+.wikitext-gallery__label {
+  color: var(--wikitext-muted);
+  font-family: var(--wikitext-font-mono);
+  font-size: 0.85em;
 }
 
-.wikitext-file--placeholder {
+.wikitext-file__caption,
+.wikitext-gallery__caption {
+  margin-top: 0.35em;
+  font-size: 0.9em;
+}
+
+.wikitext-file--placeholder,
+.wikitext-gallery__item--placeholder {
   padding: 0.5em;
   border: 1px dashed var(--wikitext-border);
   border-radius: 6px;
   background: var(--wikitext-placeholder-bg);
+}
+
+/* 文件 */
+.wikitext-file {
+  margin: 0.8em 0;
 }
 
 figure.wikitext-file--placeholder {
@@ -414,12 +465,6 @@ figure.wikitext-file--placeholder {
   background: none;
 }
 
-figure.wikitext-file--media {
-  display: block;
-  text-align: start;
-  line-height: normal;
-}
-
 .wikitext-file__link {
   color: inherit;
   text-decoration: none;
@@ -428,8 +473,38 @@ figure.wikitext-file--media {
 .wikitext-file__image {
   max-width: 100%;
   height: auto;
-  vertical-align: middle;
   border: 0;
+  vertical-align: middle;
+
+  .mw-image-border & {
+    border: 1px solid var(--wikitext-border);
+  }
+
+  /* 修饰类需要高于基础规则的 specificity，避免宿主覆盖。 */
+  .mw-valign-middle & {
+    vertical-align: middle;
+  }
+  .mw-valign-baseline & {
+    vertical-align: baseline;
+  }
+  .mw-valign-sub & {
+    vertical-align: sub;
+  }
+  .mw-valign-super & {
+    vertical-align: super;
+  }
+  .mw-valign-top & {
+    vertical-align: top;
+  }
+  .mw-valign-text-top & {
+    vertical-align: text-top;
+  }
+  .mw-valign-bottom & {
+    vertical-align: bottom;
+  }
+  .mw-valign-text-bottom & {
+    vertical-align: text-bottom;
+  }
 }
 
 span.wikitext-file--media .wikitext-file__image {
@@ -437,197 +512,160 @@ span.wikitext-file--media .wikitext-file__image {
   margin: 0;
 }
 
-figure.wikitext-file--media .wikitext-file__image {
+figure.wikitext-file--media {
   display: block;
-  margin: 0;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"],
-figure.wikitext-file--media[typeof~="mw:File/Frame"] {
-  display: table;
-  text-align: center;
-  border-collapse: collapse;
-  line-height: 0;
-  margin: 0.5em 0 1.3em 1.4em;
-  clear: right;
-  float: right;
-  border: 1px solid var(--wikitext-border);
-  border-bottom: 0;
-  background-color: var(--wikitext-placeholder-bg);
-}
-
-:where(:dir(rtl)) .wikitext-view figure.wikitext-file--media[typeof~="mw:File/Thumb"],
-:where(:dir(rtl)) .wikitext-view figure.wikitext-file--media[typeof~="mw:File/Frame"] {
-  margin: 0.5em 1.4em 1.3em 0;
-  clear: left;
-  float: left;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"] > :not(figcaption) .wikitext-file__image,
-figure.wikitext-file--media[typeof~="mw:File/Frame"] > :not(figcaption) .wikitext-file__image {
-  border: 1px solid var(--wikitext-border);
-  margin: 3px;
-  max-width: calc(100% - 8px);
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"] > .mw-file-description,
-figure.wikitext-file--media[typeof~="mw:File/Frame"] > .mw-file-description {
-  display: block;
-  position: relative;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"] > .mw-file-description::after {
-  content: "";
-  position: absolute;
-  right: 6px;
-  bottom: -11px;
-  width: 15px;
-  height: 11px;
-  background-color: var(--wikitext-muted);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 15'%3E%3Cpath d='M1.509 1.865h10.99v7.919H1.509z'/%3E%3Cpath d='M-1.499 6.868h5.943v4.904h-5.943z'/%3E%3C/svg%3E")
-    center / 15px 11px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 15'%3E%3Cpath d='M1.509 1.865h10.99v7.919H1.509z'/%3E%3Cpath d='M-1.499 6.868h5.943v4.904h-5.943z'/%3E%3C/svg%3E")
-    center / 15px 11px no-repeat;
-}
-
-.wikitext-view:dir(rtl)
-  figure.wikitext-file--media[typeof~="mw:File/Thumb"]
-  > .mw-file-description::after {
-  right: auto;
-  left: 6px;
-}
-
-figure.wikitext-file--media[typeof~="mw:File"] > figcaption,
-figure.wikitext-file--media[typeof~="mw:File/Frameless"] > figcaption {
-  display: none;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"] > .wikitext-file__caption,
-figure.wikitext-file--media[typeof~="mw:File/Frame"] > .wikitext-file__caption {
-  display: table-caption;
-  caption-side: bottom;
-  margin-top: 0;
-  padding: 0 6px 6px;
-  border: 1px solid var(--wikitext-border);
-  border-top: 0;
-  background-color: var(--wikitext-placeholder-bg);
-  font-size: 88.4%;
-  line-height: 1.4em;
   text-align: start;
-  word-break: break-word;
-}
+  line-height: normal;
 
-figure.wikitext-file--media[typeof~="mw:File/Frame"] > .wikitext-file__caption:empty {
-  padding-bottom: 0;
-}
+  .wikitext-file__image {
+    display: block;
+    margin: 0;
+  }
 
-figure.wikitext-file--media[typeof~="mw:File/Thumb"] > .wikitext-file__caption:empty {
-  padding-bottom: 3px;
-}
+  &[typeof~="mw:File/Thumb"],
+  &[typeof~="mw:File/Frame"] {
+    display: table;
+    float: right;
+    clear: right;
+    border-collapse: collapse;
+    margin: 0.5em 0 1.3em 1.4em;
+    border: 1px solid var(--wikitext-border);
+    border-bottom: 0;
+    background-color: var(--wikitext-placeholder-bg);
+    line-height: 0;
+    text-align: center;
+  }
 
-/* 显式对齐；放在默认浮动之后以覆盖 LTR/RTL 默认值。 */
-figure.wikitext-file--media.mw-halign-right {
-  margin: 0 0 0.5em 0.5em;
-  clear: right;
-  float: right;
-}
+  :dir(rtl) &[typeof~="mw:File/Thumb"],
+  :dir(rtl) &[typeof~="mw:File/Frame"] {
+    float: left;
+    clear: left;
+    margin: 0.5em 1.4em 1.3em 0;
+  }
 
-figure.wikitext-file--media.mw-halign-left {
-  margin: 0 0.5em 0.5em 0;
-  clear: left;
-  float: left;
-}
+  &[typeof~="mw:File/Thumb"] > :not(figcaption) .wikitext-file__image,
+  &[typeof~="mw:File/Frame"] > :not(figcaption) .wikitext-file__image {
+    max-width: calc(100% - 8px);
+    margin: 3px;
+    border: 1px solid var(--wikitext-border);
+  }
 
-figure.wikitext-file--media.mw-halign-none {
-  margin: 0 0 0.5em;
-  clear: none;
-  float: none;
-}
+  &[typeof~="mw:File/Thumb"] > .mw-file-description,
+  &[typeof~="mw:File/Frame"] > .mw-file-description {
+    position: relative;
+    display: block;
+  }
 
-figure.wikitext-file--media.mw-halign-center {
-  display: table;
-  border-collapse: collapse;
-  margin: 0 auto 0.5em;
-  clear: none;
-  float: none;
-}
+  &[typeof~="mw:File/Thumb"] > .mw-file-description::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    bottom: -11px;
+    width: 15px;
+    height: 11px;
+    background-color: var(--wikitext-muted);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 15'%3E%3Cpath d='M1.509 1.865h10.99v7.919H1.509z'/%3E%3Cpath d='M-1.499 6.868h5.943v4.904h-5.943z'/%3E%3C/svg%3E")
+      center / 15px 11px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 15'%3E%3Cpath d='M1.509 1.865h10.99v7.919H1.509z'/%3E%3Cpath d='M-1.499 6.868h5.943v4.904h-5.943z'/%3E%3C/svg%3E")
+      center / 15px 11px no-repeat;
+  }
 
-figure.wikitext-file--media[typeof~="mw:File/Thumb"].mw-halign-right,
-figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-right {
-  margin: 0.5em 0 1.3em 1.4em;
-  clear: right;
-  float: right;
-}
+  :dir(rtl) &[typeof~="mw:File/Thumb"] > .mw-file-description::after {
+    right: auto;
+    left: 6px;
+  }
 
-figure.wikitext-file--media[typeof~="mw:File/Thumb"].mw-halign-left,
-figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-left {
-  margin: 0.5em 1.4em 1.3em 0;
-  clear: left;
-  float: left;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"].mw-halign-none,
-figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-none {
-  margin: 0 0 0.5em;
-  clear: none;
-  float: none;
-}
-
-figure.wikitext-file--media[typeof~="mw:File/Thumb"].mw-halign-center,
-figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
-  margin: 0 auto 0.5em;
-  clear: none;
-  float: none;
-}
-
-.mw-image-border .wikitext-file__image {
-  border: 1px solid var(--wikitext-border);
-}
-
-.mw-valign-middle .wikitext-file__image {
-  vertical-align: middle;
-}
-.mw-valign-baseline .wikitext-file__image {
-  vertical-align: baseline;
-}
-.mw-valign-sub .wikitext-file__image {
-  vertical-align: sub;
-}
-.mw-valign-super .wikitext-file__image {
-  vertical-align: super;
-}
-.mw-valign-top .wikitext-file__image {
-  vertical-align: top;
-}
-.mw-valign-text-top .wikitext-file__image {
-  vertical-align: text-top;
-}
-.mw-valign-bottom .wikitext-file__image {
-  vertical-align: bottom;
-}
-.mw-valign-text-bottom .wikitext-file__image {
-  vertical-align: text-bottom;
-}
-
-@media (max-width: 639px) {
-  figure.wikitext-file--media[typeof~="mw:File/Thumb"] > .mw-file-description::after {
+  &[typeof~="mw:File"] > figcaption,
+  &[typeof~="mw:File/Frameless"] > figcaption {
     display: none;
+  }
+
+  &[typeof~="mw:File/Thumb"] > .wikitext-file__caption,
+  &[typeof~="mw:File/Frame"] > .wikitext-file__caption {
+    display: table-caption;
+    caption-side: bottom;
+    margin-top: 0;
+    padding: 0 6px 6px;
+    border: 1px solid var(--wikitext-border);
+    border-top: 0;
+    background-color: var(--wikitext-placeholder-bg);
+    font-size: 88.4%;
+    line-height: 1.4em;
+    text-align: start;
+    word-break: break-word;
+  }
+
+  &[typeof~="mw:File/Frame"] > .wikitext-file__caption:empty {
+    padding-bottom: 0;
+  }
+
+  &[typeof~="mw:File/Thumb"] > .wikitext-file__caption:empty {
+    padding-bottom: 3px;
+  }
+
+  /* 显式对齐放在默认浮动之后；带 typeof 的重复规则在 RTL 下以同等特异性覆盖默认值。 */
+  &.mw-halign-right {
+    float: right;
+    clear: right;
+    margin: 0 0 0.5em 0.5em;
+  }
+
+  &.mw-halign-left {
+    float: left;
+    clear: left;
+    margin: 0 0.5em 0.5em 0;
+  }
+
+  &.mw-halign-none {
+    float: none;
+    clear: none;
+    margin: 0 0 0.5em;
+  }
+
+  &.mw-halign-center {
+    display: table;
+    float: none;
+    clear: none;
+    border-collapse: collapse;
+    margin: 0 auto 0.5em;
+  }
+
+  &[typeof~="mw:File/Thumb"].mw-halign-right,
+  &[typeof~="mw:File/Frame"].mw-halign-right {
+    float: right;
+    clear: right;
+    margin: 0.5em 0 1.3em 1.4em;
+  }
+
+  &[typeof~="mw:File/Thumb"].mw-halign-left,
+  &[typeof~="mw:File/Frame"].mw-halign-left {
+    float: left;
+    clear: left;
+    margin: 0.5em 1.4em 1.3em 0;
+  }
+
+  &[typeof~="mw:File/Thumb"].mw-halign-none,
+  &[typeof~="mw:File/Frame"].mw-halign-none {
+    float: none;
+    clear: none;
+    margin: 0 0 0.5em;
+  }
+
+  &[typeof~="mw:File/Thumb"].mw-halign-center,
+  &[typeof~="mw:File/Frame"].mw-halign-center {
+    float: none;
+    clear: none;
+    margin: 0 auto 0.5em;
+  }
+
+  @media (max-width: 639px) {
+    &[typeof~="mw:File/Thumb"] > .mw-file-description::after {
+      display: none;
+    }
   }
 }
 
-.wikitext-file__label,
-.wikitext-gallery__label {
-  color: var(--wikitext-muted);
-  font-family: var(--wikitext-font-mono);
-  font-size: 0.85em;
-}
-
-.wikitext-file__caption,
-.wikitext-gallery__caption {
-  margin-top: 0.35em;
-  font-size: 0.9em;
-}
-
+/* 画廊 */
 .wikitext-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14em, 1fr));
@@ -635,36 +673,36 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
   margin: 0.8em 0;
 }
 
-.wikitext-gallery__item {
-  margin: 0;
+.wikitext-gallery__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
-.wikitext-gallery__item--placeholder {
-  padding: 0.5em;
-  border: 1px dashed var(--wikitext-border);
-  border-radius: 6px;
-  background: var(--wikitext-placeholder-bg);
+.wikitext-gallery__item {
+  margin: 0;
 }
 
 .wikitext-gallery__item--media {
   padding: 3px;
   border: 1px solid var(--wikitext-border);
   background: var(--wikitext-placeholder-bg);
+
+  .wikitext-gallery__image {
+    margin: 3px;
+    border: 1px solid var(--wikitext-border);
+  }
+
+  .wikitext-gallery__caption {
+    margin-top: 0;
+    padding: 0 6px 6px;
+    font-size: 88.4%;
+    line-height: 1.4em;
+    text-align: start;
+  }
 }
 
-.wikitext-gallery__item--media .wikitext-gallery__image {
-  border: 1px solid var(--wikitext-border);
-  margin: 3px;
-}
-
-.wikitext-gallery__item--media .wikitext-gallery__caption {
-  margin-top: 0;
-  padding: 0 6px 6px;
-  font-size: 88.4%;
-  line-height: 1.4em;
-  text-align: start;
-}
-
+/* 引用 */
 .wikitext-ref {
   color: var(--wikitext-accent);
   font-size: 0.8em;
@@ -674,21 +712,19 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
   white-space: nowrap;
 }
 
-.wikitext-ref__link {
+.wikitext-ref__link,
+.wikitext-references__backlink {
   color: inherit;
-  /* 行内引用链接必须有不依赖颜色的可识别样式。 */
+  /* 引用上标链接与回链都用下划线标识，不只依赖颜色。 */
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-.wikitext-ref__link:hover,
-.wikitext-ref__link:focus-visible {
-  text-decoration-thickness: 2px;
-}
-
-.wikitext-view sup.reference:target,
-.wikitext-view .wikitext-references li:target {
-  background-color: var(--wikitext-accent-soft);
+.wikitext-ref__link {
+  &:hover,
+  &:focus-visible {
+    text-decoration-thickness: 2px;
+  }
 }
 
 .wikitext-references {
@@ -704,6 +740,13 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
   margin-bottom: 0.1em;
 }
 
+.wikitext-view {
+  sup.reference:target,
+  .wikitext-references li:target {
+    background-color: var(--wikitext-accent-soft);
+  }
+}
+
 .mw-cite-backlink {
   user-select: none;
 }
@@ -711,16 +754,17 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
 .mw-references-columns {
   column-width: 30em;
   margin-top: 0.3em;
+
+  .references {
+    margin-top: 0;
+  }
+
+  li {
+    break-inside: avoid;
+  }
 }
 
-.mw-references-columns .references {
-  margin-top: 0;
-}
-
-.mw-references-columns li {
-  break-inside: avoid;
-}
-
+/* 目录 */
 .wikitext-toc {
   display: table;
   margin: 0 0 1em;
@@ -728,20 +772,77 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
   border: 1px solid var(--wikitext-border-strong);
   background: var(--wikitext-placeholder-bg);
   font-size: 95%;
-}
 
-.wikitext-toc .toctitle {
-  text-align: center;
-  direction: ltr;
-}
+  .toctitle {
+    direction: ltr;
+    text-align: center;
 
-.wikitext-toc .toctitle h2 {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 100%;
-  font-weight: bold;
+    h2 {
+      display: inline;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 100%;
+      font-weight: bold;
+    }
+  }
+
+  .tocnumber,
+  .toctext {
+    display: table-cell;
+    text-decoration: inherit;
+  }
+
+  .tocnumber {
+    padding-inline-end: 0.5em;
+    color: var(--wikitext-text);
+  }
+
+  .toctogglecheckbox {
+    position: absolute;
+    /* 覆盖 HAST 的内联 display:none，保留可聚焦的折叠控件。 */
+    display: inline !important;
+    z-index: -1;
+    opacity: 0;
+  }
+
+  .toctogglespan {
+    font-size: 94%;
+
+    &::before {
+      content: " [";
+    }
+
+    &::after {
+      content: "]";
+    }
+  }
+
+  .toctogglelabel {
+    color: var(--wikitext-accent);
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .toctogglecheckbox:focus + .toctitle .toctogglelabel {
+    text-decoration: underline;
+    outline: auto;
+  }
+
+  .toctogglecheckbox:checked ~ ul {
+    display: none;
+  }
+
+  .toctogglecheckbox:checked + .toctitle .toctogglelabel::after {
+    content: attr(data-show);
+  }
+
+  .toctogglecheckbox:not(:checked) + .toctitle .toctogglelabel::after {
+    content: attr(data-hide);
+  }
 }
 
 .wikitext-toc__list {
@@ -749,11 +850,11 @@ figure.wikitext-file--media[typeof~="mw:File/Frame"].mw-halign-center {
   padding: 0;
   list-style: none;
   text-align: start;
-}
 
-.wikitext-toc__list .wikitext-toc__list {
-  margin: 0;
-  margin-inline-start: 2em;
+  & & {
+    margin: 0;
+    margin-inline-start: 2em;
+  }
 }
 
 .wikitext-toc__item {
@@ -774,132 +875,28 @@ a.wikitext-toc__link:focus-visible {
   text-decoration: underline;
 }
 
-.wikitext-toc .tocnumber,
-.wikitext-toc .toctext {
-  display: table-cell;
-  text-decoration: inherit;
-}
-
-.wikitext-toc .tocnumber {
-  color: var(--wikitext-text);
-  padding-inline-end: 0.5em;
-}
-
-.wikitext-toc .toctogglecheckbox {
-  display: inline !important;
-  position: absolute;
-  opacity: 0;
-  z-index: -1;
-}
-
-.wikitext-toc .toctogglespan {
-  font-size: 94%;
-}
-
-.wikitext-toc .toctogglespan::before {
-  content: " [";
-}
-
-.wikitext-toc .toctogglespan::after {
-  content: "]";
-}
-
-.wikitext-toc .toctogglelabel {
-  color: var(--wikitext-accent);
-  cursor: pointer;
-}
-
-.wikitext-toc .toctogglelabel:hover {
-  text-decoration: underline;
-}
-
-.wikitext-toc .toctogglecheckbox:focus + .toctitle .toctogglelabel {
-  text-decoration: underline;
-  outline: auto;
-}
-
-.wikitext-toc .toctogglecheckbox:checked ~ ul {
-  display: none;
-}
-
-.wikitext-toc .toctogglecheckbox:checked + .toctitle .toctogglelabel::after {
-  content: attr(data-show);
-}
-
-.wikitext-toc .toctogglecheckbox:not(:checked) + .toctitle .toctogglelabel::after {
-  content: attr(data-hide);
+.wikitext-toc--columns-2,
+.wikitext-toc--columns-3 {
+  .wikitext-toc__list {
+    column-gap: 2em;
+  }
 }
 
 .wikitext-toc--columns-2 .wikitext-toc__list {
   column-count: 2;
-  column-gap: 2em;
 }
 
 .wikitext-toc--columns-3 .wikitext-toc__list {
   column-count: 3;
-  column-gap: 2em;
 }
 
-.wikitext-view .wikitext-poem__stanza {
-  margin: 0.75em 0;
-}
-
-:where(.wikitext-view) img {
-  border: 0;
-  vertical-align: middle;
-}
-
-:where(.wikitext-view) code,
-:where(.wikitext-view) kbd,
-:where(.wikitext-view) samp,
-:where(.wikitext-view) tt,
-:where(.wikitext-view) pre {
-  font-family: monospace, monospace;
-}
-
-:where(.wikitext-view) code {
-  background-color: var(--wikitext-placeholder-bg);
-  color: var(--wikitext-text);
-  border: 1px solid var(--wikitext-border);
-  border-radius: 0;
-  padding: 1px 4px;
-}
-
-:where(.wikitext-view) pre {
-  background-color: var(--wikitext-placeholder-bg);
-  color: var(--wikitext-text);
-  border: 1px solid var(--wikitext-border);
-  padding: 1em;
-  white-space: pre-wrap;
-  overflow-x: hidden;
-  overflow-wrap: break-word;
-}
-
-:where(.wikitext-view) pre code {
-  background: none;
-  border: 0;
-  padding: 0;
-}
-
-.wikitext-gallery__image {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-.wikitext-references__backlink {
-  color: inherit;
-  /* 回链与注释文字同色，用下划线区分，不依赖颜色对比。 */
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
+/* 分类 */
 .wikitext-categories {
+  clear: both;
   margin-top: 1em;
   padding: 5px;
   border: 1px solid var(--wikitext-border-strong);
   background: var(--wikitext-placeholder-bg);
-  clear: both;
   text-align: left;
 }
 
@@ -926,35 +923,83 @@ a.wikitext-categories__label:focus-visible {
 
 .wikitext-categories__item {
   display: inline-block;
-  line-height: 1.25em;
   margin: 0.125em 0;
-  border-inline-start: 1px solid var(--wikitext-border-strong);
   padding: 0 0.5em;
+  border-inline-start: 1px solid var(--wikitext-border-strong);
+  line-height: 1.25em;
+
+  &:first-child {
+    padding-inline-start: 0.25em;
+    border-inline-start: 0;
+  }
 }
 
-.wikitext-categories__item:first-child {
-  border-inline-start: 0;
-  padding-inline-start: 0.25em;
+/* 扩展标签 */
+.wikitext-view {
+  .wikitext-poem__stanza {
+    margin: 0.75em 0;
+  }
 }
 
 .wikitext-ext-pre,
 .wikitext-ext-code {
+  overflow: auto;
   margin: 0.8em 0;
   padding: 1em;
   border: 1px solid var(--wikitext-border);
   border-radius: 0;
   background: var(--wikitext-placeholder-bg);
-  overflow: auto;
   font-family: var(--wikitext-font-mono);
   font-size: 0.85em;
 }
 
 .wikitext-math {
-  font-family: var(--wikitext-font-mono);
-  font-size: 0.9em;
   padding: 0 0.25em;
   border: 0;
   border-radius: 3px;
+  background: var(--wikitext-placeholder-bg);
+  font-family: var(--wikitext-font-mono);
+  font-size: 0.9em;
+}
+
+/* 未知节点与错误 */
+.wikitext-unknown--inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  max-width: 100%;
+  padding: 0.05em 0.4em;
+  border: 1px dashed var(--wikitext-border);
+  border-radius: 4px;
+  background: var(--wikitext-placeholder-bg);
+  vertical-align: baseline;
+  font-size: 0.8em;
+}
+
+.wikitext-unknown__label {
+  color: var(--wikitext-muted);
+  white-space: nowrap;
+}
+
+.wikitext-unknown__source {
+  overflow: hidden;
+  font-family: var(--wikitext-font-mono);
+  font-size: 0.95em;
+  text-overflow: ellipsis;
+}
+
+/* 块级源码：未知节点与降级表格共用。 */
+pre.wikitext-unknown__source {
+  overflow: auto;
+  margin: 0.4em 0 0;
+  white-space: pre-wrap;
+}
+
+.wikitext-unknown--block {
+  margin: 0 0 1em;
+  padding: 0.6em 0.75em;
+  border: 1px dashed var(--wikitext-border);
+  border-radius: 6px;
   background: var(--wikitext-placeholder-bg);
 }
 
@@ -971,10 +1016,6 @@ a.wikitext-categories__label:focus-visible {
 
 .wikitext-blocked-html-block {
   display: block;
-}
-
-.wikitext-html-block {
-  margin: 0.6em 0;
 }
 
 .wikitext-render-error {

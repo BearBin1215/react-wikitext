@@ -107,7 +107,7 @@ wikitextPlugins
 
 ### CSP
 
-库不依赖 `eval`；内联样式只保留白名单声明（颜色、字体、对齐、宽高、边框、间距等），涉及 `url()`、`expression()`、`var()`、`@import`、`!important` 的声明整条丢弃并产生 `STYLE_DECLARATION_DROPPED` 诊断，因此不会借样式加载远程资源。CSP 禁止 `style-src` 内联样式时这些声明不生效，但不会执行脚本。如果宿主通过图片解析回调授权远程图片，需要允许对应 `img-src`；如果使用外部字体或样式，则由宿主自己的 CSP 决定。
+库不依赖 `eval`；除目录折叠 checkbox 的固定 `display:none` 外，内联样式只保留白名单声明（颜色、字体、对齐、宽高、边框、间距等），涉及 `url()`、`expression()`、`var()`、`@import`、`!important` 的声明整条丢弃并产生 `STYLE_DECLARATION_DROPPED` 诊断，因此不会借样式加载远程资源。CSP 禁止 `style-src` 内联样式时这些声明不生效，但不会执行脚本。如果宿主通过图片解析回调授权远程图片，需要允许对应 `img-src`；如果使用外部字体或样式，则由宿主自己的 CSP 决定。
 
 ## 已知边界
 

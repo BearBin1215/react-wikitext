@@ -251,3 +251,13 @@
 **被否方案**：从根入口或 `/view` 直接导出（把调试代码带进正式渲染入口）；只导出组件而不导出恢复辅助函数（消费方仍需复制内部逻辑）；在组件内部忽略受控属性（无法与编辑器或 URL 状态同步）。
 
 **约束**：`/devtools` 不依赖 parser、`normalize`、`hast`、`unified` 或 `view`；构建产物 `/devtools` 带 `"use client"`。调试组件不进入正式渲染链，不运行插件、resolver 或清洗。节点 id 只在一份快照内唯一；语义树与源码语法树都使用路径式 id，跨树同名不代表同一个节点。选择恢复只按类型与区间匹配，生成节点没有区间时无法恢复。默认文案为英文，宿主通过 `labels` 覆盖。
+
+## 22. 样式源码使用原生嵌套并在构建时展开（2026-11）
+
+**决策**：`src/styles/` 使用原生 CSS 嵌套组织选择器；构建在 `copy` 之后通过 `build:done` 调用 lightningcss，仅启用 `Features.Nesting` 展开为平铺规则，不内联 `@import`。`dist/styles.css` 与 `dist/devtools.css` 继续 `@import "./tokens.css"`，`tokens.css` 单独发布；源码只使用标准嵌套（`&`、后代/子代、规则内 `@media`），不使用 `&--` / `&__` 拼接。
+
+**理由**：原生嵌套能消除重复的长父选择器，收益集中在 `figure.wikitext-file--media[typeof~="..."]`、`.wikitext-toc` 与 `:where(.wikitext-view)` 分组。CSS 通过 `copy` 发布，需要保留 watch 监听与三份独立文件，因此不能使用只处理 JS 模块图的 `@tsdown/css` 管线；直接调用 lightningcss 可以只展开嵌套，不改变文件布局、`@import` 与既有 exports，也避免 `@tsdown/css` 的 tsdown 精确版本绑定和更高 Node 要求。
+
+**被否方案**：`@tsdown/css` 或 CSS 入口（会内联 tokens，默认合并成单文件或需要空 JS 入口，且构建 Node 下限更高）；PostCSS + `postcss-nesting`（额外依赖与工具链，收益相同）；Sass/Less（引入完整预处理器，超出嵌套这一需求）；手工维护展开产物（易漂移）。
+
+**约束**：展开必须发生在 `copy` 之后；ESM/CJS 双格式构建会并发触发 `build:done`，实现必须从源码读取并串行写出，不能原地读改写 `dist`。`tests/consumer/dist.test.cjs` 用同一 transformer 复核三份 CSS 已幂等展开。原生嵌套不能拼接 BEM 后缀，`.wikitext-*--*` 与 `.wikitext-*__*` 仍需作为完整选择器书写；需要祖先上下文的规则可用 `.ancestor &`。`&` 位于选择器中段时展开器可能生成 `:is(父选择器)` 包装：父选择器是单一复合选择器时 specificity 不变，父选择器是列表时 `:is()` 取最高特异性，不能逐项等价。

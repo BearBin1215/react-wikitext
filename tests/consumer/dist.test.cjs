@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
-const { readFileSync, existsSync } = require("node:fs");
+const { readFileSync, existsSync, readdirSync } = require("node:fs");
 const { join } = require("node:path");
+const { Features, transform } = require("lightningcss");
 
 const parseApi = require("react-wikitext/parse");
 assert.equal(typeof parseApi.parseWikitext, "function");
@@ -86,9 +87,40 @@ for (const file of [
   assert.equal(existsSync(join(dist, file)), true, `${file} should exist in dist`);
 }
 
+const cssSources = {
+  "styles.css": "src/styles/view.css",
+  "tokens.css": "src/styles/tokens.css",
+  "devtools.css": "src/styles/devtools.css",
+};
+const cssFiles = readdirSync(dist)
+  .filter((file) => file.endsWith(".css"))
+  .toSorted();
+assert.deepEqual(
+  cssFiles,
+  Object.keys(cssSources).toSorted(),
+  "dist should contain the expected CSS artifacts",
+);
+for (const file of cssFiles) {
+  const source = cssSources[file];
+  const css = readFileSync(join(dist, file), "utf8");
+  assert.notEqual(css, "", `${file} should not be empty`);
+  const flattened = transform({
+    filename: source,
+    code: readFileSync(join(__dirname, "../../", source)),
+    include: Features.Nesting,
+  }).code.toString();
+  assert.equal(css, flattened, `${file} should match flattened ${source}`);
+}
+for (const file of ["styles.css", "devtools.css"]) {
+  const css = readFileSync(join(dist, file), "utf8");
+  assert.match(css, /@import "\.\/tokens\.css";/u, `${file} should retain the tokens import`);
+  assert.doesNotMatch(css, /--wikitext-text:/u, `${file} should not inline tokens`);
+}
+
 const packageJson = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8"));
 assert.equal(packageJson.peerDependencies.react, ">=18.2 <20");
 assert.equal(packageJson.peerDependencies["react-dom"], ">=18.2 <20");
+assert.equal(packageJson.exports["./styles.css"], "./dist/styles.css");
 assert.equal(packageJson.exports["./tokens.css"], "./dist/tokens.css");
 assert.equal(packageJson.exports["./devtools"].import.default, "./dist/devtools.js");
 assert.equal(packageJson.exports["./devtools"].require.default, "./dist/devtools.cjs");

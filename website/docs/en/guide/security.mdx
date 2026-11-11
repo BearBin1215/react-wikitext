@@ -107,7 +107,7 @@ Confirm your threat model before changing these; the defaults target untrusted w
 
 ### CSP
 
-The library does not depend on `eval`. Inline styles keep only whitelisted declarations (color, font, alignment, size, border, spacing, and similar); any declaration using `url()`, `expression()`, `var()`, `@import`, or `!important` is dropped whole and reported as `STYLE_DECLARATION_DROPPED`, so styles never fetch remote resources. If CSP forbids inline styles via `style-src`, those declarations simply do not apply; no script runs. If a resolver authorizes remote images, allow the relevant `img-src`. External fonts or styles are governed by the host's own CSP.
+The library does not depend on `eval`. Apart from the fixed `display:none` on the TOC toggle checkbox, inline styles keep only whitelisted declarations (color, font, alignment, size, border, spacing, and similar); any declaration using `url()`, `expression()`, `var()`, `@import`, or `!important` is dropped whole and reported as `STYLE_DECLARATION_DROPPED`, so styles never fetch remote resources. If CSP forbids inline styles via `style-src`, those declarations simply do not apply; no script runs. If a resolver authorizes remote images, allow the relevant `img-src`. External fonts or styles are governed by the host's own CSP.
 
 ## Known boundaries
 

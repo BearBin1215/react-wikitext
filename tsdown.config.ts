@@ -1,4 +1,46 @@
+import { readFile, rename, writeFile } from "node:fs/promises";
+import { basename, dirname } from "node:path";
+import { Features, transform } from "lightningcss";
 import { defineConfig } from "tsdown";
+
+const cssArtifacts = [
+  { from: "src/styles/tokens.css", to: "dist/tokens.css" },
+  { from: "src/styles/view.css", to: "dist/styles.css" },
+  { from: "src/styles/devtools.css", to: "dist/devtools.css" },
+] as const;
+
+function copyEntry({ from, to }: (typeof cssArtifacts)[number]) {
+  const target = dirname(to);
+  const name = basename(to);
+  return basename(from) === name ? { from, to: target } : { from, to: target, rename: name };
+}
+
+let cssQueue = Promise.resolve();
+
+// copy 负责放入 dist 并让 watch 监听源码；双格式构建会并发触发本钩子，
+// 这里从源码读取并串行写出，避免两个构建同时截断同一文件。
+function flattenCss(): Promise<void> {
+  const run = cssQueue
+    .then(() =>
+      Promise.all(
+        cssArtifacts.map(async ({ from, to }) => {
+          const code = await readFile(from);
+          const flattened = transform({
+            filename: from,
+            code,
+            include: Features.Nesting,
+          });
+          // 原子替换，避免与 copy 或中断的构建交错时留下截断文件。
+          const temporary = `${to}.tmp`;
+          await writeFile(temporary, flattened.code);
+          await rename(temporary, to);
+        }),
+      ),
+    )
+    .then(() => undefined);
+  cssQueue = run.catch(() => {});
+  return run;
+}
 
 const subpaths = [
   "index",
@@ -84,9 +126,9 @@ export default defineConfig({
       "hast-util-to-jsx-runtime",
     ],
   },
-  copy: [
-    { from: "src/styles/tokens.css", to: "dist" },
-    { from: "src/styles/view.css", to: "dist", rename: "styles.css" },
-    { from: "src/styles/devtools.css", to: "dist" },
-  ],
+  copy: cssArtifacts.map(copyEntry),
+  // copy 在 build:done 之前执行，并让 watch 模式监听源码样式。
+  hooks: {
+    "build:done": flattenCss,
+  },
 });

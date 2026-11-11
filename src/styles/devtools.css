@@ -6,12 +6,13 @@
   font-family: var(--wikitext-font-mono);
 }
 
+/* 树 */
 .wikitext-tree {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
-  min-height: 0;
   height: 100%;
+  min-height: 0;
   font-size: 12px;
 }
 
@@ -45,10 +46,10 @@
 .wikitext-tree__toggle,
 .wikitext-tree__label,
 .wikitext-tree__result {
-  color: inherit;
-  font: inherit;
   background: transparent;
   border: 0;
+  color: inherit;
+  font: inherit;
 }
 
 .wikitext-tree__action {
@@ -60,24 +61,23 @@
 
 .wikitext-tree__root,
 .wikitext-tree__children,
-.wikitext-tree__results,
-.wikitext-inspector__attributes {
-  list-style: none;
+.wikitext-tree__results {
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .wikitext-tree__root,
 .wikitext-tree__results {
-  overflow: auto;
-  min-height: 0;
   flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .wikitext-tree__children {
+  margin-left: 0.5em;
   padding-left: 1em;
   border-left: 1px solid var(--wikitext-border);
-  margin-left: 0.5em;
 }
 
 .wikitext-tree__row {
@@ -88,35 +88,37 @@
   cursor: pointer;
 }
 
-.wikitext-tree__root [role="treeitem"]:focus-visible {
-  outline: none;
-}
-
-.wikitext-tree__root [role="treeitem"]:focus-visible > .wikitext-tree__row {
-  outline: 2px solid var(--wikitext-accent);
-  outline-offset: 1px;
-}
-
 .wikitext-tree__row.is-selected {
   background: var(--wikitext-accent-soft);
+}
+
+.wikitext-tree__root {
+  [role="treeitem"]:focus-visible {
+    outline: none;
+
+    > .wikitext-tree__row {
+      outline: 2px solid var(--wikitext-accent);
+      outline-offset: 1px;
+    }
+  }
 }
 
 .wikitext-tree__toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: 1.4em;
   height: 1.4em;
-  flex: none;
-  cursor: pointer;
   border-radius: 3px;
   color: var(--wikitext-muted);
+  cursor: pointer;
   user-select: none;
 }
 
 .wikitext-tree__spacer {
-  width: 1.4em;
   flex: none;
+  width: 1.4em;
 }
 
 .wikitext-tree__label {
@@ -125,11 +127,11 @@
   gap: 0.4em;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   padding: 0.1em 0.2em;
   text-align: left;
-  cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
+  cursor: pointer;
 }
 
 .wikitext-tree__type {
@@ -142,8 +144,8 @@
 
 .wikitext-tree__name,
 .wikitext-tree__snippet {
-  color: var(--wikitext-muted);
   overflow: hidden;
+  color: var(--wikitext-muted);
   text-overflow: ellipsis;
 }
 
@@ -152,13 +154,13 @@
   gap: 0.4em;
   width: 100%;
   padding: 0.2em 0.3em;
+  border-bottom: 1px solid var(--wikitext-border);
   text-align: left;
   cursor: pointer;
-  border-bottom: 1px solid var(--wikitext-border);
-}
 
-.wikitext-tree__result:hover {
-  background: var(--wikitext-placeholder-bg);
+  &:hover {
+    background: var(--wikitext-placeholder-bg);
+  }
 }
 
 .wikitext-tree__empty {
@@ -172,16 +174,17 @@
   outline-offset: 1px;
 }
 
+/* 检查器 */
 .wikitext-inspector {
-  font-size: 12px;
   overflow: auto;
+  font-size: 12px;
 }
 
 .wikitext-inspector__header {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5em;
   align-items: baseline;
+  gap: 0.5em;
 }
 
 .wikitext-inspector__type {
@@ -208,11 +211,11 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
-}
 
-.wikitext-inspector__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .wikitext-inspector__section {
@@ -221,12 +224,14 @@
 
 .wikitext-inspector__title {
   margin: 0 0 0.2em;
+  color: var(--wikitext-muted);
   font-size: 1em;
   font-weight: 600;
-  color: var(--wikitext-muted);
 }
 
 .wikitext-inspector__code {
+  max-height: 12em;
+  overflow: auto;
   margin: 0;
   padding: 0.4em;
   border: 1px solid var(--wikitext-border);
@@ -234,10 +239,14 @@
   background: var(--wikitext-placeholder-bg);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: 12em;
-  overflow: auto;
 }
 
-.wikitext-inspector__attributes li {
-  padding: 0.1em 0;
+.wikitext-inspector__attributes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0.1em 0;
+  }
 }

@@ -22,6 +22,10 @@ pnpm install
 
 全部命令列在 `package.json` 的 `scripts` 里。构建参数、测试分工、CI 步骤与发布流程以配置文件为准；配置文件无法表达的验收与合规约定见[开发约定](.agents/docs/development.md)。
 
+## 样式
+
+库样式源码在 `src/styles/`，使用原生 CSS 嵌套，构建时由 lightningcss 展开为平铺规则。只使用标准嵌套（`&`、后代/子代、规则内 `@media`），不要使用 Sass 的 `&--` / `&__` 拼接；playground 与文档示例会让浏览器直接解析源码。模块顺序与规则内声明顺序见[开发约定](.agents/docs/development.md)。
+
 ## 文档
 
 - 面向用户的文档站在 `website/`，线上地址 <https://react-wikitext.pages.dev>。中英文内容分别在 `website/docs/zh/` 与 `website/docs/en/`，新增页面时两边一起写。改动后运行 `pnpm docs:build`。

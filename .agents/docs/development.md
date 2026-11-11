@@ -25,6 +25,7 @@
 构建完成后按以下结果检查产物，检查范围与 `tests/consumer/` 保持一致：
 
 - 各入口的 ESM/CJS、类型声明与 sourcemap 齐全，`styles.css`、`tokens.css` 与 `devtools.css` 随包发布。
+- 三份 CSS 已由 lightningcss 展开为平铺规则，产物中不残留嵌套语法；`styles.css` 与 `devtools.css` 仍保留 `@import "./tokens.css"`，不内联 token。
 - React 与 `wikiparser-node` 保持外部导入；ESM-only 的工具已打包进 CJS 产物，产物里不出现 `require("node:*")`。
 - 子路径隔离成立：只渲染的入口不加载 parser，只解析的入口不加载 React；`/devtools` 只加载 React 与 `/ast`，不进入根入口或 `/view`。
 - 产物不含测试文件、原始源码目录或 `.test.` 文件。
@@ -40,6 +41,11 @@ playground 的约束：
 ## 3. 代码与样式
 
 - 库样式只定义 `.wikitext-*` 与受控的 MediaWiki 兼容 class；playground 的布局样式只定义 `.pg-*`，可以在布局选择器中引用库类，但不重定义库样式。
+- 样式源码使用原生 CSS 嵌套；只使用标准相对选择器（`&`、后代/子代、规则内 `@media`），不使用 Sass 的 `&--` / `&__` 拼接，因为 playground 与文档示例会让浏览器直接解析源码。
+- 构建在 `copy` 之后由 `build:done` 调用 lightningcss 展开嵌套；不要手工维护平铺产物，也不要让展开步骤内联 `@import`。
+- 样式按渲染模块组织，`view.css` 的顺序为：根与基础元素 → 结构辅助 → 链接/重定向 → 原始 HTML 辅助 → 列表 → 表格 → 模板 → 文件/画廊（共享规则置于组首）→ 引用 → 目录 → 分类 → 扩展标签 → 未知节点与错误（含块级源码）。同一模块内先写基础块，再按元素、状态与修饰符的覆盖关系排列，响应式规则收尾。
+- 规则内声明按布局 → 尺寸/溢出 → 盒模型 → 边框/背景 → 排版 → 交互/效果排列；基础块先于上下文覆盖。
+- 为保持 specificity 或模块局部性而保留的整块重复规则，需要在重复处注明原因；纯冗余的属性和选择器直接删除。
 - oxlint 不替代类型检查，两者都要通过。
 
 ## 4. 测试分工

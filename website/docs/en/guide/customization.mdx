@@ -21,7 +21,7 @@ import "react-wikitext/styles.css";
 
 - The library sets no global element styles; page typography inherits from the host.
 - The root container is `div.wikitext-view`; library classes start with `wikitext-` and some MediaWiki compatibility classes are preserved.
-- Inline styles keep only whitelisted layout and appearance declarations; unsafe values are dropped whole. Under strict CSP, allow `style-src` as needed.
+- Apart from the fixed `display:none` on the TOC toggle checkbox, inline styles keep only whitelisted layout and appearance declarations; unsafe values are dropped whole. Under strict CSP, allow `style-src` as needed.
 
 ### CSS variables
 

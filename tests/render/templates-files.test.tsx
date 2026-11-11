@@ -29,6 +29,7 @@ describe("templates and parser functions", () => {
   it("renders parser functions and arguments without evaluating them", () => {
     const html = render("{{#if:a|b}}\n\n{{{arg|fallback}}}");
     expect(html).toContain("Parser function not evaluated: if");
+    expect(html).toContain("wikitext-magic-word--block");
     expect(html).toContain("wikitext-template__param-name");
     expect(html).toContain("wikitext-argument");
     expect(html).toContain("fallback");

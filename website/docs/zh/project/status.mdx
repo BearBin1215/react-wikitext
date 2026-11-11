@@ -67,7 +67,7 @@ Node 下限来自依赖链路：`wikiparser-node` 声明 `^20.19.0 || ^22.13.0 |
 ## 样式与安全基线
 
 - 样式在 `react-wikitext/styles.css`，需要显式引入；库不设置全局元素样式。
-- 内联样式只保留白名单内的排版与外观声明，`url()`、`expression()`、`!important` 等值整条丢弃并产生诊断；不依赖 `eval`，严格 CSP 下如需这些声明生效，按需放行 `style-src`。
+- 除目录折叠 checkbox 的固定 `display:none` 外，内联样式只保留白名单内的排版与外观声明，`url()`、`expression()`、`!important` 等值整条丢弃并产生诊断；不依赖 `eval`，严格 CSP 下如需这些声明生效，按需放行 `style-src`。
 - 不使用 `dangerouslySetInnerHTML`；最终 HAST 由清洗器与 wiki 策略生成。
 - 图片默认不加载；只有解析回调授权的地址（或显式开启的插件图片策略）才会成为 `<img>`。
 - React 入口只能在客户端组件中运行；根入口、`/view` 与 `/devtools` 的产物顶部已带 `"use client"` 指令，宿主侧不需要重复标记。

@@ -422,13 +422,13 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 ## 14. 样式
 
 - 库自有 class 以 `wikitext-` 前缀开头；为贴近 MediaWiki 1.43，也会输出 `mw-headline`、`toc`、`toctitle`、`toctogglecheckbox`、`toctogglespan`、`toctogglelabel`、`tocnumber`、`toctext`、`toclevel-*`、`tocsection-*`、`external`、`text`、`free`、`autonumber`、`new`、`reference`、`references`、`mw-references-wrap`、`mw-references-columns`、`mw-cite-backlink`、`reference-text`、`cite-bracket`、`catlinks`、`mw-normal-catlinks`、`redirectMsg`、`redirectText`、`mw-default-size`、`mw-halign-*`、`mw-file-element`、`mw-file-description` 等兼容 class。
-- `styles.css` 只含页面渲染规则，并 `@import "./tokens.css"`；主题 token 只有一份来源，构建时一并发布为 `dist/tokens.css`。playground 的树与检查器样式属于内部工具，不随包发布。
+- `styles.css` 只含页面渲染规则，`devtools.css` 只含树与检查器规则，两者都 `@import "./tokens.css"`；主题 token 只有一份来源，构建时一并发布为 `dist/tokens.css`。样式源码使用原生嵌套，构建时经 lightningcss 展开为平铺规则；展开不内联 `@import`。playground 只消费公开样式，不维护私有副本。
 - 使用 CSS Variables：`--wikitext-font-mono`、`--wikitext-text`、`--wikitext-muted`、`--wikitext-border`、`--wikitext-border-strong`、`--wikitext-accent`、`--wikitext-accent-soft`、`--wikitext-neutral`、`--wikitext-placeholder-bg`、`--wikitext-danger`。
 - 基础排版与内容样式参考 MediaWiki 1.43 skinning：根容器使用 1.6 行高并建立浮动上下文；标题使用 188%/150%/128%/116%/108%/100% 字号、h1/h2 常规字重与底边线；段落、列表、水平线、`code`/`pre`、`.wikitable`、TOC、分类、引用与媒体各自使用对应的 1.43 间距和边框规则。宿主可通过 token 覆盖颜色，不承诺像素级外观一致。
 - token 定义在 `:root`，宿主可在任意祖先覆盖；库不设置全局元素样式。页面字体默认继承宿主。
 - 容器可选 `lang` / `dir`；`dir="rtl"` 时列表、表格、缩进正常排版。
 - 深色主题通过 `[data-wikitext-theme="dark"]` 或宿主 CSS Variables 覆盖，不依赖媒体查询强制。
-- 生成节点不使用内联样式；`hast-util-to-jsx-runtime` 的表格对齐转 style 选项显式关闭。只有源码 HTML 与插件写入的白名单 `style` 声明会保留（见第 10 节清洗规则），其余声明一律丢弃。
+- 生成节点自身不写内联样式；唯一例外是目录折叠 checkbox 的 `display:none`，用于无 CSS 时隐藏控件，样式表再以 `!important` 覆盖为可聚焦控件。除此之外，内联样式只来自源码 HTML 与插件写入的白名单 `style` 声明（见第 10 节清洗规则），其余声明一律丢弃；`hast-util-to-jsx-runtime` 的表格对齐转 style 选项显式关闭。
 - 占位文案来自 `labels`，不硬编码在组件里；默认英文，playground 传中文。
 
 ## 15. 公开 DOM 与样式承诺

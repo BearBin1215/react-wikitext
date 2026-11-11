@@ -21,7 +21,7 @@ import "react-wikitext/styles.css";
 
 - 库不设置全局元素样式，页面字体默认继承自宿主。
 - 根容器是 `div.wikitext-view`；自有类名以 `wikitext-` 前缀开头，同时保留一部分 MediaWiki 兼容类名。
-- 内联样式只保留白名单内的排版与外观声明，危险值整条丢弃；严格 CSP 下可按需放行 `style-src`。
+- 除目录折叠 checkbox 的固定 `display:none` 外，内联样式只保留白名单内的排版与外观声明，危险值整条丢弃；严格 CSP 下可按需放行 `style-src`。
 
 ### CSS 变量
 
