@@ -93,7 +93,7 @@ const document = parseWikitext(source, { retainSyntax: true });
 ### Selection
 
 - Uncontrolled by default: clicking a node selects and highlights it, and the component keeps a separate selection for each tree kind.
-- When the document changes, an uncontrolled selection is restored by node type and source range. Generated nodes without ranges are not restored. In controlled mode, the caller decides when to clear or restore.
+- When the document changes, an uncontrolled selection is restored by node type and source range. Generated nodes without ranges are not restored. In controlled mode, the caller decides when to clear or restore. Automatic restoration in uncontrolled mode does not fire `onSelect`; use controlled mode to mirror the restored selection in an editor.
 - In controlled mode, update `selectedId` from `onSelect`; otherwise clicking does not highlight. Both `null` and a string are controlled, while `undefined` is uncontrolled. Do not switch between the two modes.
 - When a selected node is collapsed, the component requests expansion of its ancestors and scrolls it into view. Controlled expansion requires the caller to write the new set from `onExpandedChange` back to `expandedIds`. If the node is not in the current tree, the component keeps a focusable row and does not throw.
 
@@ -106,7 +106,7 @@ const document = parseWikitext(source, { retainSyntax: true });
 
 ### Search and keyboard
 
-- Search is case-insensitive and matches node type, node description, and source snippets; for large nodes, only the beginning of the source is matched. When there are too many matches, only the first 80 are shown with a prompt to narrow the search.
+- Search is case-insensitive and matches node type, node description, and source snippets; for large nodes, only the beginning of the source is matched. When there are too many matches, only the first 80 are shown with a prompt to narrow the search. Result rows show the type, node description, and source snippet so the match is visible.
 - Results replace the tree while searching. Press Down in the search box to enter the results; press Enter on a result to select it, Escape to clear the search, and the arrow keys to move between results. Focus returns to the matching tree row after selection.
 - In the tree, Up/Down move, Home/End jump to the ends, Left/Right expand or collapse and move to parent or child, and Enter/Space select the current node.
 - The tree uses `role="tree"`, `role="treeitem"`, `aria-expanded`, and `aria-selected`; keyboard focus sits on the current `treeitem` row.
@@ -127,9 +127,10 @@ const document = parseWikitext(source, { retainSyntax: true });
 
 - The component detects semantic and source syntax nodes by shape; no tree kind is required.
 - Syntax nodes show `props`, `attributes`, and source. Semantic nodes show all fields except `children`, plus source.
-- Generated nodes without source ranges show `labels.generated`.
-- Copy prefers `navigator.clipboard` and falls back to `document.execCommand("copy")`. The source button is disabled when the node has no source.
+- Generated nodes without source ranges show `labels.generated`; zero-length ranges show an empty source block while keeping the range and the disabled copy button.
+- Copy prefers `navigator.clipboard` and falls back to `document.execCommand("copy")`. The source button is disabled when the node has no source. Copy results are also announced through a visually hidden `role="status"` region.
 - The semantic value section omits `children`; Copy JSON serializes the complete node, including `children`, when clicked. When node fields cannot be serialized, the panel shows `labels.unserializable` and the copy button shows `labels.copyFailed`.
+- Non-empty source blocks and JSON code blocks are focusable and can be scrolled with the keyboard when content overflows.
 - `node` must come from the same `document`; otherwise the source slice may not match.
 
 ## Editor integration
@@ -186,7 +187,7 @@ const expanded = remapExpandedIds(document, next, expandedIds, kind);
 />
 ```
 
-The default objects are frozen. Create a new object to extend them; do not mutate the defaults.
+The default objects are frozen. Create a new object to extend them; do not mutate the defaults. `expand` and `collapse` are pointer `title` hints on the toggle control only; they do not contribute to the treeitem's accessible name, and keyboard users expand or collapse with the arrow keys.
 
 `react-wikitext/devtools.css` must be imported once and includes `--wikitext-*` theme variables. Apart from those variables, it defines only `.wikitext-tree` and `.wikitext-inspector` and their children; it sets no global element styles. The tree scrolls inside its container, so give the panel a height.
 

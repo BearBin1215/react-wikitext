@@ -1,10 +1,26 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flattenNodes } from "@/ast";
 import { AstTree } from "@/devtools";
 import { parse, prepare } from "../helpers/parse";
 
-afterEach(cleanup);
+const scrollDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+
+function stubScrollIntoView(): ReturnType<typeof vi.fn> {
+  const mock = vi.fn();
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: mock });
+  return mock;
+}
+
+afterEach(() => {
+  cleanup();
+  if (scrollDescriptor) {
+    Object.defineProperty(Element.prototype, "scrollIntoView", scrollDescriptor);
+  } else {
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  }
+});
 
 function row(container: HTMLElement, id: string): HTMLElement {
   return container.querySelector<HTMLElement>(`[data-tree-label="${id}"]`)!;
@@ -320,15 +336,6 @@ describe("AstTree", () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: heading.id }), "semantic");
   });
 
-  it("recomputes default expansion when switching trees", () => {
-    const doc = parse("* a\n* b");
-    const { container, rerender } = render(<AstTree document={doc} />);
-    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
-    rerender(<AstTree document={doc} kind="syntax" />);
-    // 语法树按默认深度重新展开，而不是把语义树的空集合套上去。
-    expect(container.textContent).toContain("list");
-  });
-
   it("does not rely on path-like node ids", () => {
     const doc = parse("== H ==\ntext");
     let counter = 0;
@@ -367,5 +374,159 @@ describe("AstTree", () => {
     expect(document.activeElement).toBe(labels[1]);
     fireEvent.keyDown(labels[1]!, { key: "ArrowUp" });
     expect(document.activeElement).toBe(labels[0]);
+  });
+
+  it("prevents page scrolling at tree keyboard boundaries", () => {
+    const doc = parse("== H ==\ntext");
+    const { container } = render(<AstTree document={doc} />);
+    const labels = Array.from(container.querySelectorAll<HTMLElement>("[data-tree-label]"));
+    const first = labels[0]!;
+    const last = labels.at(-1)!;
+
+    first.focus();
+    expect(fireEvent.keyDown(first, { key: "ArrowUp" })).toBe(false);
+    expect(document.activeElement).toBe(first);
+
+    last.focus();
+    expect(fireEvent.keyDown(last, { key: "ArrowDown" })).toBe(false);
+    expect(document.activeElement).toBe(last);
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+    const rootLabel = row(container, "0");
+    rootLabel.focus();
+    expect(fireEvent.keyDown(rootLabel, { key: "ArrowLeft" })).toBe(false);
+    expect(document.activeElement).toBe(rootLabel);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    const leaf = Array.from(container.querySelectorAll<HTMLElement>("[data-tree-label]")).find(
+      (label) =>
+        label.querySelector(":scope > .wikitext-tree__row > .wikitext-tree__spacer") !== null,
+    )!;
+    const rowCount = container.querySelectorAll('[role="treeitem"]').length;
+    leaf.focus();
+    expect(fireEvent.keyDown(leaf, { key: "ArrowRight" })).toBe(false);
+    expect(document.activeElement).toBe(leaf);
+    expect(container.querySelectorAll('[role="treeitem"]').length).toBe(rowCount);
+  });
+
+  it("prevents page scrolling at search result boundaries", () => {
+    const doc = parse("text {{Tpl}}");
+    const { container } = render(<AstTree document={doc} />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "template" } });
+    const results = Array.from(container.querySelectorAll<HTMLElement>(".wikitext-tree__result"));
+    const first = results[0]!;
+    const last = results.at(-1)!;
+
+    first.focus();
+    expect(fireEvent.keyDown(first, { key: "ArrowUp" })).toBe(false);
+    expect(document.activeElement).toBe(first);
+
+    last.focus();
+    expect(fireEvent.keyDown(last, { key: "ArrowDown" })).toBe(false);
+    expect(document.activeElement).toBe(last);
+  });
+
+  it("uses the expand and collapse labels as pointer hints", () => {
+    const doc = parse("== H ==\ntext");
+    const heading = flattenNodes(doc.ast).find((node) => node.type === "heading")!;
+    const { container } = render(
+      <AstTree document={doc} labels={{ expand: "Open", collapse: "Close" }} />,
+    );
+    const toggle = row(container, heading.id).querySelector<HTMLElement>(".wikitext-tree__toggle")!;
+    expect(toggle.getAttribute("title")).toBe("Close");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("title")).toBe("Open");
+  });
+
+  it("shows the matched node label in search results", () => {
+    const doc = parse("== H ==\ntext");
+    const { container } = render(
+      <AstTree
+        document={doc}
+        getNodeLabel={(node, fallback) => (node.type === "heading" ? `${fallback}!` : "")}
+      />,
+    );
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "h2!" } });
+    const result = container.querySelector<HTMLElement>(".wikitext-tree__result")!;
+    expect(result.querySelector(".wikitext-tree__name")?.textContent).toBe("h2!");
+  });
+
+  it("does not select the parent when the child indent is clicked", () => {
+    const doc = parse("== H ==\ntext");
+    const onSelect = vi.fn();
+    const { container } = render(<AstTree document={doc} onSelect={onSelect} />);
+    fireEvent.click(container.querySelector(".wikitext-tree__children")!);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("scrolls to an externally selected row after clearing search", () => {
+    const scrollIntoView = stubScrollIntoView();
+    const doc = parse("== H ==\ntext");
+    const heading = flattenNodes(doc.ast).find((node) => node.type === "heading")!;
+    const text = flattenNodes(doc.ast).find((node) => node.type === "text")!;
+    const { rerender } = render(<AstTree document={doc} selectedId={text.id} />);
+    scrollIntoView.mockClear();
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "text" } });
+    rerender(<AstTree document={doc} selectedId={heading.id} />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "" } });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("scrolls again after the selection moves through a missing id", () => {
+    const scrollIntoView = stubScrollIntoView();
+    const doc = parse("== H ==\ntext");
+    const heading = flattenNodes(doc.ast).find((node) => node.type === "heading")!;
+    const { rerender } = render(<AstTree document={doc} selectedId={heading.id} />);
+    scrollIntoView.mockClear();
+
+    rerender(<AstTree document={doc} selectedId="missing" />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(<AstTree document={doc} selectedId={heading.id} />);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not scroll again when the selected row is already current", () => {
+    const scrollIntoView = stubScrollIntoView();
+    const doc = parse("== H ==\ntext");
+    const heading = flattenNodes(doc.ast).find((node) => node.type === "heading")!;
+    const { container } = render(<AstTree document={doc} selectedId={heading.id} />);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    scrollIntoView.mockClear();
+
+    const toggle = row(container, heading.id).querySelector<HTMLElement>(".wikitext-tree__toggle")!;
+    fireEvent.click(toggle);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("recomputes default expansion before layout effects when switching trees", () => {
+    const doc = parse("* a\n* b");
+    const onLayout = vi.fn();
+    function LayoutProbe(): null {
+      useLayoutEffect(() => {
+        onLayout(document.body.textContent ?? "");
+      });
+      return null;
+    }
+    const { rerender } = render(
+      <>
+        <AstTree document={doc} />
+        <LayoutProbe />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+    onLayout.mockClear();
+
+    rerender(
+      <>
+        <AstTree document={doc} kind="syntax" />
+        <LayoutProbe />
+      </>,
+    );
+    // 语法树在提交前就按默认深度展开，而不是把语义树的空集合套上去。
+    expect(onLayout.mock.calls[0]![0]).toContain("list");
   });
 });

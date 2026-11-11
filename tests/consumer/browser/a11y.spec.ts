@@ -9,10 +9,13 @@ const EVIDENCE_DIR = resolve("test-results/a11y");
 /**
  * axe 无法自动判定、需要人工复核的项目。新增条目必须先给出理由，
  * 不允许用“忽略全部 incomplete”代替逐项归类。
+ *
+ * color-contrast 涉及三类目标：引用上标/回链只含 `[N]`/`↑`，浮动 table-caption
+ * 与周围元素重叠，AST 折叠控件只含 `+`/`−`；axe 都无法可靠计算前景色。
  */
 const CLASSIFIED_INCOMPLETE: Readonly<Record<string, string>> = {
   "color-contrast":
-    "引用上标/回链只包含 [N]/↑ 等非文本字符，缩略图说明是浮动 table-caption；axe 无法可靠计算这两类前景色，人工核对沿用 token 颜色，待屏幕阅读器抽查记录。",
+    "非文本字符与浮动 table-caption 的前景色无法自动计算；人工核对沿用 token 颜色，待屏幕阅读器抽查记录。",
   "label-content-name-mismatch":
     "可见文本是 [N]，可访问名称是 Reference N；数字一致，但 [ ] 不计入文本，待人工语音控制抽查。",
 };
@@ -23,6 +26,9 @@ interface Focused {
   readonly text: string;
   readonly href: string | null;
   readonly outlineStyle: string;
+  readonly role: string;
+  readonly treeLabel: string;
+  readonly rowOutlineStyle: string;
 }
 
 function collectErrors(page: Page): string[] {
@@ -73,13 +79,16 @@ async function scan(page: Page, name: string): Promise<void> {
       .filter((item) => CLASSIFIED_INCOMPLETE[item.id] === undefined)
       .map((item) => item.id),
   ).toEqual([]);
-  // 例外只覆盖引用上标与浮动缩略图说明，不能扩散到其他元素。
+  // 例外只覆盖引用上标、浮动缩略图说明与 AST 折叠控件，不能扩散到其他元素。
   const classifiedTargets = results.incomplete
     .filter((item) => CLASSIFIED_INCOMPLETE[item.id] !== undefined)
     .flatMap((item) => item.nodes.map((node) => node.target.join(" ")));
   expect(
     classifiedTargets.every(
-      (target) => target.includes("cite_ref") || target.includes("figcaption"),
+      (target) =>
+        target.includes("cite_ref") ||
+        target.includes("figcaption") ||
+        target.includes("wikitext-tree__toggle"),
     ),
   ).toBe(true);
 }
@@ -87,12 +96,16 @@ async function scan(page: Page, name: string): Promise<void> {
 async function focused(page: Page): Promise<Focused> {
   return page.evaluate(() => {
     const element = globalThis.document.activeElement as HTMLElement | null;
+    const row = element?.querySelector<HTMLElement>(":scope > .wikitext-tree__row");
     return {
       tag: element?.tagName.toLowerCase() ?? "",
       className: typeof element?.className === "string" ? element.className : "",
       text: element?.textContent?.trim().slice(0, 80) ?? "",
       href: element instanceof HTMLAnchorElement ? element.getAttribute("href") : null,
       outlineStyle: element ? getComputedStyle(element).outlineStyle : "",
+      role: element?.getAttribute("role") ?? "",
+      treeLabel: element?.getAttribute("data-tree-label") ?? "",
+      rowOutlineStyle: row ? getComputedStyle(row).outlineStyle : "",
     };
   });
 }
@@ -105,7 +118,7 @@ async function tabUntil(page: Page, predicate: (value: Focused) => boolean): Pro
     await page.keyboard.press("Tab");
     // oxlint-disable-next-line no-await-in-loop -- 每次读取当前焦点元素
     const value = await focused(page);
-    const key = `${value.tag}.${value.className}.${value.href ?? ""}`;
+    const key = `${value.tag}.${value.treeLabel || value.className}.${value.text}.${value.href ?? ""}`;
     if (key === previous && value.tag !== "body") {
       throw new Error(`Focus appears trapped on ${key}`);
     }
@@ -119,15 +132,16 @@ async function tabUntil(page: Page, predicate: (value: Focused) => boolean): Pro
 }
 
 test.describe("@a11y", () => {
-  test("default reading page has no WCAG 2.1 A/AA violations in light theme", async ({
-    page,
-  }, testInfo) => {
+  test("light theme fixture has no WCAG 2.1 A/AA violations", async ({ page }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/a11y/");
     await expect(page.locator(".wikitext-view").first()).toBeVisible();
     await expect(page.locator(".wikitext-toc").first()).toBeVisible();
     await expect(page.locator(".wikitext-references").first()).toBeVisible();
     await scan(page, "light");
+    const row = page.locator(".wikitext-tree__row:not(.is-selected)").first();
+    await row.hover();
+    await expect(row.locator(".wikitext-tree__type").first()).toHaveCSS("color", "rgb(31, 35, 40)");
     await testInfo.attach("a11y-light", {
       path: resolve(EVIDENCE_DIR, "light.json"),
       contentType: "application/json",
@@ -144,6 +158,12 @@ test.describe("@a11y", () => {
       .poll(() => main.evaluate((element) => getComputedStyle(element).backgroundColor))
       .toBe("rgb(13, 17, 23)");
     await scan(page, "dark");
+    const row = page.locator(".wikitext-tree__row:not(.is-selected)").first();
+    await row.hover();
+    await expect(row.locator(".wikitext-tree__type").first()).toHaveCSS(
+      "color",
+      "rgb(230, 237, 243)",
+    );
     await testInfo.attach("a11y-dark", {
       path: resolve(EVIDENCE_DIR, "dark.json"),
       contentType: "application/json",
@@ -181,6 +201,36 @@ test.describe("@a11y", () => {
     expect(backlink.outlineStyle).not.toBe("none");
     await page.keyboard.press("Enter");
     await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toMatch(/cite_ref-/u);
+
+    expect(errors).toEqual([]);
+  });
+
+  test("devtools tree supports keyboard navigation, selection and search", async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/a11y/");
+    await expect(page.locator(".wikitext-tree").first()).toBeVisible();
+    await expect(page.locator(".wikitext-inspector").first()).toBeVisible();
+
+    const search = page.getByLabel("Search nodes");
+    await search.focus();
+    const item = await tabUntil(page, (value) => value.role === "treeitem");
+    expect(item.rowOutlineStyle).not.toBe("none");
+
+    await page.keyboard.press("ArrowDown");
+    const next = await focused(page);
+    expect(next.role).toBe("treeitem");
+    expect(next.treeLabel).not.toBe(item.treeLabel);
+    expect(next.rowOutlineStyle).not.toBe("none");
+
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".wikitext-inspector__type")).toHaveText("text");
+
+    await search.fill("text");
+    await page.keyboard.press("ArrowDown");
+    expect((await focused(page)).className).toContain("wikitext-tree__result");
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveValue("");
+    expect((await focused(page)).tag).toBe("input");
 
     expect(errors).toEqual([]);
   });

@@ -415,8 +415,11 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - 降级表格、块级禁止 HTML 与重定向横幅带 `role="note"`；行内禁止 HTML 与普通未知节点源码卡片不带 `role`，依赖可读文本。
 - 代码块使用 `<pre><code>`，保留可复制文本。
 - 渲染错误使用 `role="alert"`。
-- AST 树使用 `role="tree"`/`treeitem`、`aria-expanded`、`aria-selected`，支持方向键与 Home/End；展开按钮使用 `<button>`。
-- 组件覆盖自行提供的交互属于宿主责任。默认视图的 axe（WCAG 2.1 A/AA）与键盘用例由 `tests/consumer/browser/a11y.spec.ts` 在生产 consumer 宿主中执行；屏幕阅读器人工抽查仍未完成，见[路线图](./roadmap.md)。
+- AST 树使用 `role="tree"`/`treeitem`、`aria-expanded`、`aria-selected`，支持方向键与 Home/End。
+- 折叠控件是带 `aria-hidden` 的指针辅助元素；键盘通过 treeitem 的左右方向键完成，不额外增加按钮焦点。
+- 选中行使用背景色与左侧强调条。
+- 调试面板的代码块可聚焦，便于键盘滚动。
+- 组件覆盖自行提供的交互属于宿主责任。默认视图与 `/devtools` 调试面板的 axe（WCAG 2.1 A/AA）与键盘用例由 `tests/consumer/browser/a11y.spec.ts` 在生产 consumer 宿主中执行；屏幕阅读器人工抽查仍未完成，见[路线图](./roadmap.md)。
 - 引用上标与回链使用下划线区分，不只依赖颜色；`incomplete` 的逐项归类与宿主责任说明由无障碍用例保存。
 
 ## 14. 样式

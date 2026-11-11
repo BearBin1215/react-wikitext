@@ -1,8 +1,8 @@
 /** 语法树面板的文案。 */
 export interface AstTreeLabels {
-  /** 展开节点的按钮文案。 */
+  /** 节点当前折叠时的展开提示 title；不进入 treeitem 的可访问名称。 */
   expand: string;
-  /** 折叠节点的按钮文案。 */
+  /** 节点当前展开时的折叠提示 title；不进入 treeitem 的可访问名称。 */
   collapse: string;
   expandAll: string;
   collapseAll: string;

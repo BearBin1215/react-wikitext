@@ -38,7 +38,6 @@ export interface TreeEntry {
 export interface TreeIndex {
   readonly entries: readonly TreeEntry[];
   readonly byId: ReadonlyMap<string, TreeEntry>;
-  readonly root?: AstTreeNode;
 }
 
 const flattenCache = new WeakMap<object, readonly AstTreeNode[]>();
@@ -115,7 +114,7 @@ export function buildTreeIndex(root: AstTreeNode | undefined): TreeIndex {
     }
   };
   visit(root, 0, undefined);
-  const index: TreeIndex = { entries, byId, root };
+  const index: TreeIndex = { entries, byId };
   indexCache.set(root, index);
   return index;
 }

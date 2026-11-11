@@ -123,9 +123,17 @@ export function NodeInspector({
   };
 
   const range = nodeRange(node);
+  const generated = range === undefined;
+  const copyStatus =
+    copyState?.nodeId === node.id
+      ? `${copyState.kind === "json" ? resolved.copyJson : resolved.copySource}: ${
+          copyState.ok ? resolved.copied : resolved.copyFailed
+        }`
+      : "";
 
   return (
     <section className={classes} aria-label={resolved.regionLabel} style={style}>
+      <output className="wikitext-inspector__status">{copyStatus}</output>
       <div className="wikitext-inspector__header">
         <strong className="wikitext-inspector__type">{node.type}</strong>
         {range ? (
@@ -154,15 +162,16 @@ export function NodeInspector({
         <>
           {Object.keys(syntax.props).length > 0 ? (
             <section className="wikitext-inspector__section">
-              <h4 className="wikitext-inspector__title">{resolved.props}</h4>
-              <pre className="wikitext-inspector__code">
+              <h3 className="wikitext-inspector__title">{resolved.props}</h3>
+              {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 可滚动代码块需要键盘焦点 */}
+              <pre className="wikitext-inspector__code" tabIndex={0}>
                 {JSON.stringify(syntax.props, null, 2)}
               </pre>
             </section>
           ) : null}
           {syntax.attributes.length > 0 ? (
             <section className="wikitext-inspector__section">
-              <h4 className="wikitext-inspector__title">{resolved.attributes}</h4>
+              <h3 className="wikitext-inspector__title">{resolved.attributes}</h3>
               <ul className="wikitext-inspector__attributes">
                 {syntax.attributes.map((attribute) => (
                   <li key={`${attribute.name}:${attribute.range[0]}`}>
@@ -182,13 +191,19 @@ export function NodeInspector({
         </>
       ) : (
         <section className="wikitext-inspector__section">
-          <h4 className="wikitext-inspector__title">{resolved.semanticValue}</h4>
-          <pre className="wikitext-inspector__code">{semanticJson ?? resolved.unserializable}</pre>
+          <h3 className="wikitext-inspector__title">{resolved.semanticValue}</h3>
+          {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 可滚动代码块需要键盘焦点 */}
+          <pre className="wikitext-inspector__code" tabIndex={0}>
+            {semanticJson ?? resolved.unserializable}
+          </pre>
         </section>
       )}
       <section className="wikitext-inspector__section">
-        <h4 className="wikitext-inspector__title">{resolved.source}</h4>
-        <pre className="wikitext-inspector__code">{source || resolved.generated}</pre>
+        <h3 className="wikitext-inspector__title">{resolved.source}</h3>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 可滚动代码块需要键盘焦点 */}
+        <pre className="wikitext-inspector__code" tabIndex={source ? 0 : undefined}>
+          {generated ? resolved.generated : source}
+        </pre>
       </section>
     </section>
   );

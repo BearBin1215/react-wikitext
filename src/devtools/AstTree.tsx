@@ -62,11 +62,9 @@ function fallbackNodeLabel(_node: AstTreeNode, fallback: string): string {
 }
 
 function focusRow(event: ReactKeyboardEvent<HTMLElement>, element: HTMLElement | undefined): void {
-  if (!element) {
-    return;
-  }
-  element.focus();
+  // 目标不存在时也要阻止默认行为，否则边界方向键会滚动页面。
   event.preventDefault();
+  element?.focus();
 }
 
 function resultSnippet(source: string, query: string): string {
@@ -225,7 +223,7 @@ export function AstTree({
     ) {
       return;
     }
-    // 只在选中项或文档变化时展开祖先；用户后来折叠的选择不能被自动撤销。
+    // 只在选中项变化、文档变化或显式重新选中时展开祖先；用户后来折叠的选择不能被自动撤销。
     lastRevealed.current = { document, kind, id: currentSelectedId, index };
     revealAncestors(currentSelectedId);
   }, [currentSelectedId, index, revealAncestors, document, kind, selectionEpoch]);
@@ -244,13 +242,14 @@ export function AstTree({
       (candidate) => candidate.dataset.treeNodeId === currentSelectedId,
     );
     if (!element) {
+      lastScrolled.current = undefined;
       return;
     }
     if (typeof element.scrollIntoView === "function") {
       element.scrollIntoView({ block: "nearest" });
     }
     lastScrolled.current = { document, kind, id: currentSelectedId };
-  }, [currentSelectedId, expanded, document, kind, selectionEpoch]);
+  }, [currentSelectedId, expanded, document, kind, selectionEpoch, search]);
 
   useEffect(() => {
     const id = pendingFocus.current;
@@ -317,6 +316,8 @@ export function AstTree({
           event.preventDefault();
         } else if (entry.hasChildren) {
           focusRow(event, labelButtons[position + 1]);
+        } else {
+          event.preventDefault();
         }
         break;
       case "ArrowLeft": {
@@ -436,6 +437,13 @@ export function AstTree({
         data-tree-label={node.id}
         key={node.id}
         onClick={(event) => {
+          // 子级缩进区的空白属于布局，不触发父节点选中。
+          const childrenList = event.currentTarget.querySelector(
+            ":scope > .wikitext-tree__children",
+          );
+          if (childrenList?.contains(event.target as Node)) {
+            return;
+          }
           event.stopPropagation();
           pendingFocus.current = undefined;
           select(node);
@@ -446,6 +454,7 @@ export function AstTree({
             <span
               aria-hidden="true"
               className="wikitext-tree__toggle"
+              title={isExpanded ? resolved.collapse : resolved.expand}
               onClick={(event) => {
                 event.stopPropagation();
                 // 指针点击后把焦点还给行，键盘用户使用左右方向键展开。
@@ -515,24 +524,28 @@ export function AstTree({
           {results.length === 0 ? (
             <li className="wikitext-tree__empty">{resolved.noResults}</li>
           ) : null}
-          {results.map((result) => (
-            <li key={result.node.id}>
-              <button
-                type="button"
-                className="wikitext-tree__result"
-                onClick={() => {
-                  setSearch("");
-                  select(result.node);
-                  pendingFocus.current = result.node.id;
-                }}
-              >
-                <span className="wikitext-tree__type">{result.node.type}</span>
-                <span className="wikitext-tree__snippet">
-                  {resultSnippet(result.source, search)}
-                </span>
-              </button>
-            </li>
-          ))}
+          {results.map((result) => {
+            const label = labelOf(result.node);
+            return (
+              <li key={result.node.id}>
+                <button
+                  type="button"
+                  className="wikitext-tree__result"
+                  onClick={() => {
+                    setSearch("");
+                    select(result.node);
+                    pendingFocus.current = result.node.id;
+                  }}
+                >
+                  <span className="wikitext-tree__type">{result.node.type}</span>
+                  {label ? <span className="wikitext-tree__name">{label}</span> : null}
+                  <span className="wikitext-tree__snippet">
+                    {resultSnippet(result.source, search)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
           {truncated ? <li className="wikitext-tree__empty">{resolved.resultsTruncated}</li> : null}
         </ul>
       ) : (

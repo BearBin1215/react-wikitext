@@ -142,6 +142,39 @@ test("searches the AST and inspects a node", async ({ page }) => {
   await expect(page.locator(".wikitext-inspector")).toContainText("{{Infobox");
 });
 
+test("navigates and selects with the keyboard in the AST tree", async ({ page }) => {
+  await open(page, { source: "basic" });
+  const tree = page.locator(".wikitext-tree");
+  const tabStop = tree.locator('[role="treeitem"][tabindex="0"]').first();
+  await tabStop.focus();
+  const startId = await tabStop.getAttribute("data-tree-node-id");
+
+  await page.keyboard.press("ArrowDown");
+  const focusedItem = page.locator('.wikitext-tree [role="treeitem"]:focus');
+  await expect(focusedItem).toHaveCount(1);
+  expect(await focusedItem.getAttribute("data-tree-node-id")).not.toBe(startId);
+  await expect(focusedItem.locator(".wikitext-tree__row").first()).toHaveCSS(
+    "outline-style",
+    "solid",
+  );
+
+  await page.keyboard.press("Enter");
+  await expect(app(page)).toHaveAttribute("data-selected-type", "heading");
+
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Space");
+  await expect(app(page)).toHaveAttribute("data-selected-type", "text");
+
+  const search = page.getByLabel("搜索节点");
+  await search.fill("template");
+  await expect(page.locator(".wikitext-tree__result").first()).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".wikitext-tree__result:focus")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(search).toHaveValue("");
+  await expect(search).toBeFocused();
+});
+
 test("expands mock templates, reports records, and falls back on demand", async ({ page }) => {
   await open(page, { source: "templates", expand: "1" });
   await expect(app(page)).toHaveAttribute("data-expansion", "partial");

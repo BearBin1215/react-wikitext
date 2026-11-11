@@ -37,12 +37,25 @@ describe("NodeInspector", () => {
     expect(screen.getByText("[[A|b]]")).toBeTruthy();
   });
 
-  it("shows semantic value and generated-content state", () => {
+  it("shows semantic value", () => {
     const doc = parse("[[A|b]]");
     const link = flattenNodes(doc.ast).find((node) => node.type === "link")!;
     render(<NodeInspector document={doc} node={link} />);
     expect(screen.getByText("semantic value")).toBeTruthy();
     expect(screen.getByText("[[A|b]]")).toBeTruthy();
+  });
+
+  it("shows generated content for nodes without a range", () => {
+    const doc = parse("x");
+    const generated = { type: "text", id: "generated", value: "x" } as unknown as WikitextNode;
+    const { container } = render(<NodeInspector document={doc} node={generated} />);
+    expect(screen.getAllByText("Generated content").length).toBe(2);
+    const blocks = Array.from(container.querySelectorAll<HTMLElement>(".wikitext-inspector__code"));
+    expect(blocks.at(-1)?.textContent).toBe("Generated content");
+    expect(blocks.at(-1)?.getAttribute("tabindex")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "Copy source" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it("copies node JSON and source", async () => {
@@ -54,15 +67,60 @@ describe("NodeInspector", () => {
     const doc = parse("[[A|b]]");
     const link = flattenNodes(doc.ast).find((node) => node.type === "link")!;
     render(<NodeInspector document={doc} node={link} />);
+    expect(screen.getByRole("status").textContent).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(expect.stringContaining('"type": "link"'));
     });
-    await screen.findByText("Copied");
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Copy JSON: Copied");
+    });
+    expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith("[[A|b]]");
     });
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Copy source: Copied");
+    });
+  });
+
+  it("clears the copy status when the inspected node changes", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    const doc = parse("x [[A]]");
+    const text = flattenNodes(doc.ast).find((node) => node.type === "text")!;
+    const link = flattenNodes(doc.ast).find((node) => node.type === "link")!;
+    const { rerender } = render(<NodeInspector document={doc} node={link} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Copy JSON: Copied");
+    });
+    rerender(<NodeInspector document={doc} node={text} />);
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("shows a zero-length syntax range as empty source", () => {
+    const doc = parse("== H ==");
+    const trail = flattenSyntax(doc.syntax!).find((node) => node.type === "heading-trail")!;
+    const { container } = render(<NodeInspector document={doc} node={trail} />);
+    expect(screen.getByText("[7, 7)")).toBeTruthy();
+    expect(screen.queryByText("Generated content")).toBeNull();
+    const blocks = Array.from(container.querySelectorAll<HTMLElement>(".wikitext-inspector__code"));
+    expect(blocks.at(-1)?.textContent).toBe("");
+    expect(
+      (screen.getByRole("button", { name: "Copy source" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("uses h3 for inspector section titles", () => {
+    const doc = parse('<span class="x">hi</span>');
+    const html = flattenSyntax(doc.syntax!).find((node) => node.type === "html")!;
+    const { container } = render(<NodeInspector document={doc} node={html} />);
+    expect(container.querySelector("h4")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 3 }).length).toBeGreaterThan(0);
   });
 
   it("supports independent labels for section titles and booleans", () => {
@@ -98,7 +156,9 @@ describe("NodeInspector", () => {
     render(<NodeInspector document={doc} node={circular as unknown as WikitextNode} />);
     expect(screen.getByText("Node data cannot be serialized")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
-    expect(await screen.findByText("Copy failed")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Copy JSON: Copy failed");
+    });
   });
 
   it("reports clipboard failures", async () => {
@@ -110,6 +170,8 @@ describe("NodeInspector", () => {
     const node = flattenNodes(doc.ast).find((candidate) => candidate.type === "text")!;
     render(<NodeInspector document={doc} node={node} labels={{ copyFailed: "复制失败" }} />);
     fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
-    expect(await screen.findByText("复制失败")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Copy JSON: 复制失败");
+    });
   });
 });

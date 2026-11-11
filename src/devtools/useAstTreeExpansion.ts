@@ -138,11 +138,10 @@ export function useAstTreeExpansion({
   const expanded = expandedIds ?? state.ids;
   const notified = useRef<ReadonlySet<string>>(state.ids);
 
-  useEffect(() => {
-    if (!controlled) {
-      dispatch({ type: "sync", document, kind, depth: defaultExpandedDepth });
-    }
-  }, [controlled, document, kind, defaultExpandedDepth]);
+  // 在渲染阶段收敛文档/树类型，避免首帧沿用旧展开集合；受控模式由调用方维护。
+  if (!controlled && (state.document !== document || state.kind !== kind)) {
+    dispatch({ type: "sync", document, kind, depth: defaultExpandedDepth });
+  }
 
   // 自动重映射与外部选中都会改变展开集合；统一在提交后通知调用方。
   useEffect(() => {
