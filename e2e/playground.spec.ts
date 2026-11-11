@@ -75,7 +75,8 @@ test("switches scenes and intercepts unsafe links and attributes", async ({ page
 
   const safeLink = page.locator(".wikitext-ext-link").first();
   await expect(safeLink).toHaveAttribute("target", "_blank");
-  await expect(safeLink).toHaveAttribute("rel", "nofollow noopener noreferrer");
+  const rel = (await safeLink.getAttribute("rel"))?.split(/\s+/u) ?? [];
+  expect(new Set(rel)).toEqual(new Set(["nofollow", "noopener", "noreferrer"]));
   await expect(page.locator(".wikitext-ext-link").nth(1)).toHaveAttribute(
     "href",
     "https://example.com/",
@@ -216,7 +217,7 @@ test("adjusts render policy and heading ids from advanced diagnostics", async ({
 
   await page.getByTestId("pg-tab-preview").click();
   await expect(page.locator(".wikitext-ext-link").first()).toHaveAttribute("target", "_self");
-  await expect(page.locator(".wikitext-view h2").first()).toHaveAttribute(
+  await expect(page.locator(".wikitext-view h2 .mw-headline").first()).toHaveAttribute(
     "id",
     "pg-heading-示例条目",
   );
