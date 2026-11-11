@@ -12,7 +12,7 @@ const EVIDENCE_DIR = resolve("test-results/a11y");
  */
 const CLASSIFIED_INCOMPLETE: Readonly<Record<string, string>> = {
   "color-contrast":
-    "引用上标与回链只包含 [N]/↑ 等非文本字符，axe 不计算前景色；人工核对沿用 token 颜色，待屏幕阅读器抽查记录。",
+    "引用上标/回链只包含 [N]/↑ 等非文本字符，缩略图说明是浮动 table-caption；axe 无法可靠计算这两类前景色，人工核对沿用 token 颜色，待屏幕阅读器抽查记录。",
   "label-content-name-mismatch":
     "可见文本是 [N]，可访问名称是 Reference N；数字一致，但 [ ] 不计入文本，待人工语音控制抽查。",
 };
@@ -73,11 +73,15 @@ async function scan(page: Page, name: string): Promise<void> {
       .filter((item) => CLASSIFIED_INCOMPLETE[item.id] === undefined)
       .map((item) => item.id),
   ).toEqual([]);
-  // 例外只覆盖引用上标的非文本可见内容，不能扩散到其他元素。
+  // 例外只覆盖引用上标与浮动缩略图说明，不能扩散到其他元素。
   const classifiedTargets = results.incomplete
     .filter((item) => CLASSIFIED_INCOMPLETE[item.id] !== undefined)
     .flatMap((item) => item.nodes.map((node) => node.target.join(" ")));
-  expect(classifiedTargets.every((target) => target.includes("cite_ref"))).toBe(true);
+  expect(
+    classifiedTargets.every(
+      (target) => target.includes("cite_ref") || target.includes("figcaption"),
+    ),
+  ).toBe(true);
 }
 
 async function focused(page: Page): Promise<Focused> {

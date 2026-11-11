@@ -46,3 +46,30 @@ export const FILE_VERTICAL_ALIGNMENT_NAMES: ReadonlySet<string> = new Set([
 
 /** 不带值的开关类关键字。 */
 export const FILE_FLAG_NAMES: ReadonlySet<string> = new Set(["border"]);
+
+/** MediaWiki 新媒体 DOM 中会生成块级 `figure` 的格式关键字。 */
+const BLOCK_LAYOUT_FORMATS: ReadonlySet<string> = new Set([
+  "thumbnail",
+  "thumb",
+  "framed",
+  "frame",
+  "manualthumb",
+]);
+
+/**
+ * MediaWiki 新媒体 DOM 下文件是否使用块级 `figure` 包装。
+ * 缩略图、framed 与任何显式水平对齐都是块级；frameless 只有带对齐时才是。
+ */
+export function fileLayoutIsBlock(parameters: readonly { readonly name: string }[]): boolean {
+  let blockFormat = false;
+  let alignment = false;
+  for (let index = parameters.length - 1; index >= 0; index--) {
+    const name = parameters[index]!.name;
+    blockFormat ||= BLOCK_LAYOUT_FORMATS.has(name);
+    alignment ||= FILE_ALIGNMENT_NAMES.has(name);
+    if (blockFormat && alignment) {
+      break;
+    }
+  }
+  return blockFormat || alignment;
+}

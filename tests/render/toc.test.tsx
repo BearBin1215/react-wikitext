@@ -80,6 +80,35 @@ describe("table of contents", () => {
     expect(html).not.toContain("wikitext-toc");
   });
 
+  it("uses the MediaWiki 1.43 TOC container and toggle markup", () => {
+    const html = renderView(FOUR_HEADINGS);
+    expect(html).toContain(
+      'id="toc" class="toc wikitext-toc" role="navigation" aria-labelledby="mw-toc-heading"',
+    );
+    expect(html).toContain('id="toctogglecheckbox" class="toctogglecheckbox"');
+    expect(html).toContain('<div class="toctitle wikitext-toc__title">');
+    expect(html).toContain('<h2 id="mw-toc-heading">Contents</h2>');
+    expect(html).toContain('<span class="toctogglespan">');
+    expect(html).toContain('class="toctogglelabel"');
+    expect(html).toContain('for="toctogglecheckbox"');
+    expect(html).toContain('data-hide="hide"');
+    expect(html).toContain('data-show="show"');
+    expect(html).toContain('aria-label="Toggle table of contents"');
+  });
+
+  it("maps the TOC controls and labelledby through the instance prefix", () => {
+    const html = renderView(
+      "__TOC__\n\n== A ==\n== B ==",
+      { idPrefix: "inst-" },
+      { headingIdStrategy: "instance" },
+    );
+    expect(html).toContain('id="inst-toc"');
+    expect(html).toContain('aria-labelledby="inst-mw-toc-heading"');
+    expect(html).toContain('id="inst-mw-toc-heading"');
+    expect(html).toContain('id="inst-toctogglecheckbox"');
+    expect(html).toContain('for="inst-toctogglecheckbox"');
+  });
+
   it("maps TOC links through the instance prefix", () => {
     const html = renderView(
       "__TOC__\n\n== A ==\n== B ==",
@@ -103,6 +132,9 @@ describe("table of contents", () => {
     const html = renderToStaticMarkup(<WikitextView document={restored} />);
     expect(html.match(/class="toc wikitext-toc"/gu)).toHaveLength(1);
     expect(html).toContain('href="#A"');
+    expect(restored.headings).toEqual(prepared.headings);
+    expect(html).toContain('<h2 id="mw-toc-heading">Contents</h2>');
+    expect(html).not.toContain('<h2 id="mw-toc-heading"><span class="mw-headline"');
   });
 
   it("keeps the configured columns after restoring a snapshot", () => {

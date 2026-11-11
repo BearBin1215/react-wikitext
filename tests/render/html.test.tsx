@@ -61,6 +61,11 @@ describe("inline HTML pairing", () => {
 });
 
 describe("block HTML pairing", () => {
+  it("wraps blockquote text content in a paragraph like MediaWiki", () => {
+    const html = render("<blockquote>quoted</blockquote>");
+    expect(html).toContain('<blockquote class="wikitext-html-block wikitext-html-blockquote"');
+    expect(html).toContain('<p class="wikitext-paragraph">quoted</p></blockquote>');
+  });
   it("renders block div and nested paragraph without wrapping paragraphs twice", () => {
     const html = render('<div class="box"><p>para <b>b</b></p></div>');
     expect(html).toContain('<div class="wikitext-html-block wikitext-html-div box"');

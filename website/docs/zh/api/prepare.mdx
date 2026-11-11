@@ -119,16 +119,20 @@ interface WikitextResolvedLink {
   href?: string;
   label?: string;
   target?: "_blank" | "_self";
+  exists?: boolean;
 }
 ```
 
-| 返回值       | 行为                                      |
-| ------------ | ----------------------------------------- |
-| `undefined`  | 沿用默认行为                              |
-| `null`       | 关闭导航                                  |
-| `{ href }`   | 生成 `<a>`；地址仍会清洗                  |
-| `{ label }`  | 替换纯文本标签；只有 `label` 时不生成链接 |
-| `{ target }` | 覆盖窗口目标                              |
+| 返回值              | 行为                                               |
+| ------------------- | -------------------------------------------------- |
+| `undefined`         | 沿用默认行为                                       |
+| `null`              | 关闭导航                                           |
+| `{ href }`          | 生成 `<a>`；地址仍会清洗                           |
+| `{ label }`         | 替换纯文本标签；只有 `label` 时不生成链接          |
+| `{ target }`        | 覆盖窗口目标                                       |
+| `{ exists: false }` | 追加 MediaWiki 红链 `new` class 与“页面不存在”标题 |
+
+`resolveLink` 除普通内部链接外，还会用于解析图片说明页（`File:{name}`）、分类底栏（分类目标与 `Special:Categories`）和重定向目标；这些调用同样只使用返回的 `href`。
 
 ### 图片
 
@@ -175,7 +179,7 @@ interface WikitextPreparePolicy {
   allowRelativeImages: false,
   allowPluginImages: false,
   allowSourceImages: false,
-  externalLinkTarget: "_blank",
+  externalLinkTarget: null,
   extraTags: [],
   stripTags: [
     "script", "style", "iframe", "object", "embed", "form", "input",

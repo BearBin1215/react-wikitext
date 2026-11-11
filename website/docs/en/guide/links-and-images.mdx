@@ -18,7 +18,7 @@ By default, the library does not map internal wiki links to your site's routes, 
 | Bare external `https://…`               | `<a>` whose label is the URL text                           |
 | Unlabeled external `[https://…]`        | `<a>` with `[N]` in document order                          |
 
-External links allow only `http:`, `https:`, and `mailto:`; addresses that cannot be parsed safely degrade to blocked, readable text. Absolute HTTP(S) / mailto links default to `target="_blank"` and `rel="nofollow noopener noreferrer"`.
+External links allow only `http:`, `https:`, and `mailto:`; addresses that cannot be parsed safely degrade to blocked, readable text. Absolute HTTP(S) / mailto links default to `rel="nofollow"` with no `target`; set `policy.externalLinkTarget` to `"_blank"` to open a new window.
 
 ### resolveLink
 
@@ -46,6 +46,9 @@ Return values:
 | `{ href }`                        | Produce an `<a>`; the href is still sanitized                |
 | `{ label }`                       | Replace the plain-text label; a label alone produces no link |
 | `{ target: "_blank" \| "_self" }` | Override the window target                                   |
+| `{ exists: false }`               | Produce a red link with the `new` class and missing title    |
+
+`resolveLink` is also used for image description pages (`File:{name}`), the category footer, and redirect targets; only the returned `href` is used there.
 
 `request` provides `kind` and `target`; internal links may also have `page` and `fragment`. `context` provides the original parse snapshot `document`, the current working tree `ast`, and the current node.
 
@@ -80,14 +83,14 @@ export default function Demo() {
 ### External link policy
 
 - `policy.allowRelativeLinks` defaults to `true`, allowing resolver-returned relative addresses.
-- `policy.externalLinkTarget` defaults to `"_blank"`; set it to `null` to omit `target`.
+- `policy.externalLinkTarget` defaults to `null`; setting it to `"_blank"` adds `target="_blank"` and `noreferrer noopener`.
 - Relative links opened with `_blank` gain `noopener noreferrer`; finalization removes invalid targets and unknown `rel` tokens.
 
 ## Images
 
 ### Default behavior
 
-File nodes render as a placeholder plus caption: the placeholder is `labels.filePlaceholder` plus the file name, and the caption is still emitted as a `figcaption` or `span.wikitext-file__caption`. Without `resolveImage`, the library never produces `<img>` and never requests an image URL.
+File nodes render as a placeholder by default. Thumbnails, framed images, and images with horizontal alignment use a block `figure` and always emit a `figcaption`; plain inline images use a `span`, and their caption is no longer displayed, only used for `alt` and `title`. Without `resolveImage`, the library never produces `<img>` and never requests an image URL. When `resolveLink` returns a `File:{name}` address, the image is wrapped in `a.mw-file-description`.
 
 ### resolveImage
 

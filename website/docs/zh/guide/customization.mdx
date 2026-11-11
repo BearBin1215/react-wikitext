@@ -30,8 +30,10 @@ import "react-wikitext/styles.css";
 | `--wikitext-text`           | 正文颜色       |
 | `--wikitext-muted`          | 次要文本       |
 | `--wikitext-border`         | 边框与分隔线   |
+| `--wikitext-border-strong`  | 强调边框       |
 | `--wikitext-accent`         | 链接与强调色   |
 | `--wikitext-accent-soft`    | 强调背景       |
+| `--wikitext-neutral`        | 中性表面背景   |
 | `--wikitext-placeholder-bg` | 占位背景       |
 | `--wikitext-danger`         | 错误与阻止提示 |
 | `--wikitext-font-mono`      | 等宽文本       |
@@ -83,6 +85,9 @@ import "react-wikitext/tokens.css"; // 只有变量
       filePlaceholder: "文件",
       reference: "引用",
       toc: "目录",
+      tocHide: "隐藏",
+      tocShow: "显示",
+      tocToggle: "切换目录",
       categories: "分类",
       unknownNode: "不支持的结构",
       redirectTo: "重定向至",
@@ -90,6 +95,7 @@ import "react-wikitext/tokens.css"; // 只有变量
       blockedHtml: "HTML 已拦截",
       renderFailed: "渲染失败",
       nestedTableUnsupported: "不支持嵌套表格",
+      pageDoesNotExist: "（页面不存在）",
     },
   }}
 />
@@ -102,6 +108,9 @@ import "react-wikitext/tokens.css"; // 只有变量
 | `filePlaceholder`            | `File`                          |
 | `reference`                  | `Reference`                     |
 | `toc`                        | `Contents`                      |
+| `tocHide`                    | `hide`                          |
+| `tocShow`                    | `show`                          |
+| `tocToggle`                  | `Toggle table of contents`      |
 | `categories`                 | `Categories`                    |
 | `unknownNode`                | `Unsupported node`              |
 | `redirectTo`                 | `Redirect to`                   |
@@ -109,6 +118,7 @@ import "react-wikitext/tokens.css"; // 只有变量
 | `blockedHtml`                | `Blocked HTML`                  |
 | `renderFailed`               | `Render failed`                 |
 | `nestedTableUnsupported`     | `Nested table not supported`    |
+| `pageDoesNotExist`           | `(page does not exist)`         |
 
 实际生效的文案会写入 `WikitextRenderDocument.meta.labels`，视图与组件读取同一份文案。
 

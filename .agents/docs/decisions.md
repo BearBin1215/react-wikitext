@@ -64,7 +64,7 @@
 
 **理由**：插件可能写入危险属性或资源，安全阶段必须在所有内容转换之后；不能直接用 GitHub 默认 schema，标签整对降级、URL 规范化、HTML 属性来源、占位语义与外链属性需要明确实现；policy 提供有意义的选项，但不提供无条件关闭清洗的开关。
 
-**约束**：源码 HTML 的 `id`、`style`、事件属性不会原样输出；绝对 HTTP(S)/mailto 链接固定安全 `rel`，相对链接在 `_blank` 时补安全 token，`target` 只允许 `_blank`/`_self`；未授权图片被移除并产生诊断；自定义组件与插件属于可信程序，库不保证其输出的 HTML 仍符合白名单。
+**约束**：源码 HTML 的 `id`、`style`、事件属性不会原样输出；绝对 HTTP(S)/mailto 链接默认只补 `nofollow`（`_blank` 时追加 `noreferrer noopener`），相对链接在 `_blank` 时补安全 token，`target` 只允许 `_blank`/`_self`；未授权图片被移除并产生诊断；自定义组件与插件属于可信程序，库不保证其输出的 HTML 仍符合白名单。
 
 ## 8. 标题实例隔离
 

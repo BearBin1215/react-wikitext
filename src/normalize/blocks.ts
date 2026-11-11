@@ -22,7 +22,8 @@ import {
   isBlockHtmlStart,
 } from "./html";
 import { normalizeHtmlBlock, type BuildBlockNodes } from "./html-block";
-import { childOfType, splitTarget, syntaxTextDecoded } from "./fields";
+import { childOfType, parseFileData, splitTarget, syntaxTextDecoded } from "./fields";
+import { fileLayoutIsBlock } from "../ast/file-options";
 
 const SYNTAX_ONLY_TYPES = new Set([
   "heading-trail",
@@ -125,11 +126,7 @@ function standaloneNode(
     return undefined;
   }
   const standalone = isStandaloneLine(context.source, node);
-  if (
-    converted.type === "template" ||
-    converted.type === "parserFunction" ||
-    converted.type === "file"
-  ) {
+  if (converted.type === "template" || converted.type === "parserFunction") {
     if (!standalone) {
       return undefined;
     }
@@ -199,9 +196,18 @@ function specialBlock(
       };
     case "redirect":
       return { nodes: [redirectNode(context, node)] };
+    case "file": {
+      const data = parseFileData(context, node);
+      if (!fileLayoutIsBlock(data.parameters)) {
+        return undefined;
+      }
+      const converted = normalizeInlineSyntax(context, [node])[0];
+      return converted?.type === "file"
+        ? { nodes: [{ ...converted, block: true }], consumedTo: node.range[1] }
+        : undefined;
+    }
     case "template":
     case "magic-word":
-    case "file":
     case "ext": {
       const converted = standaloneNode(context, node);
       return converted ? { nodes: [converted], consumedTo: node.range[1] } : undefined;
@@ -262,11 +268,10 @@ export function normalizeBlocks(
       if (index > 0) {
         flush();
       }
-      if (!part.trim()) {
-        // 空行只用于切分段落；合成空格会在 flush 时被裁掉，因此不再生成。
-        continue;
+      if (part !== "") {
+        // 保留行内空白（例如两个链接之间的单个空格）；段落边缘空白由 flush 裁剪。
+        buffer.push({ kind: "syntax", syntax: node, text: part, start: partStart });
       }
-      buffer.push({ kind: "syntax", syntax: node, text: part, start: partStart });
     }
   };
 

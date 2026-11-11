@@ -7,8 +7,10 @@
   --wikitext-text: #1f2328;
   --wikitext-muted: #656d76;
   --wikitext-border: #d0d7de;
+  --wikitext-border-strong: #a2a9b1;
   --wikitext-accent: #0969da;
   --wikitext-accent-soft: #ddf4ff;
+  --wikitext-neutral: #eaecf0;
   --wikitext-placeholder-bg: #f6f8fa;
   --wikitext-danger: #cf222e;
 }
@@ -17,8 +19,10 @@
   --wikitext-text: #e6edf3;
   --wikitext-muted: #8b949e;
   --wikitext-border: #30363d;
+  --wikitext-border-strong: #54595d;
   --wikitext-accent: #58a6ff;
   --wikitext-accent-soft: #172a45;
+  --wikitext-neutral: #21262d;
   --wikitext-placeholder-bg: #161b22;
   --wikitext-danger: #ff7b72;
 }

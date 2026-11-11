@@ -10,6 +10,12 @@ export interface WikitextLabels {
   reference: string;
   /** 目录标题。 */
   toc: string;
+  /** 目录折叠控件的“隐藏”文案。 */
+  tocHide: string;
+  /** 目录折叠控件的“显示”文案。 */
+  tocShow: string;
+  /** 目录折叠控件的可访问名称。 */
+  tocToggle: string;
   /** 分类底栏标题。 */
   categories: string;
   /** 未知节点的默认提示。 */
@@ -24,6 +30,8 @@ export interface WikitextLabels {
   renderFailed: string;
   /** 嵌套表格不支持时的提示。 */
   nestedTableUnsupported: string;
+  /** 红链标题中表示页面不存在的后缀。 */
+  pageDoesNotExist: string;
 }
 
 /** 文案字段清单；供设置与快照校验共用。 */
@@ -33,6 +41,9 @@ export const WIKITEXT_LABEL_KEYS = [
   "filePlaceholder",
   "reference",
   "toc",
+  "tocHide",
+  "tocShow",
+  "tocToggle",
   "categories",
   "unknownNode",
   "redirectTo",
@@ -40,6 +51,7 @@ export const WIKITEXT_LABEL_KEYS = [
   "blockedHtml",
   "renderFailed",
   "nestedTableUnsupported",
+  "pageDoesNotExist",
 ] as const satisfies ReadonlyArray<keyof WikitextLabels>;
 
 /** 默认英文文案；冻结以避免宿主修改默认值影响后续准备。 */
@@ -49,6 +61,9 @@ export const DEFAULT_WIKITEXT_LABELS: WikitextLabels = Object.freeze({
   filePlaceholder: "File",
   reference: "Reference",
   toc: "Contents",
+  tocHide: "hide",
+  tocShow: "show",
+  tocToggle: "Toggle table of contents",
   categories: "Categories",
   unknownNode: "Unsupported node",
   redirectTo: "Redirect to",
@@ -56,6 +71,7 @@ export const DEFAULT_WIKITEXT_LABELS: WikitextLabels = Object.freeze({
   blockedHtml: "Blocked HTML",
   renderFailed: "Render failed",
   nestedTableUnsupported: "Nested table not supported",
+  pageDoesNotExist: "(page does not exist)",
 });
 
 /**

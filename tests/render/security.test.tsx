@@ -104,12 +104,13 @@ describe("security", () => {
       (node): node is Element => node.type === "element" && node.tagName === "a",
     );
     expect(anchors).toHaveLength(3);
+    const allowed = new Set(["nofollow", "noopener", "noreferrer"]);
     for (const anchor of anchors) {
       expect(Array.isArray(anchor.properties.rel)).toBe(true);
-      expect(new Set(anchor.properties.rel as string[])).toEqual(
-        new Set(["nofollow", "noopener", "noreferrer"]),
-      );
-      expect(anchor.properties.rel).not.toContain("bad");
+      const rel = anchor.properties.rel as string[];
+      expect(rel).toContain("nofollow");
+      expect(rel.every((token) => allowed.has(token))).toBe(true);
+      expect(rel).not.toContain("bad");
     }
   });
 
@@ -146,9 +147,7 @@ describe("security", () => {
     ]) {
       const anchor = byHref.get(href);
       expect(anchor, href).toBeDefined();
-      expect(new Set(anchor?.properties.rel as string[])).toEqual(
-        new Set(["nofollow", "noopener", "noreferrer"]),
-      );
+      expect(new Set(anchor?.properties.rel as string[])).toEqual(new Set(["nofollow"]));
     }
     const relative = byHref.get("/wiki/B");
     expect(relative).toBeDefined();
@@ -171,9 +170,7 @@ describe("security", () => {
       (anchor.properties.className as string[] | undefined)?.includes("wikitext-file__link"),
     );
     expect(fileLink).toBeDefined();
-    expect(new Set(fileLink?.properties.rel as string[])).toEqual(
-      new Set(["nofollow", "noopener", "noreferrer"]),
-    );
+    expect(new Set(fileLink?.properties.rel as string[])).toEqual(new Set(["nofollow"]));
   });
 
   it("keeps rendering other blocks when one block throws", () => {

@@ -13,10 +13,12 @@ import {
   REFERENCE_BACKLINK_CLASS,
   REFERENCE_GROUP_PROPERTY,
   REFERENCE_LIST_CLASS,
+  REFERENCE_MW_BACKLINK_CLASS,
   REFERENCE_PLACEHOLDER_CLASS,
   REFERENCE_SECTION_CLASS,
+  REFERENCE_TEXT_CLASS,
   referenceNoteId,
-  referenceOccurrenceId,
+  referenceSupId,
 } from "./references";
 import { buildToc, TOC_DATA_PROPERTY, type TocMarker } from "./toc";
 import type { WikitextTocMode } from "./types";
@@ -206,12 +208,23 @@ interface ReferenceMeta {
   readonly number: number;
   readonly group: string;
   readonly occurrence: number;
+  /** Cite 1.43 的全局 key；旧快照缺失时回退到条目序号。 */
+  readonly key?: number;
+  readonly name?: string;
 }
 
 function referenceMeta(node: Element): ReferenceMeta | undefined {
   const metadata = (
     node.data as
-      | { wikitext?: { number?: unknown; group?: unknown; occurrence?: unknown } }
+      | {
+          wikitext?: {
+            number?: unknown;
+            group?: unknown;
+            occurrence?: unknown;
+            key?: unknown;
+            name?: unknown;
+          };
+        }
       | undefined
   )?.wikitext;
   if (typeof metadata?.number !== "number") {
@@ -221,6 +234,8 @@ function referenceMeta(node: Element): ReferenceMeta | undefined {
     number: metadata.number,
     group: typeof metadata.group === "string" ? metadata.group : "",
     occurrence: typeof metadata.occurrence === "number" ? metadata.occurrence : 1,
+    ...(typeof metadata.key === "number" ? { key: metadata.key } : {}),
+    ...(typeof metadata.name === "string" && metadata.name ? { name: metadata.name } : {}),
   };
 }
 
@@ -311,6 +326,83 @@ function relocateReferences(root: Root): void {
   root.children = replace(root.children as ElementContent[]);
 }
 
+function isReferenceText(node: ElementContent): boolean {
+  return (
+    node.type === "element" && node.tagName === "span" && hasHastClass(node, REFERENCE_TEXT_CLASS)
+  );
+}
+
+function isReferenceBacklink(node: ElementContent): boolean {
+  if (node.type !== "element") {
+    return false;
+  }
+  return (
+    hasHastClass(node, REFERENCE_MW_BACKLINK_CLASS) ||
+    (node.tagName === "a" && hasHastClass(node, REFERENCE_BACKLINK_CLASS))
+  );
+}
+
+function referenceHref(node: Element): string | undefined {
+  const id = node.properties?.id;
+  return typeof id === "string" ? `#${id}` : undefined;
+}
+
+function padOccurrence(index: number, count: number): string {
+  const width = String(count).length;
+  return String(index).padStart(width, "0");
+}
+
+/** 按 Cite 1.43 结构生成引用条目回链；单个使用 `^`，多个使用 `1.0`、`1.1`。 */
+function backlinkSpan(
+  sups: readonly Element[],
+  number: number,
+  labels: FinalizeOptions["labels"],
+): Element {
+  const links: Element[] = sups.map((sup, index) => {
+    const href = referenceHref(sup) ?? "#";
+    const label = sups.length === 1 ? "^" : `${number}.${padOccurrence(index, sups.length)}`;
+    return {
+      type: "element",
+      tagName: "a",
+      properties: {
+        className: [REFERENCE_BACKLINK_CLASS],
+        href,
+        role: "doc-backlink",
+        ariaLabel:
+          sups.length === 1 ? `${labels.reference} ${number}` : `${labels.reference} ${label}`,
+      },
+      children: [{ type: "text", value: label }],
+    };
+  });
+  if (sups.length === 1 && links[0]) {
+    return {
+      type: "element",
+      tagName: "span",
+      properties: { className: [REFERENCE_MW_BACKLINK_CLASS] },
+      children: [links[0]],
+    };
+  }
+  const children: ElementContent[] = [{ type: "text", value: "^ " }];
+  for (const link of links) {
+    children.push({
+      type: "element",
+      tagName: "sup",
+      properties: {},
+      children: [link],
+    });
+    children.push({ type: "text", value: " " });
+  }
+  if (children.length > 1 && children[children.length - 1]?.type === "text") {
+    children.pop();
+  }
+  return {
+    type: "element",
+    tagName: "span",
+    properties: { className: [REFERENCE_MW_BACKLINK_CLASS] },
+    children,
+  };
+}
+
 /** 在清洗之后写入引用 id 与回链，避免 id 进入清洗白名单。 */
 function finalizeReferences(root: Root, labels: FinalizeOptions["labels"]): void {
   const occurrences = new Map<string, Element[]>();
@@ -320,10 +412,23 @@ function finalizeReferences(root: Root, labels: FinalizeOptions["labels"]): void
     }
     const meta = node.tagName === "sup" ? referenceMeta(node) : undefined;
     if (meta) {
+      const anchor = {
+        key: meta.key ?? meta.number,
+        ...(meta.name ? { name: meta.name } : {}),
+      };
       node.properties = {
         ...node.properties,
-        id: referenceOccurrenceId(meta.number, meta.occurrence, meta.group),
+        id: referenceSupId(anchor, meta.occurrence),
       };
+      const link = node.children.find(
+        (child): child is Element =>
+          child.type === "element" &&
+          child.tagName === "a" &&
+          hasHastClass(child, "wikitext-ref__link"),
+      );
+      if (link) {
+        link.properties = { ...link.properties, href: `#${referenceNoteId(anchor)}` };
+      }
       const key = referenceKey(meta.group, meta.number);
       const list = occurrences.get(key) ?? [];
       list.push(node);
@@ -354,26 +459,39 @@ function finalizeReferences(root: Root, labels: FinalizeOptions["labels"]): void
           continue;
         }
         note++;
-        child.properties = { ...child.properties, id: referenceNoteId(note, group) };
         const sups = occurrences.get(referenceKey(group, note)) ?? [];
-        // 恢复快照时 HAST 已带回链；先移除，避免每次恢复都追加一份。
-        child.children = child.children.filter(
-          (item) => !(item.type === "element" && hasHastClass(item, REFERENCE_BACKLINK_CLASS)),
-        );
-        for (const sup of sups) {
-          const href = sup.properties?.id;
-          child.children.push({
-            type: "element",
-            tagName: "a",
-            properties: {
-              className: [REFERENCE_BACKLINK_CLASS],
-              href: typeof href === "string" ? `#${href}` : "#",
-              role: "doc-backlink",
-              ariaLabel: `${labels.reference} ${note}`,
-            },
-            children: [{ type: "text", value: "↑" }],
-          });
+        const first = sups[0] ? referenceMeta(sups[0]) : undefined;
+        const anchor = {
+          key: first?.key ?? note,
+          ...(first?.name ? { name: first.name } : {}),
+        };
+        child.properties = { ...child.properties, id: referenceNoteId(anchor) };
+        // 恢复快照时 HAST 已带回链；连同其后的分隔空格一起移除，避免重复。
+        const content: ElementContent[] = [];
+        for (let index = 0; index < child.children.length; index++) {
+          const item = child.children[index]!;
+          if (isReferenceBacklink(item)) {
+            const next = child.children[index + 1];
+            if (next?.type === "text" && next.value.trim() === "") {
+              index++;
+            }
+            continue;
+          }
+          content.push(item);
         }
+        const referenceText = content.find(isReferenceText);
+        const textChildren = referenceText
+          ? content
+          : [
+              {
+                type: "element" as const,
+                tagName: "span",
+                properties: { className: [REFERENCE_TEXT_CLASS] },
+                children: content,
+              },
+            ];
+        const backlinks = backlinkSpan(sups, note, labels);
+        child.children = [backlinks, { type: "text", value: " " }, ...textChildren];
       }
       return;
     }
@@ -390,6 +508,50 @@ function tocMarker(node: Element): TocMarker | undefined {
   const value = node.properties?.[TOC_DATA_PROPERTY];
   // `"toc"` 是已生成目录的标记，不是占位；恢复快照时保留原目录与列样式。
   return value === "auto" || value === "explicit" ? value : undefined;
+}
+
+function isBuiltToc(node: Element): boolean {
+  return node.properties?.[TOC_DATA_PROPERTY] === "toc";
+}
+
+function tocColumns(node: Element): 1 | 2 | 3 {
+  const classes = node.properties?.className;
+  const list = Array.isArray(classes) ? classes : [];
+  for (const value of list) {
+    const match = /^wikitext-toc--columns-([123])$/u.exec(String(value));
+    if (match) {
+      return Number(match[1]) as 1 | 2 | 3;
+    }
+  }
+  return 1;
+}
+
+/** 恢复快照时重建已生成的目录，恢复被清洗掉的 id、折叠控件与标题。 */
+function rebuildBuiltTocs(
+  root: Root,
+  headings: readonly WikitextHeadingInfo[],
+  labels: WikitextLabels,
+): void {
+  const replace = (children: readonly ElementContent[]): ElementContent[] => {
+    const result: ElementContent[] = [];
+    for (const child of children) {
+      if (child.type !== "element") {
+        result.push(child);
+        continue;
+      }
+      if (isBuiltToc(child)) {
+        const toc = buildToc(headings, labels, tocColumns(child));
+        if (toc) {
+          result.push(toc);
+        }
+        continue;
+      }
+      child.children = replace(child.children);
+      result.push(child);
+    }
+    return result;
+  };
+  root.children = replace(root.children as ElementContent[]);
 }
 
 /** 替换显式占位；放不下的占位直接移除，是否补充自动目录由调用方决定。 */
@@ -410,7 +572,7 @@ function replaceTocMarkers(
       if (marker !== undefined) {
         const minimum = marker === "auto" ? options.tocMinHeadings : 1;
         if (!state.placed && headings.length >= minimum) {
-          const toc = buildToc(headings, options.labels.toc, options.tocColumns);
+          const toc = buildToc(headings, options.labels, options.tocColumns);
           if (toc) {
             result.push(toc);
             state.placed = true;
@@ -448,7 +610,7 @@ function insertAutoToc(
   if (headings.length < minimum) {
     return;
   }
-  const toc = buildToc(headings, labels.toc, columns);
+  const toc = buildToc(headings, labels, columns);
   if (!toc) {
     return;
   }
@@ -457,6 +619,28 @@ function insertAutoToc(
     return;
   }
   root.children.splice(index, 0, toc);
+}
+
+/** MediaWiki 1.43 默认标题 DOM：`<h2><span class="mw-headline" id="…">…</span></h2>`。 */
+function headlineSpan(node: Element): Element {
+  if (node.properties) {
+    delete node.properties.id;
+  }
+  const existing = node.children.find(
+    (child): child is Element =>
+      child.type === "element" && child.tagName === "span" && hasHastClass(child, "mw-headline"),
+  );
+  if (existing) {
+    return existing;
+  }
+  const span: Element = {
+    type: "element",
+    tagName: "span",
+    properties: { className: ["mw-headline"] },
+    children: node.children,
+  };
+  node.children = [span];
+  return span;
 }
 
 function collectHeadings(root: Root, strategy: WikitextHeadingIdStrategy): WikitextHeadingInfo[] {
@@ -468,6 +652,10 @@ function collectHeadings(root: Root, strategy: WikitextHeadingIdStrategy): Wikit
     if (node.type !== "element") {
       return;
     }
+    // 已生成的目录含 h2 标题，重建标题锚点时不能把它当成正文标题。
+    if (isBuiltToc(node)) {
+      return;
+    }
     const level = headingLevel(node);
     if (level !== undefined) {
       section++;
@@ -475,6 +663,7 @@ function collectHeadings(root: Root, strategy: WikitextHeadingIdStrategy): Wikit
       const nodeId = meta?.id ?? `heading-${section}`;
       const text = textContent(node).trim();
       const base = slugify(text) || `section-${section}`;
+      const headline = headlineSpan(node);
       if (strategy === "none") {
         headings.push({ nodeId, level, text });
       } else {
@@ -482,7 +671,7 @@ function collectHeadings(root: Root, strategy: WikitextHeadingIdStrategy): Wikit
         const count = (used.get(key) ?? 0) + 1;
         used.set(key, count);
         const id = count === 1 ? base : `${base}_${count}`;
-        node.properties = { ...node.properties, id };
+        headline.properties = { ...headline.properties, id };
         headings.push({ nodeId, level, text, id });
       }
     }
@@ -496,6 +685,37 @@ function collectHeadings(root: Root, strategy: WikitextHeadingIdStrategy): Wikit
   return headings;
 }
 
+/** 分类底栏的 id 在清洗后写入；`data-mw` 是源码无法注入的内部标记。 */
+function finalizeCategories(root: Root): void {
+  const visit = (node: RootContent): void => {
+    if (node.type !== "element") {
+      return;
+    }
+    if (
+      node.tagName === "div" &&
+      hasHastClass(node, "catlinks") &&
+      node.properties?.dataMw === "interface"
+    ) {
+      node.properties = { ...node.properties, id: "catlinks" };
+      const inner = node.children.find(
+        (child): child is Element =>
+          child.type === "element" &&
+          child.tagName === "div" &&
+          hasHastClass(child, "wikitext-categories__inner"),
+      );
+      if (inner) {
+        inner.properties = { ...inner.properties, id: "mw-normal-catlinks" };
+      }
+    }
+    for (const child of node.children) {
+      visit(child);
+    }
+  };
+  for (const child of root.children) {
+    visit(child);
+  }
+}
+
 /**
  * 完成最终整理：链接与图片策略、引用 id、标题锚点以及目录。
  * 这是最终 HAST 的唯一整理点。
@@ -504,7 +724,9 @@ export function finalizeHast(root: Root, options: FinalizeOptions): FinalizeResu
   root.children = finalizeChildren(root.children as ElementContent[], options);
   relocateReferences(root);
   finalizeReferences(root, options.labels);
+  finalizeCategories(root);
   const headings = collectHeadings(root, options.headingIdStrategy);
+  rebuildBuiltTocs(root, headings, options.labels);
   const placed = replaceTocMarkers(root, headings, options);
   if (!placed && options.toc !== "none") {
     insertAutoToc(

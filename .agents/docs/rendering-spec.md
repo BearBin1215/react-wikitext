@@ -52,7 +52,7 @@ WikitextDocument.ast
 - `hr` → `thematicBreak`。
 - `#REDIRECT` 只有首行被 parser 识别为 `redirect`；语义上转换为 `redirect` 节点。
 - HAST 阶段：如果根的第一个语义子节点是 `redirect`，只渲染重定向横幅并跳过后续正文；其他位置出现的 `redirect` 按横幅渲染。
-- 横幅结构为 `div.redirectMsg.wikitext-redirect[role="note"]`，内部依次是 `p.wikitext-redirect__label` 与 `ul.redirectText.wikitext-redirect__list > li > span.wikitext-redirect__target`；`title` 为目标页（不含片段）。
+- 横幅结构为 `div.redirectMsg.wikitext-redirect[role="note"]`，内部依次是 `p.wikitext-redirect__label`（文案后带冒号）、`ul.redirectText.wikitext-redirect__list > li` 与目标元素；`resolveLink` 返回 `href` 时目标是 `a.wikitext-redirect__target`，否则是无地址 `span`；`title` 为目标页（不含片段）。
 - 重定向显示目标文本（含 `#section`），不自动加载目标页。
 
 ### 3.3 列表
@@ -88,7 +88,7 @@ WikitextDocument.ast
 - 禁止标签转换为 `htmlElement`，`blocked: true`，内容整对丢弃。
 - 未知 HTML 分类转换为 `unknown`，`parserType: "html"`，显示源码卡片。
 - `meta`、`link` 不产生元素。
-- 块级 HTML 的子内容：`p`、`h1`–`h6`、`li`、`dt`、`dd`、`td`、`th`、`caption` 以及 `ul`、`ol`、`dl`、`table`、`tr`、`div`、`center`、`blockquote` 等容器，在内容含标题、列表、表格、块级扩展或块级/禁止 HTML 时按块级归一化，否则按行内归一化。
+- 块级 HTML 的子内容：`p`、`h1`–`h6`、`li`、`dt`、`dd`、`td`、`th`、`caption` 以及 `ul`、`ol`、`dl`、`table`、`tr`、`div`、`center`、`blockquote` 等容器，在内容含标题、列表、表格、块级扩展或块级/禁止 HTML 时按块级归一化，否则按行内归一化；`blockquote` 例外，始终按块级归一化，使纯文本内容包在 `<p>` 中（与 MediaWiki 一致）。
 
 ### 3.6 块级扩展与独占一行结构
 
@@ -122,21 +122,21 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 | `root` | 子节点序列 | 根不生成包裹元素；视图另加 `wikitext-view` 容器 |
 | `paragraph` | `<p class="wikitext-paragraph">` | 段落内容递归 |
 | `text` | text 节点 | 已解码，不再二次解码 |
-| `heading` | `<h1>`–`<h6 class="wikitext-heading">` | 标题锚点在最终整理阶段写入 |
+| `heading` | `<h1>`–`<h6 class="wikitext-heading">`，内部为 `<span class="mw-headline">` | 标题锚点在最终整理阶段写入 `span.mw-headline` 的 `id` |
 | `strong` / `emphasis` | `<b>` / `<i>` | 粗斜状态机的输出；粗斜同时开启为 `<i><b>` |
 | `thematicBreak` | `<hr class="wikitext-hr" data-node-id="…">` | |
 | `link` | `<a>` 或 `<span class="wikitext-link">` | 取决于 resolver 与 URL 校验；外链同时带 `wikitext-ext-link external text/free/autonumber` |
-| `file` | `<figure>` / `<span class="wikitext-file">` | 占位或授权 `<img>`；外层附加 `mw-default-size`、`mw-halign-*`，授权图片附加 `mw-file-element` |
+| `file` | `<figure>` / `<span class="wikitext-file">` | 由格式/对齐决定包装；带 `typeof`、`mw-default-size`、`mw-halign-*`、`mw-file-description`，授权图片附加 `mw-file-element` |
 | `list` / `listItem` | `<ul>`/`<ol>` + `<li>` | 列表带 `wikitext-list--ul`/`wikitext-list--ol`，条目带 `wikitext-list__item` |
 | `definitionList` / `Term` / `Description` | `<dl>` + `<dt>`/`<dd>` | class `wikitext-list--dl`；术语与说明带 `wikitext-list__item` |
 | `table` / `Caption` / `Row` / `Cell` | `<table>` + `<caption>`/`<tbody>`/`<tr>`/`<th>`/`<td>` | 具体 class 见第 9 节 |
 | `template` / `parserFunction` | `<details>` 或 `<span>` 占位 | 块级参数列表；行内 badge |
 | `argument` | `<span class="wikitext-argument">` | 显示 `{{{name}}}` 与默认值 |
-| `reference` | `<sup class="reference wikitext-ref">` + 编号链接 | 按渲染顺序编号，链接到文末 `cite_note-N`；`title` 为原始内容 |
+| `reference` | `<sup class="reference wikitext-ref">` + `cite-bracket` 编号链接 | Cite 1.43 id 规则；链接到文末 `cite_note-…`；`title` 为原始内容 |
 | `extension` | 按名称映射 | `nowiki`/`pre`/`math`/`syntaxhighlight`/`gallery`/`ref`/`references` |
 | `unknown` | `<section>`/`<span>` 源码卡片 | 嵌套表格使用 `wikitext-table--degraded` |
 | `htmlElement` | 对应标签或禁止占位 | 块级加 `wikitext-html-block wikitext-html-{tag}`；h1–h6 另加 `wikitext-heading` 并参与锚点 |
-| `redirect` | `<div class="redirectMsg wikitext-redirect">` | 横幅；内部为 `p.wikitext-redirect__label` + `ul.redirectText` |
+| `redirect` | `<div class="redirectMsg wikitext-redirect">` | 横幅；内部为 `p.wikitext-redirect__label` + `ul.redirectText`；目标可经 `resolveLink` 生成 `<a>` |
 | `code` | `<code>` | |
 | `comment` | 不输出 | playground 仍可见 |
 | `category` | 不输出 | 汇总到文末分类底栏 |
@@ -158,7 +158,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 </span>
 ```
 
-`resolveLink` 返回 `href` 时才生成 `<a class="wikitext-link wikitext-link--resolved" href="…" title="Page" data-node-id="…">`。`href` 经 `sanitizeHref` 处理，`allowRelativeLinks` 默认开启。resolver 返回 `label` 时替换纯文本标签；只返回 `label` 时不生成链接。`title` 使用页面部分（不含 `#fragment`，去掉前导 `:`）；片段只进入 href。`semanticComponents.link` 可替换整个链接结构（有 href 或降级文本都适用）。
+`resolveLink` 返回 `href` 时才生成 `<a class="wikitext-link wikitext-link--resolved" href="…" title="Page" data-node-id="…">`。`href` 经 `sanitizeHref` 处理，`allowRelativeLinks` 默认开启。resolver 返回 `label` 时替换纯文本标签；只返回 `label` 时不生成链接。`title` 使用页面部分（不含 `#fragment`，去掉前导 `:`）；片段只进入 href。resolver 返回 `exists: false` 时追加 `new` class，并在 `title` 末尾追加 `labels.pageDoesNotExist`。`semanticComponents.link` 可替换整个链接结构（有 href 或降级文本都适用）。
 
 ### 6.2 外部链接与裸外链
 
@@ -166,28 +166,44 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - URL 先做实体解码、去除控制字符/首尾空白，再交给 `URL` 解析；拒绝 `javascript:`、`data:`、`vbscript:` 及混淆变体。
 - 默认不调用 resolver 时，外链使用安全化后的源码 URL；无法安全解析时降级为 `<span class="wikitext-link wikitext-link--blocked">`。
 - 外链 `<a>` 的 class 为 `wikitext-ext-link external text`（带标签的方括号外链）、`wikitext-ext-link external free`（裸 URL）或 `wikitext-ext-link external autonumber`（无标签的 `[url]` 按文档顺序生成 `[N]`）。编号独立于引用计数。
-- 绝对 HTTP(S)/mailto 外链 `<a>` 带 `rel="nofollow noopener noreferrer"`；`target` 由 `policy.externalLinkTarget` 决定，resolver 的 `target` 优先；设为 `null` 时不写 target。
+- 绝对 HTTP(S)/mailto 外链 `<a>` 默认只带 `rel="nofollow"`；`target` 由 `policy.externalLinkTarget` 决定，默认 `null`（不写 target），resolver 的 `target` 优先；`_blank` 时追加 `noreferrer noopener`。
 - 相对链接在 `_blank` 时带 `noopener noreferrer`；语义外链在转换阶段产生的安全 token 会被最终整理保留。
 - 最终整理会删除 `_blank`/`_self` 之外的目标，过滤未知 `rel` token，并对插件写入或修改的链接按同一规则补齐。
 
 ### 6.3 文件与图片
 
-文件节点默认渲染占位：
+文件节点默认渲染占位；有 resolver 时按 MediaWiki 1.43 新媒体 DOM 输出。
+
+块级（缩略图、framed、manualthumb 或任意 alignment）：
 
 ```tsx
-<figure class="wikitext-file wikitext-file--block mw-default-size" data-node-id="…">
-  <span class="wikitext-file__label">File: X.png</span>
+<figure class="wikitext-file wikitext-file--block mw-halign-right" typeof="mw:File/Thumb" data-node-id="…">
+  <a class="mw-file-description wikitext-file__link" href="…">
+    <img class="wikitext-file__image mw-file-element" … />
+  </a>
   <figcaption class="wikitext-file__caption">说明文字</figcaption>
 </figure>
 ```
 
-- 行内文件使用 `<span class="wikitext-file wikitext-file--inline">`；块级使用 `<figure>`。两者在未指定宽度且不是 `framed`/`manualthumb` 时追加 `mw-default-size`，有 `alignment` 时追加 `mw-halign-{alignment}`，`class=` 参数作为附加 class。
-- 行内说明包在 `<span class="wikitext-file__caption">` 内；块级说明使用 `<figcaption>`。说明文字来自 `file.children`，链接/模板等子节点递归渲染。
+行内（无缩略图/边框/对齐）：
+
+```tsx
+<span class="wikitext-file wikitext-file--inline mw-default-size" typeof="mw:File" data-node-id="…">
+  <a class="mw-file-description wikitext-file__link" href="…">
+    <img class="wikitext-file__image mw-file-element" … />
+  </a>
+</span>
+```
+
+- 块级判定与 MediaWiki 一致：`thumbnail`、`framed`、`manualthumb` 或任意 `alignment`；块级图片即使出现在源码行中也拆成独立块，前后文字分别成段。行内缩略图不再留在 `<p>` 内。
+- `typeof` 依次为 `mw:File/Thumb`、`mw:File/Frame`、`mw:File/Frameless`、`mw:File`。块级未指定宽度且不是 `framed`/`manualthumb` 时追加 `mw-default-size`，有 `alignment` 时追加 `mw-halign-{alignment}`，`class=` 参数作为附加 class。
+- 块级始终输出 `figcaption`（没有说明时为空）；行内不显示说明文字，说明只参与 `alt` 与 `title`。
+- 默认说明页链接由 `resolveLink` 解析 `File:{name}` 得到，命中时包在 `a.mw-file-description.wikitext-file__link` 中；`link=` 参数优先，仍使用 `a.wikitext-file__link`。没有 resolver 时不生成说明页链接。
 - 参数通过 `getFileParameters` 派生：格式、对齐、垂直对齐、宽高、`upright`、`alt`、`link`、`lang`、`page`、`class`、`border`。
 - 宽高支持 `200`、`200px`、`200x100px`；resolver 的 width/height 优先，最终 clamp 到 1–4096。
-- `link=` 经 `sanitizeHref` 后生成 `<a class="wikitext-file__link">`。
 - 只有 `resolveImage(request, context)` 返回 `src` 且通过 http/https 白名单（或显式允许相对图片）时才渲染 `<img class="wikitext-file__image mw-file-element" loading="lazy" decoding="async">`；`alt` 缺省用文件名。
 - 库不请求 `upload.wikimedia.org` 或任何远程资源；没有 resolver 时保持占位，授权图片由浏览器加载。
+- 已解析的缩略图与 framed 图片使用 1.43 skinning 视觉：`display:table`、1px 边框与浅色背景、图片 3px 内边距、88.4% 说明文字、默认右浮动（RTL 左浮动）；显式 `mw-halign-*` 覆盖默认浮动。普通行内图片不套缩略图边框，`mw-image-border` 与 `mw-valign-*` 按 MediaWiki 规则生效。
 
 ### 6.4 图片授权
 
@@ -238,11 +254,12 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ### 7.4 引用
 
-- 每个 `ref` 按分组内的渲染顺序编号：`<sup class="reference wikitext-ref" data-node-id="…" title="原始内容"><a class="wikitext-ref__link" href="#cite_note-N" aria-label="Reference N">[N]</a></sup>`；`aria-label` 使用 `labels.reference` 加序号。
+- 每个 `ref` 按分组内的渲染顺序编号：`<sup class="reference wikitext-ref" data-node-id="…" title="原始内容"><a class="wikitext-ref__link" href="#cite_note-…" aria-label="Reference …"><span class="cite-bracket">[</span>{label}<span class="cite-bracket">]</span></a></sup>`；`label` 为序号，非默认分组追加组名前缀（如 `g 1`），`aria-label` 使用 `labels.reference` 加同一标签。
 - 引用注册表按 `(group, name)` 记录定义：命名引用再次出现时复用同一编号与条目，重复定义只保留第一次内容并产生 `REFERENCE_DUPLICATE_DEFINITION` 诊断；没有内容的引用产生 `REFERENCE_MISSING_CONTENT`。
-- 默认分组与命名分组各自从 1 编号；分组条目 id 为 `cite_note-<group>-N`，默认分组保持 `cite_note-N`。同一注释被多次引用时，上标 id 依次为 `cite_ref-N`、`cite_ref-N-2`。
-- 引用内容默认追加为文末引用区：`<section class="wikitext-references" role="doc-endnotes" data-wikitext-references=""><ol class="references wikitext-references__list"><li class="wikitext-references__item">…`。`<references/>` 或 `<references group="x"/>` 作为占位参与布局，最终整理把对应分组的引用区放到占位处；没有占位的分组仍追加在文末。
-- 注释项带 `a.wikitext-references__backlink[role="doc-backlink"]`，指回正文中的每个上标；恢复快照时会先移除旧回链再重建。
+- id 采用 Cite 1.43 的全局 key 规则：匿名引用为 `cite_note-{key}` / `cite_ref-{key}`；命名引用为 `cite_note-{name}-{key}` / `cite_ref-{name}_{key}-{occurrence}`（出现序号从 0 开始）。分组不进入 id；组内序号只用于显示。
+- 引用内容默认追加为文末引用区：`<div class="mw-references-wrap wikitext-references" role="doc-endnotes" data-wikitext-references=""><ol class="references wikitext-references__list"><li class="wikitext-references__item" id="cite_note-…"><span class="mw-cite-backlink">…</span> <span class="reference-text">…</span></li></ol></div>`。`<references/>` 或 `<references group="x"/>` 作为占位参与布局，最终整理把对应分组的引用区放到占位处；没有占位的分组仍追加在文末。
+- 回链位于正文之前：单个引用是 `^` 链接；同一命名引用多次出现时按 `1.0`、`1.1` 顺序生成多个 `<sup>` 链接。回链链接同时带 `wikitext-references__backlink`、`role="doc-backlink"` 与可读名称；恢复快照时会先移除旧回链再重建。
+- 组内条目超过 10 个时引用区追加 `mw-references-columns`。
 - 引用内容按语义子树渲染（链接、列表、表格、模板占位、文本等），这些节点随后进入 HAST 索引，`WikitextFragment` 可以渲染 `ref` 的子节点。引用区内部再次出现的 `ref` 不参与编号，渲染为无序号占位。
 - `semanticComponents.reference` 可替换 `<sup>`，并通过 `number` 读取序号；引用区仍会生成。`semanticComponents.extension` 覆盖其他扩展标签，不覆盖 `ref`。
 
@@ -257,15 +274,16 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - 未展开的模板、解析器函数与参数中的魔术字不参与目录判断。没有标题时不输出目录。
 - 目录只在最终整理阶段生成一次：`toHast` 只输出占位，阈值与放置都由 finalize 根据最终标题列表决定，包含层级、编号、文本和 `#逻辑锚点` 链接。标题锚点会把 `#`、`%`、`?`、`/` 等片段敏感字符编码为 `.HH`，保证 `id` 与 `href` 一致；`headingIdStrategy: "none"` 时只显示文本，不生成链接。
 - `columns > 1` 时目录根节点追加 `wikitext-toc--columns-N` class，由样式表实现多列。
-- DOM 为 `div.toc.wikitext-toc[role="navigation"][data-wikitext-toc="toc"]`（`aria-label` 使用目录标题），内部依次是 `div.toctitle.wikitext-toc__title` 与嵌套的 `ul.wikitext-toc__list`；条目使用 `li.toclevel-N.tocsection-M.wikitext-toc__item`，链接带 `wikitext-toc__link`，编号与文本分别是 `span.tocnumber.wikitext-toc__number`、`span.toctext.wikitext-toc__text`。
-- 实例前缀由视图统一映射；不做滚动定位、滚动联动或折叠开关。
+- DOM 为 `div#toc.toc.wikitext-toc[role="navigation"][aria-labelledby="mw-toc-heading"][data-wikitext-toc="toc"]`；内部依次是 `input#toctogglecheckbox.toctogglecheckbox[type="checkbox"][role="button"]`、`div.toctitle.wikitext-toc__title`（内含 `h2#mw-toc-heading` 与 `span.toctogglespan > label.toctogglelabel[for="toctogglecheckbox"]`）和嵌套的 `ul.wikitext-toc__list`。条目使用 `li.toclevel-N.tocsection-M.wikitext-toc__item`，链接带 `wikitext-toc__link`，编号与文本分别是 `span.tocnumber.wikitext-toc__number`、`span.toctext.wikitext-toc__text`。
+- 实例前缀由视图统一映射，同时覆盖 `id`、`for` 与 `aria-labelledby`；库不附带目录折叠脚本，折叠控件仅提供 MediaWiki 兼容 DOM。样式按 1.43 `toc` 模块：`display:table`、95% 字号、7px 内边距、居中标题、固定宽度折叠控件；复选框通过 CSS 切换目录显示，文案来自 `labels.tocHide` / `labels.tocShow`，可访问名称来自 `labels.tocToggle`。
 
 ### 7.6 分类
 
 - `category` 不进入正文，按源码顺序汇总为文末分类底栏。
 - 只收集不在未展开模板、解析器函数或参数内的分类节点。分类名去掉命名空间前缀，下划线显示为空格；`sortKey` 不显示。
-- 底栏位于引用区之后，DOM 为 `div.catlinks.wikitext-categories[role="navigation"]`，内部为 `div.mw-normal-catlinks.wikitext-categories__inner`、`span.wikitext-categories__label`、`ul.wikitext-categories__list`。
-- 分类项默认是与内部链接一致的无地址文本 `span.wikitext-link.wikitext-categories__link`，`title` 保留完整分类页名；需要可导航链接时由宿主样式或组件覆盖。
+- 底栏位于引用区之后，DOM 为 `div#catlinks.catlinks.wikitext-categories[role="navigation"][data-mw="interface"]`，内部为 `div#mw-normal-catlinks.mw-normal-catlinks.wikitext-categories__inner`、标题元素、`: ` 分隔与 `ul.wikitext-categories__list`。样式按 1.43 `interface.category`：浅色盒子、1px 边框、5px 内边距、行内列表与项间分隔线。
+- 标题与分类项都尝试通过 `resolveLink` 解析：命中的标题是 `a.wikitext-categories__label`（目标 `Special:Categories`），分类项是 `a.wikitext-link.wikitext-categories__link`；没有地址时降级为同名 `span`。`title` 保留完整分类页名；`sortKey` 不显示。
+- 隐藏分类依赖分类页数据，当前不区分，仍按普通分类输出。
 - 标题文案来自 `labels.categories`；没有分类时不输出底栏。
 
 ## 8. 扩展标签
@@ -274,7 +292,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 | 标签 | 当前行为 |
 | --- | --- |
-| `nowiki` | `<span class="wikitext-nowiki">` 纯文本，实体解码，不解析链接/模板 |
+| `nowiki` | 纯文本，实体解码，不解析链接/模板；与 MediaWiki 1.43 一样不生成包裹元素 |
 | `pre` | `<pre class="wikitext-ext-pre">` 原始文本，保留空白 |
 | `ref` | 编号 `<sup>` + 分组引用区；见 7.4 |
 | `references` | `<references/>` 占位；最终整理把对应分组引用区放到占位处 |
@@ -293,6 +311,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 ## 9. 表格细节
 
 - 输出顺序固定为 `<table><caption>…</caption><tbody>…`；caption 不放进行。
+- 仅带源 `wikitable` class 的表格套用 MediaWiki 网格视觉（1px 边框、`f8f9fa` 背景、`0.2em 0.4em` 单元格内边距、居中表头）；普通 wikitext 表格保持浏览器默认表格外观。移动端 639px 以下表格可横向滚动。
 - 每个含单元格的显式行生成 `<tr class="wikitext-table__row">`；隐式行只在有直接单元格时生成。表体固定为 `<tbody class="wikitext-table__body">`。
 - 单元格按 `kind` 生成 `<th>`/`<td>`，class 为 `wikitext-table__cell`；表格本身带 `wikitext-table`。
 - 表格、行、单元格属性使用 `sanitizedAttributesToProps`，按标签白名单保留：表格 `class`、`title`、`dir`、`lang`、`align`、`bgcolor`、`border`、`cellpadding`、`cellspacing`、`frame`、`rules`、`summary`、`width`；行 `align`、`valign`、`bgcolor`；单元格 `scope`、`colspan`/`rowspan`、`abbr`、`headers`、`axis`、`width`、`height`、`bgcolor`、`nowrap`、`align`、`valign`；表格相关标签允许安全的 `data-*`（保留 `data-sort-value` 等，拒绝 `data-node-id`、`data-node-type`、`data-wikitext`、`data-mw*`、`data-parsoid`、`data-wikitext-toc`）。所有标签继续丢弃 `style`、事件属性和 `id`。
@@ -342,7 +361,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 `prepareWikitext` 在 rehype 插件之后统一执行：
 
 1. `sanitizeHast`：`hast-util-sanitize` + wiki schema。
-2. `finalizeHast`：安全链接/图片属性、图片授权、引用 id、标题锚点与目录。wikitext 产物与 rehype 插件产物的链接/图片走同一规则：`allowRelativeLinks` / `allowRelativeImages` 在此时生效，外链补默认 `target` 与 `rel`，图片补 `loading`/`decoding`，未授权图片替换为 `alt` 文本并产生诊断。
+2. `finalizeHast`：安全链接/图片属性、图片授权、引用 id、标题锚点与目录。wikitext 产物与 rehype 插件产物的链接/图片走同一规则：`allowRelativeLinks` / `allowRelativeImages` 在此时生效，外链补 `rel` 并按策略补 `target`，图片补 `loading`/`decoding`，未授权图片替换为 `alt` 文本并产生诊断。
 
 清洗规则：
 
@@ -391,7 +410,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - 标题渲染为真实 heading 元素；容器内层级由文档标题级别决定，不保证整页只有一个 h1。
 - 表格生成真实 `<caption>`、`<tbody>`、`<th>`；`<th>` 没有显式 `scope` 时补 `scope="col"`，显式值保留。
 - 外链有可读文本，新窗口通过 `target`/`rel` 表达。
-- 引用编号链接有 `aria-label` 与序号文本；引用区使用 `role="doc-endnotes"`；注释项回链使用 `role="doc-backlink"`；目录与分类底栏使用 `role="navigation"`，其 `ul` 补 `role="list"`。
+- 引用编号链接有 `aria-label` 与序号文本；引用区使用 `role="doc-endnotes"`；注释项回链使用 `role="doc-backlink"`；目录使用 `aria-labelledby` 指向目录标题，目录与分类底栏使用 `role="navigation"`，其 `ul` 补 `role="list"`。
 - 图片 `alt` 依次使用 resolver 值、`alt=` 参数、说明文字纯文本、文件名。
 - 降级表格、块级禁止 HTML 与重定向横幅带 `role="note"`；行内禁止 HTML 与普通未知节点源码卡片不带 `role`，依赖可读文本。
 - 代码块使用 `<pre><code>`，保留可复制文本。
@@ -402,9 +421,10 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ## 14. 样式
 
-- 库自有 class 以 `wikitext-` 前缀开头；为贴近 MediaWiki，也会输出 `toc`、`toctitle`、`tocnumber`、`toctext`、`toclevel-*`、`tocsection-*`、`external`、`text`、`free`、`autonumber`、`references`、`catlinks`、`mw-normal-catlinks`、`redirectMsg`、`redirectText`、`mw-default-size`、`mw-halign-*`、`mw-file-element` 等兼容 class。
+- 库自有 class 以 `wikitext-` 前缀开头；为贴近 MediaWiki 1.43，也会输出 `mw-headline`、`toc`、`toctitle`、`toctogglecheckbox`、`toctogglespan`、`toctogglelabel`、`tocnumber`、`toctext`、`toclevel-*`、`tocsection-*`、`external`、`text`、`free`、`autonumber`、`new`、`reference`、`references`、`mw-references-wrap`、`mw-references-columns`、`mw-cite-backlink`、`reference-text`、`cite-bracket`、`catlinks`、`mw-normal-catlinks`、`redirectMsg`、`redirectText`、`mw-default-size`、`mw-halign-*`、`mw-file-element`、`mw-file-description` 等兼容 class。
 - `styles.css` 只含页面渲染规则，并 `@import "./tokens.css"`；主题 token 只有一份来源，构建时一并发布为 `dist/tokens.css`。playground 的树与检查器样式属于内部工具，不随包发布。
-- 使用 CSS Variables：`--wikitext-font-mono`、`--wikitext-text`、`--wikitext-muted`、`--wikitext-border`、`--wikitext-accent`、`--wikitext-accent-soft`、`--wikitext-placeholder-bg`、`--wikitext-danger`。
+- 使用 CSS Variables：`--wikitext-font-mono`、`--wikitext-text`、`--wikitext-muted`、`--wikitext-border`、`--wikitext-border-strong`、`--wikitext-accent`、`--wikitext-accent-soft`、`--wikitext-neutral`、`--wikitext-placeholder-bg`、`--wikitext-danger`。
+- 基础排版与内容样式参考 MediaWiki 1.43 skinning：根容器使用 1.6 行高并建立浮动上下文；标题使用 188%/150%/128%/116%/108%/100% 字号、h1/h2 常规字重与底边线；段落、列表、水平线、`code`/`pre`、`.wikitable`、TOC、分类、引用与媒体各自使用对应的 1.43 间距和边框规则。宿主可通过 token 覆盖颜色，不承诺像素级外观一致。
 - token 定义在 `:root`，宿主可在任意祖先覆盖；库不设置全局元素样式。页面字体默认继承宿主。
 - 容器可选 `lang` / `dir`；`dir="rtl"` 时列表、表格、缩进正常排版。
 - 深色主题通过 `[data-wikitext-theme="dark"]` 或宿主 CSS Variables 覆盖，不依赖媒体查询强制。
@@ -416,7 +436,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 1.x 内承诺以下基础结构；其余子元素、修饰 class 与 MediaWiki 兼容 class 不自动纳入承诺，仍按兼容规则处理有意变更。
 
 - 根容器保持 `div.wikitext-view`。
-- 标题按源码级别生成真实 heading 元素。
+- 标题按源码级别生成真实 heading 元素，内容包在 `span.mw-headline` 中，锚点写在该 span 上。
 - 列表、表格、链接、引用保留本规范定义的基础语义与导航关系。
 - 稳定 class 集合：`wikitext-view`、`wikitext-heading`、`wikitext-link`、`wikitext-list`、`wikitext-table`、`wikitext-template`、`wikitext-argument`、`wikitext-file`、`wikitext-gallery`、`wikitext-ref`、`wikitext-references`、`wikitext-toc`、`wikitext-categories`、`wikitext-fragment`。
 - 逻辑锚点、实例隔离、引用跳转与 `data-node-id` 的关联语义保持不变；不承诺实例前缀的具体字符串、跨编辑 id 或属性顺序。

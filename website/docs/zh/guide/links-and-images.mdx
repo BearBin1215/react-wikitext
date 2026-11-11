@@ -18,7 +18,7 @@ description: 用 resolveLink 与 resolveImage 接入站内路由、外部链接�
 | 裸外链 `https://…`             | `<a>`，标签为 URL 文本                                      |
 | 无标签外链 `[https://…]`       | `<a>`，标签按文档顺序生成 `[N]`                             |
 
-外链只允许 `http:`、`https:`、`mailto:`；无法安全解析的地址降级为被拦截的可读文本。绝对 HTTP(S) / mailto 外链默认带 `target="_blank"` 与 `rel="nofollow noopener noreferrer"`。
+外链只允许 `http:`、`https:`、`mailto:`；无法安全解析的地址降级为被拦截的可读文本。绝对 HTTP(S) / mailto 外链默认带 `rel="nofollow"`，不写 `target`；需要新窗口时把 `policy.externalLinkTarget` 设为 `"_blank"`。
 
 ### resolveLink
 
@@ -46,6 +46,9 @@ const resolveLink: WikitextLinkResolver = (request) => {
 | `{ href }`                        | 生成 `<a>`；`href` 仍会经过安全校验       |
 | `{ label }`                       | 替换纯文本标签；只有 `label` 时不生成链接 |
 | `{ target: "_blank" \| "_self" }` | 覆盖窗口目标                              |
+| `{ exists: false }`               | 生成红链 `new` class 与“页面不存在”标题   |
+
+`resolveLink` 还会用于图片说明页（`File:{name}`）、分类底栏和重定向目标，同样只使用返回的 `href`。
 
 `request` 提供 `kind`、`target`，内部链接还可能有 `page` 与 `fragment`。`context` 提供原始解析快照 `document`、当前工作树 `ast` 与当前节点 `node`。
 
@@ -80,14 +83,14 @@ export default function Demo() {
 ### 外部链接策略
 
 - `policy.allowRelativeLinks` 默认为 `true`，允许解析回调返回相对地址。
-- `policy.externalLinkTarget` 默认 `"_blank"`；设为 `null` 时外链不写 `target`。
+- `policy.externalLinkTarget` 默认 `null`；设为 `"_blank"` 时外链写 `target="_blank"` 并追加 `noreferrer noopener`。
 - 相对链接在 `_blank` 下会加上 `noopener noreferrer`；最终整理会删除非法的 target 与未知的 `rel` 值。
 
 ## 图片
 
 ### 默认行为
 
-文件节点默认渲染为占位加说明文字：占位由 `labels.filePlaceholder` 与文件名组成，说明文字仍然作为 `figcaption` 或 `span.wikitext-file__caption` 输出。没有 `resolveImage` 时不会生成 `<img>`，库也不会请求任何图片地址。
+文件节点默认渲染为占位。缩略图、framed 与带水平对齐的图片使用块级 `figure`，并始终输出 `figcaption`；普通行内图片使用 `span`，说明文字不再显示，只用于 `alt` 与 `title`。没有 `resolveImage` 时不会生成 `<img>`，库也不会请求任何图片地址。返回 `resolveLink` 的 `File:{name}` 地址时，图片会包在 `a.mw-file-description` 中。
 
 ### resolveImage
 

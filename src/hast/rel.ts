@@ -21,13 +21,17 @@ function relTokens(value: unknown): string[] {
 
 /**
  * 过滤既有 token 并按链接目标补齐安全 `rel`。
- * 绝对 HTTP(S)/mailto 链接补全三项；相对链接在 `_blank` 时补 `noopener noreferrer`。
+ * 与 MediaWiki 1.43 一致：外链补 `nofollow`，仅在 `_blank` 时追加
+ * `noreferrer noopener`；相对链接在 `_blank` 时补 `noopener noreferrer`。
  */
 export function resolveSafeRel(value: unknown, options: SafeRelOptions): string[] | undefined {
   const rel = relTokens(value).filter((token) => SAFE_REL_TOKENS.has(token));
   const external = options.external ?? isExternalHref(options.href);
   if (external) {
-    rel.push("nofollow", "noopener", "noreferrer");
+    rel.push("nofollow");
+    if (options.target === "_blank") {
+      rel.push("noreferrer", "noopener");
+    }
   } else if (options.target === "_blank") {
     rel.push("noopener", "noreferrer");
   }

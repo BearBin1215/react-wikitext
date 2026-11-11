@@ -8,35 +8,42 @@ export const REFERENCE_PLACEHOLDER_CLASS = "wikitext-references-placeholder";
 export const REFERENCE_GROUP_PROPERTY = "dataWikitextReferences";
 /** 注释项回链的 class；恢复快照时先移除旧回链再重建。 */
 export const REFERENCE_BACKLINK_CLASS = "wikitext-references__backlink";
+/** MediaWiki 1.43 引用区外层容器与多列 class。 */
+export const REFERENCE_WRAP_CLASS = "mw-references-wrap";
+export const REFERENCE_COLUMNS_CLASS = "mw-references-columns";
+/** MediaWiki 1.43 引用条目的回链与正文容器 class。 */
+export const REFERENCE_MW_BACKLINK_CLASS = "mw-cite-backlink";
+export const REFERENCE_TEXT_CLASS = "reference-text";
 
 /** 引用分组名；空分组使用默认组。 */
 export function referenceGroupName(group: string | undefined): string {
   return (group ?? "").trim();
 }
 
-/** 分组名在 DOM id 中的安全片段；非 ASCII 字符编码为 `.HH`，避免不同分组碰撞。 */
-function groupSegment(group: string): string {
-  const segment = group.trim().replace(/[^A-Za-z0-9_-]/gu, (character) => {
-    const code = character.codePointAt(0) ?? 0;
-    return `.${code.toString(16).toUpperCase()}`;
-  });
-  return segment || "group";
+/** 引用锚点所需的稳定字段；与 Cite 1.43 的 key/name 规则一致。 */
+export interface ReferenceAnchor {
+  /** 全文档范围的自增 key；命名引用首次出现时分配。 */
+  readonly key: number;
+  /** 命名引用的 name；匿名引用没有。 */
+  readonly name?: string;
 }
 
-/** 引用条目 id；与 `<sup>` 中链接的片段保持一致。 */
-export function referenceNoteId(number: number, group?: string): string {
-  const name = referenceGroupName(group);
-  return name ? `cite_note-${groupSegment(name)}-${number}` : `cite_note-${number}`;
+function nameSegment(name: string | undefined): string | undefined {
+  const normalized = (name ?? "").trim().replace(/[_\s]+/gu, "_");
+  return normalized || undefined;
 }
 
-/** 正文中第一个引用上标的 id；供回链和宿主样式定位。 */
-export function referenceBacklinkId(number: number, group?: string): string {
-  const name = referenceGroupName(group);
-  return name ? `cite_ref-${groupSegment(name)}-${number}` : `cite_ref-${number}`;
+/** 引用条目 id；命名引用为 `cite_note-{name}-{key}`，匿名为 `cite_note-{key}`。 */
+export function referenceNoteId(anchor: ReferenceAnchor): string {
+  const name = nameSegment(anchor.name);
+  return name ? `cite_note-${name}-${anchor.key}` : `cite_note-${anchor.key}`;
 }
 
-/** 同一注释再次被引用时的上标 id；第一次沿用 {@link referenceBacklinkId}。 */
-export function referenceOccurrenceId(number: number, occurrence: number, group?: string): string {
-  const base = referenceBacklinkId(number, group);
-  return occurrence <= 1 ? base : `${base}-${occurrence}`;
+/** 正文中引用上标的 id；命名引用带出现序号，匿名引用只使用 key。 */
+export function referenceSupId(anchor: ReferenceAnchor, occurrence: number): string {
+  const name = nameSegment(anchor.name);
+  if (!name) {
+    return `cite_ref-${anchor.key}`;
+  }
+  return `cite_ref-${name}_${anchor.key}-${Math.max(occurrence - 1, 0)}`;
 }

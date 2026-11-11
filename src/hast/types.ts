@@ -27,6 +27,10 @@ export interface WikitextHastMeta {
   readonly generated?: boolean;
   /** 引用在文档中的序号；仅 `reference` 节点提供。 */
   readonly number?: number;
+  /** Cite 1.43 的全局引用 key；仅 `reference` 节点提供。 */
+  readonly key?: number;
+  /** 命名引用的 name；仅 `reference` 节点提供。 */
+  readonly name?: string;
   /** 引用分组；未分组时省略。 */
   readonly group?: string;
   /** 同一注释第几次被引用；仅 `reference` 节点提供。 */
@@ -90,6 +94,8 @@ export interface WikitextResolvedLink {
   readonly label?: string;
   /** 链接的打开方式。 */
   readonly target?: "_blank" | "_self";
+  /** 目标页是否存在；`false` 渲染为 MediaWiki 红链 `new`。默认视为存在。 */
+  readonly exists?: boolean;
 }
 
 /** 把 wiki 链接解析为真实地址的回调。 */
@@ -156,7 +162,7 @@ export const DEFAULT_PREPARE_POLICY: WikitextResolvedPolicy = Object.freeze({
   allowRelativeImages: false,
   allowPluginImages: false,
   allowSourceImages: false,
-  externalLinkTarget: "_blank",
+  externalLinkTarget: null,
   extraTags: Object.freeze<string[]>([]),
   stripTags: Object.freeze([
     "script",

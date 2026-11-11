@@ -10,6 +10,11 @@ describe("WikitextView text and structure", () => {
     expect(html).toContain("a &amp; b c");
   });
 
+  it("keeps spaces between adjacent inline nodes", () => {
+    const html = renderView("[[A]] [[B]]");
+    expect(html).toContain('</span> <span class="wikitext-link"');
+  });
+
   it("renders headings with stable ids and deduplicates them", () => {
     const html = renderView("== Same ==\n== Same ==\n=== 中文 ===");
     expect(html).toContain('id="Same"');
@@ -94,13 +99,23 @@ describe("WikitextView links", () => {
     expect(html).toContain('href="#one-Sec"');
   });
 
-  it("renders safe external links with rel and target", () => {
+  it("renders safe external links with MediaWiki rel and no default target", () => {
     const html = renderView("[https://example.com text] https://example.org");
     expect(html).toContain('href="https://example.com/"');
-    expect(html).toContain('rel="nofollow noopener noreferrer"');
-    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="nofollow"');
+    expect(html).not.toContain("target=");
     expect(html).toContain(">text</a>");
     expect(html).toContain("https://example.org");
+  });
+
+  it("adds MediaWiki rel tokens when external links open a new window", () => {
+    const html = renderView(
+      "[https://example.com text]",
+      {},
+      { policy: { externalLinkTarget: "_blank" } },
+    );
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="nofollow noreferrer noopener"');
   });
 
   it("distinguishes external link kinds and numbers label-less links", () => {
@@ -118,7 +133,7 @@ describe("WikitextView links", () => {
       { policy: { externalLinkTarget: null } },
     );
     expect(html).not.toContain("target=");
-    expect(html).toContain('rel="nofollow noopener noreferrer"');
+    expect(html).toContain('rel="nofollow"');
   });
 
   it("does not create anchors for dangerous protocols", () => {
@@ -153,7 +168,7 @@ describe("WikitextView links", () => {
       },
     );
     expect(html).toContain('target="_self"');
-    expect(html).toContain('rel="nofollow noopener noreferrer"');
+    expect(html).toContain('rel="nofollow"');
   });
 
   it("lets resolver target win over the external default", () => {
@@ -209,9 +224,36 @@ describe("WikitextView fallbacks", () => {
     const html = renderView("#REDIRECT [[Target#section]]\nbody");
     expect(html).toContain('class="redirectMsg wikitext-redirect"');
     expect(html).toContain('class="wikitext-redirect__label"');
+    expect(html).toContain("Redirect to:");
     expect(html).toContain('class="redirectText wikitext-redirect__list"');
     expect(html).toContain("Target#section");
     expect(html).not.toContain("body");
+  });
+
+  it("resolves redirect targets through resolveLink", () => {
+    const html = renderView(
+      "#REDIRECT [[Target#section]]",
+      {},
+      { resolveLink: (request) => ({ href: `/wiki/${request.target}` }) },
+    );
+    expect(html).toContain(
+      '<a class="wikitext-redirect__target" title="Target" href="/wiki/Target#section">Target#section</a>',
+    );
+  });
+
+  it("renders red links when the resolver reports a missing page", () => {
+    const html = renderView(
+      "[[Missing page]]",
+      {},
+      {
+        resolveLink: () => ({
+          href: "/w/index.php?title=Missing_page&action=edit&redlink=1",
+          exists: false,
+        }),
+      },
+    );
+    expect(html).toContain('class="wikitext-link wikitext-link--resolved new"');
+    expect(html).toContain('title="Missing page (page does not exist)"');
   });
 
   it("applies lang and dir on the container", () => {

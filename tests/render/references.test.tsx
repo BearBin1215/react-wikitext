@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import {
   prepareWikitext,
@@ -18,8 +19,12 @@ function render(
 }
 
 function listPart(html: string): string {
-  const index = html.indexOf('<section class="wikitext-references"');
+  const index = html.indexOf('class="mw-references-wrap wikitext-references');
   return index === -1 ? "" : html.slice(index);
+}
+
+function textOf(html: string): string {
+  return new JSDOM(html).window.document.body.textContent ?? "";
 }
 
 describe("references", () => {
@@ -34,18 +39,21 @@ describe("references", () => {
     expect(html).toContain('href="#cite_note-1"');
     expect(html).toContain('href="#cite_note-2"');
     expect(html).toContain('title="first [[L]]"');
-    expect(html).toContain("[1]");
-    expect(html).toContain("[2]");
+    expect(textOf(html)).toContain("[1]");
+    expect(textOf(html)).toContain("[2]");
     expect(list).toContain('id="cite_note-1"');
     expect(list).toContain('id="cite_note-2"');
     expect(list).toContain('class="references wikitext-references__list"');
     expect(html).toContain('id="cite_ref-1"');
     expect(html).toContain('class="reference wikitext-ref"');
     expect(list).toContain('role="doc-endnotes"');
+    expect(list).toContain('class="mw-references-wrap wikitext-references"');
+    expect(list).toContain('class="mw-cite-backlink"');
+    expect(list).toContain('class="reference-text"');
     expect(list.indexOf("first")).toBeLessThan(list.indexOf("second"));
     expect(list).toContain('href="/wiki/L"');
     expect(list).toContain("Template not expanded: T");
-    expect(html.indexOf('<section class="wikitext-references"')).toBeGreaterThan(
+    expect(html.indexOf('class="mw-references-wrap wikitext-references')).toBeGreaterThan(
       html.indexOf("second"),
     );
   });
@@ -54,12 +62,17 @@ describe("references", () => {
     const html = render(
       '<ref name="a">x</ref><ref name="a"/><ref name="a">y</ref><ref group="g">z</ref>',
     );
+    const dom = new JSDOM(html);
     expect(html.match(/class="wikitext-references__item"/gu)).toHaveLength(2);
-    expect(html.match(/class="wikitext-references"/gu)).toHaveLength(2);
+    expect(dom.window.document.querySelectorAll(".wikitext-references")).toHaveLength(2);
     expect(html).toContain('data-wikitext-references="g"');
-    expect(html).toContain("[1]");
-    expect(html.match(/href="#cite_note-1"/gu)).toHaveLength(3);
-    expect(html).toContain('href="#cite_note-g-1"');
+    expect(textOf(html)).toContain("[1]");
+    expect(textOf(html)).toContain("[g 1]");
+    expect(html.match(/href="#cite_note-a-1"/gu)).toHaveLength(3);
+    expect(html).toContain('href="#cite_note-2"');
+    expect(html).toContain('id="cite_note-a-1"');
+    expect(html).toContain('id="cite_ref-a_1-0"');
+    expect(html).toContain('id="cite_ref-a_1-1"');
     expect(html).not.toContain(">y<");
   });
 
@@ -78,9 +91,11 @@ describe("references", () => {
 
   it("numbers self-closing refs and adds a backlink", () => {
     const html = render('<ref name="empty"/>');
-    expect(html).toContain("[1]");
-    expect(listPart(html)).toContain('id="cite_note-1"');
+    expect(textOf(html)).toContain("[1]");
+    expect(listPart(html)).toContain('id="cite_note-empty-1"');
     expect(listPart(html)).toContain('role="doc-backlink"');
+    expect(listPart(html)).toContain('class="mw-cite-backlink"');
+    expect(listPart(html)).toContain('class="reference-text"');
   });
 
   it("passes the number to a custom reference component", () => {
@@ -91,7 +106,7 @@ describe("references", () => {
     });
     expect(html).toContain('data-reference="r"');
     expect(html).toContain('data-number="1"');
-    expect(html).toContain('id="cite_note-1"');
+    expect(html).toContain('id="cite_note-r-1"');
   });
 
   it("uses labels for the accessible link name", () => {
@@ -113,7 +128,14 @@ describe("references", () => {
     expect(html).not.toContain("Unsupported node");
   });
 
-  it("keeps distinct ids for non-ASCII group names", () => {
+  it("adds the MediaWiki responsive columns class above ten entries", () => {
+    const source = Array.from({ length: 11 }, (_, index) => `<ref>n${index}</ref>`).join("");
+    const html = render(`a${source}`);
+    expect(html).toContain("mw-references-columns");
+    expect(html.match(/class="reference-text"/gu)).toHaveLength(11);
+  });
+
+  it("keeps distinct note ids across groups", () => {
     const html = render('<ref group="来源">a</ref><ref group="资料">b</ref>');
     const ids = [...html.matchAll(/id="(cite_note-[^"]+)"/gu)].map((match) => match[1]);
     expect(new Set(ids).size).toBe(2);
@@ -128,8 +150,8 @@ describe("references", () => {
 
   it("keeps inline references markers out of paragraphs", () => {
     const html = render("a<ref>x</ref> b<references/> c");
-    expect(html).not.toMatch(/<p[^>]*><section/u);
-    expect(html).toContain('class="wikitext-references"');
+    expect(html).not.toMatch(/<p[^>]*><div/u);
+    expect(html).toContain("mw-references-wrap");
   });
 
   it("places the reference list at the references marker", () => {
@@ -138,9 +160,9 @@ describe("references", () => {
     expect(html.indexOf("wikitext-categories")).toBeGreaterThan(
       html.indexOf("wikitext-references"),
     );
-    expect(html).toContain('href="#cite_note-1"');
-    expect(html).toContain('id="cite_ref-1"');
-    expect(html).toContain('id="cite_ref-1-2"');
+    expect(html).toContain('href="#cite_note-n-1"');
+    expect(html).toContain('id="cite_ref-n_1-0"');
+    expect(html).toContain('id="cite_ref-n_1-1"');
     expect(html).toContain('role="doc-backlink"');
   });
 

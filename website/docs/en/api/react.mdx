@@ -187,10 +187,7 @@ See [Styling and components](../guide/customization.mdx#semantic-components) and
   semanticComponents={{
     link: ({ href, external, children }) =>
       href ? (
-        <a
-          href={href}
-          {...(external ? { target: "_blank", rel: "nofollow noopener noreferrer" } : {})}
-        >
+        <a href={href} {...(external ? { rel: "nofollow" } : {})}>
           {children}
         </a>
       ) : (

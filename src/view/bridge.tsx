@@ -30,6 +30,20 @@ function mapProps(
   if (typeof next.id === "string") {
     next.id = context.mapId(next.id);
   }
+  const htmlFor = next.htmlFor ?? next.for;
+  if (typeof htmlFor === "string") {
+    next.htmlFor = context.mapId(htmlFor);
+    delete next.for;
+  }
+  const labelledBy = next["aria-labelledby"] ?? next.ariaLabelledBy;
+  if (typeof labelledBy === "string") {
+    next["aria-labelledby"] = labelledBy
+      .split(/\s+/u)
+      .filter(Boolean)
+      .map((value) => context.mapId(value))
+      .join(" ");
+    delete next.ariaLabelledBy;
+  }
   if (typeof next.href === "string" && next.href.startsWith("#") && next.href.length > 1) {
     next.href = context.mapHref(next.href);
   }
@@ -182,12 +196,18 @@ export function createBridgeComponents(tags: Iterable<string>): Partial<Componen
   return Object.fromEntries(Array.from(tags, (tag) => [tag, TagBridge])) as Partial<Components>;
 }
 
+/** 库内生成但不在源码 HTML 白名单中的标签；仍需桥接以应用实例 id 映射。 */
+const INTERNAL_BRIDGE_TAGS = ["input", "label"] as const;
+
 /** 需要桥接的标签集合：内建标签 + 策略额外标签 + 组件表键。 */
 export function bridgeTagNames(
   extraTags: readonly string[] | undefined,
   components: Readonly<Record<string, unknown>> | undefined,
 ): Set<string> {
   const names = new Set<string>(WIKITEXT_TAG_NAMES);
+  for (const tag of INTERNAL_BRIDGE_TAGS) {
+    names.add(tag);
+  }
   for (const tag of extraTags ?? []) {
     names.add(tag);
   }

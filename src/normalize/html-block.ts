@@ -154,6 +154,9 @@ export function normalizeHtmlBlock(
         ...nodeLocation(context, { origin: { syntaxId: open.id, range: [start, contentLimit] } }),
       },
     ];
+  } else if (tag === "blockquote") {
+    // MediaWiki 会给 blockquote 的文本内容包上段落。
+    children = buildBlocks(effectiveInner, contentLimit, depth + 1);
   } else if (INLINE_CONTENT_BLOCK_TAGS.has(tag) || BLOCK_CONTENT_TAGS.has(tag)) {
     children = needsBlockNormalization(effectiveInner)
       ? buildBlocks(effectiveInner, contentLimit, depth + 1)

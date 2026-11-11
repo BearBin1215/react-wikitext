@@ -30,8 +30,10 @@ import "react-wikitext/styles.css";
 | `--wikitext-text`           | Body text                  |
 | `--wikitext-muted`          | Secondary text             |
 | `--wikitext-border`         | Borders and dividers       |
+| `--wikitext-border-strong`  | Emphasized borders         |
 | `--wikitext-accent`         | Links and emphasis         |
 | `--wikitext-accent-soft`    | Emphasis background        |
+| `--wikitext-neutral`        | Neutral surface background |
 | `--wikitext-placeholder-bg` | Placeholder background     |
 | `--wikitext-danger`         | Errors and blocked content |
 | `--wikitext-font-mono`      | Monospace text             |
@@ -83,6 +85,9 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
       filePlaceholder: "File",
       reference: "Reference",
       toc: "Contents",
+      tocHide: "hide",
+      tocShow: "show",
+      tocToggle: "Toggle table of contents",
       categories: "Categories",
       unknownNode: "Unsupported node",
       redirectTo: "Redirect to",
@@ -90,6 +95,7 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
       blockedHtml: "Blocked HTML",
       renderFailed: "Render failed",
       nestedTableUnsupported: "Nested table not supported",
+      pageDoesNotExist: "(page does not exist)",
     },
   }}
 />
@@ -102,6 +108,9 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
 | `filePlaceholder`            | `File`                          |
 | `reference`                  | `Reference`                     |
 | `toc`                        | `Contents`                      |
+| `tocHide`                    | `hide`                          |
+| `tocShow`                    | `show`                          |
+| `tocToggle`                  | `Toggle table of contents`      |
 | `categories`                 | `Categories`                    |
 | `unknownNode`                | `Unsupported node`              |
 | `redirectTo`                 | `Redirect to`                   |
@@ -109,6 +118,7 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
 | `blockedHtml`                | `Blocked HTML`                  |
 | `renderFailed`               | `Render failed`                 |
 | `nestedTableUnsupported`     | `Nested table not supported`    |
+| `pageDoesNotExist`           | `(page does not exist)`         |
 
 The effective labels are written to `WikitextRenderDocument.meta.labels`; the view and components read the same strings.
 

@@ -117,16 +117,20 @@ interface WikitextResolvedLink {
   href?: string;
   label?: string;
   target?: "_blank" | "_self";
+  exists?: boolean;
 }
 ```
 
-| Value        | Behavior                                                     |
-| ------------ | ------------------------------------------------------------ |
-| `undefined`  | Keep the default                                             |
-| `null`       | Disable navigation                                           |
-| `{ href }`   | Produce an `<a>`; the address is still sanitized             |
-| `{ label }`  | Replace the plain-text label; a label alone produces no link |
-| `{ target }` | Override the window target                                   |
+| Value               | Behavior                                                      |
+| ------------------- | ------------------------------------------------------------- |
+| `undefined`         | Keep the default                                              |
+| `null`              | Disable navigation                                            |
+| `{ href }`          | Produce an `<a>`; the address is still sanitized              |
+| `{ label }`         | Replace the plain-text label; a label alone produces no link  |
+| `{ target }`        | Override the window target                                    |
+| `{ exists: false }` | Add the MediaWiki red-link `new` class and missing-page title |
+
+Besides ordinary internal links, `resolveLink` is also called for image description pages (`File:{name}`), the category footer (category targets and `Special:Categories`) and redirect targets; only the returned `href` is used.
 
 ### Images
 
@@ -173,7 +177,7 @@ Defaults:
   allowRelativeImages: false,
   allowPluginImages: false,
   allowSourceImages: false,
-  externalLinkTarget: "_blank",
+  externalLinkTarget: null,
   extraTags: [],
   stripTags: [
     "script", "style", "iframe", "object", "embed", "form", "input",

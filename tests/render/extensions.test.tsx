@@ -26,8 +26,8 @@ function render(source: string): string {
 describe("extension tags", () => {
   it("renders nowiki as decoded plain text without parsing markup", () => {
     const html = render("<nowiki>[[x]] &amp; {{y}}</nowiki>");
-    expect(html).toContain('class="wikitext-nowiki"');
     expect(html).toContain("[[x]] &amp; {{y}}");
+    expect(html).not.toContain("wikitext-nowiki");
     expect(html).not.toContain('class="wikitext-link"');
   });
 
@@ -50,7 +50,8 @@ describe("extension tags", () => {
   it("renders gallery placeholders as caption cards", () => {
     const html = render("<gallery>File:A.png|Caption A\nFile:B.png</gallery>");
     expect(html).toContain('class="wikitext-gallery"');
-    expect(html.match(/class="wikitext-gallery__item"/gu)).toHaveLength(2);
+    expect(html.match(/class="wikitext-gallery__item /gu)).toHaveLength(2);
+    expect(html.match(/wikitext-gallery__item--placeholder/gu)).toHaveLength(2);
     expect(html).toContain("A.png");
     expect(html).toContain("B.png");
     expect(html).toContain("Caption A");
@@ -65,6 +66,7 @@ describe("extension tags", () => {
     );
     expect(gallery).toContain('src="https://example.com/a.png"');
     expect(gallery).toContain("<figcaption");
+    expect(gallery).toContain("wikitext-gallery__item--media");
 
     const poem = render("<poem>first\nsecond\n\nthird</poem>");
     expect(poem).toContain('class="wikitext-poem"');
@@ -143,6 +145,6 @@ describe("extension tags", () => {
     expect(html).toContain('data-reference="r"');
     expect(html).toContain('data-number="1"');
     expect(html).not.toContain("unused");
-    expect(html).toMatch(/id="[^"]*cite_note-1"/u);
+    expect(html).toMatch(/id="[^"]*cite_note-r-1"/u);
   });
 });

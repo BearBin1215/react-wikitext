@@ -32,7 +32,7 @@ function findElements(root: Root | Element, tagName: string): Element[] {
 }
 
 describe("finalize link and image policy", () => {
-  it("applies the default target and rel to plugin links", () => {
+  it("applies the MediaWiki default rel to plugin links", () => {
     const document = withRehype("x", (tree) => {
       tree.children.push({
         type: "element",
@@ -42,8 +42,8 @@ describe("finalize link and image policy", () => {
       });
     });
     const [link] = findElements(document.hast, "a");
-    expect(link?.properties.target).toBe("_blank");
-    expect(link?.properties.rel).toEqual(["nofollow", "noopener", "noreferrer"]);
+    expect(link?.properties.target).toBeUndefined();
+    expect(link?.properties.rel).toEqual(["nofollow"]);
   });
 
   it("keeps rel but drops the default target when policy disables it", () => {
@@ -61,7 +61,7 @@ describe("finalize link and image policy", () => {
     );
     const [link] = findElements(document.hast, "a");
     expect(link?.properties.target).toBeUndefined();
-    expect(link?.properties.rel).toEqual(["nofollow", "noopener", "noreferrer"]);
+    expect(link?.properties.rel).toEqual(["nofollow"]);
   });
 
   it("drops relative hrefs when relative links are disabled", () => {

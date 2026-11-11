@@ -49,7 +49,7 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 
 - Consecutive inline content becomes `<p class="wikitext-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
 - Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When bold and italic are both open, the output is `<i><b>…</b></i>`.
-- Headings render as real `<h1>`–`<h6 class="wikitext-heading">` and participate in anchors and the table of contents.
+- Headings render as real `<h1>`–`<h6 class="wikitext-heading">` elements whose content is wrapped in `span.mw-headline`, and participate in anchors and the table of contents.
 - Horizontal rules render as `<hr class="wikitext-hr">`.
 - Comments, categories, and behavior switches do not enter the body. Categories go to the footer; behavior switches only affect the table of contents.
 
@@ -65,27 +65,29 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 - The output order is `<table><caption>…</caption><tbody>…`; cells are `<th>` / `<td>`.
 - Table, row, and cell attributes are kept through a whitelist; `style` keeps only a safe layout subset, while event attributes and `id` are always dropped.
 - Layout is computed on a logical grid: `colspan` / `rowspan` are clamped to the table bounds, and missing slots get filler cells (`wikitext-table__cell--filler`).
+- Only tables with the source `wikitable` class get MediaWiki 1.43 borders, background, and cell padding; plain tables keep the browser default and scroll horizontally on mobile.
 - When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
 - A wikitext table with unmatched `{|` / `|}` markers degrades to a source card. A nested wikitext table with matched markers and a nested HTML `<table>` render normally.
 - Tables allow safe `data-*` attributes but reject library-reserved names such as `data-node-id` and `data-wikitext`.
 
 ## Links
 
-Default output for each link type, the protocol allowlist, and resolver usage are in [Links and images](./links-and-images.mdx). The parts that affect rendering here: an internal link becomes an `<a>` only when `resolveLink` returns an `href`, and unlabeled external links get `[N]` in document order, counted separately from references. External links default to `target="_blank"` and `rel="nofollow noopener noreferrer"`, adjustable through `policy.externalLinkTarget` or the resolver's `target`.
+Default output for each link type, the protocol allowlist, and resolver usage are in [Links and images](./links-and-images.mdx). The parts that affect rendering here: an internal link becomes an `<a>` only when `resolveLink` returns an `href`, and unlabeled external links get `[N]` in document order, counted separately from references. External links default to `rel="nofollow"` with no `target`, adjustable through `policy.externalLinkTarget` or the resolver's `target`.
 
 ## Files and images
 
 File nodes render as a placeholder by default:
 
 ```html
-<figure class="wikitext-file wikitext-file--block mw-default-size">
+<figure class="wikitext-file wikitext-file--block mw-default-size" typeof="mw:File/Thumb">
   <span class="wikitext-file__label">File: Example.png</span>
   <figcaption class="wikitext-file__caption">Caption text</figcaption>
 </figure>
 ```
 
-- Inline files use `<span class="wikitext-file">`; block files use `<figure>`.
-- Captions come from the real subtree, so links and template placeholders inside them render recursively.
+- Thumbnails, framed images, and images with horizontal alignment use a block `<figure>`; plain inline files use `<span class="wikitext-file">` and do not become block-level merely because they are alone on a line. Thumbnails float right by default (left in RTL); `mw-halign-*` overrides this.
+- Inline files do not display their caption; block files always emit a `figcaption` (possibly empty). Captions come from the real subtree, so links and template placeholders inside them render recursively.
+- When `resolveLink` returns a `File:{name}` address, the image is wrapped in `a.mw-file-description`.
 - Only a `src` returned by `resolveImage` and validated as `http:` / `https:` produces `<img loading="lazy" decoding="async">`; dimensions are clamped to 1–4096.
 - The library never contacts `upload.wikimedia.org` or any image URL on its own.
 
@@ -102,10 +104,10 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 
 ## References
 
-- Each `<ref>` is numbered within its group and produces `<sup class="reference wikitext-ref">` with a numbered link.
-- Reference content is collected into `<section class="wikitext-references" role="doc-endnotes">`; named references reuse the same entry and groups number independently.
-- `<references/>` or `<references group="x"/>` places the matching group section; groups without a marker are appended after the body and before the category footer. Notes carry `a[role="doc-backlink"]` backlinks.
-- Duplicate definitions and empty references produce diagnostics; repeated uses get `cite_ref-N`, `cite_ref-N-2`, and so on.
+- Each `<ref>` is numbered within its group and produces `<sup class="reference wikitext-ref">` with `cite-bracket` markers and Cite 1.43 ids.
+- Reference content is collected into `<div class="mw-references-wrap wikitext-references" role="doc-endnotes">`; named references reuse the same entry and groups number independently.
+- `<references/>` or `<references group="x"/>` places the matching group section; groups without a marker are appended after the body and before the category footer. Notes use MediaWiki's `span.mw-cite-backlink` and `span.reference-text` structure.
+- Duplicate definitions and empty references produce diagnostics; named references use ids such as `cite_ref-name_key-0` and `cite_ref-name_key-1`, while anonymous ones use `cite_ref-N`.
 
 ## Table of contents
 
@@ -113,11 +115,11 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 - The `toc` prepare option adjusts `minHeadings`, `columns`, or disables the TOC.
 - `__TOC__` forces a table of contents at its marker; `__FORCETOC__` forces an automatic one; `__NOTOC__` disables it anywhere and takes precedence.
 - The table includes levels, numbers, text, and `#anchor` links. `#`, `%`, `?`, and `/` inside fragments are encoded as `.HH`; with `headingIdStrategy: "none"` it contains text only.
-- It has no scroll synchronization, collapse, or sticky behavior.
+- It has no scroll synchronization, collapse script, or sticky behavior; collapsing is handled by a CSS checkbox, with MediaWiki 1.43-compatible toggle markup.
 
 ## Categories and redirects
 
-- Categories stay out of the body and are collected in source order into `div.catlinks.wikitext-categories` at the end. Namespace prefixes are removed, underscores become spaces, and sort keys are not displayed.
+- Categories stay out of the body and are collected in source order into `div#catlinks.catlinks.wikitext-categories` at the end. Namespace prefixes are removed, underscores become spaces, and sort keys are not displayed. The label and items become links when `resolveLink` resolves them.
 - A first-line `#REDIRECT` renders a redirect banner and skips the rest of the body. It does not load the target page.
 
 ## HTML
@@ -160,8 +162,8 @@ The library emits semantic structure, but it is not a complete accessibility lay
 
 - The root container only sets the `lang` and `dir` you pass; otherwise it inherits from the host.
 - Headings use real `<h1>`–`<h6>` elements; see [Styling and components](./customization.mdx) for anchor strategies.
-- The TOC is a `nav` with `aria-label` text from `labels.toc`.
-- The reference section is `section[role="doc-endnotes"]`; reference links use an `aria-label` of the form "Reference N".
+- The TOC is a `div[role="navigation"]` with `aria-labelledby` text from `labels.toc`, including the MediaWiki 1.43 toggle markup.
+- The reference section is `div[role="doc-endnotes"]`; reference links use an `aria-label` of the form "Reference N".
 - The category area uses `role="navigation"` with a visible label, and table `<th>` cells get `scope="col"` by default.
 - Image `alt` comes from `resolveImage`'s `alt`, the `alt=` parameter, or the caption text, falling back to the file name.
 - Some hints (blocked HTML, degraded tables, redirects) use `role="note"` text.

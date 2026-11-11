@@ -26,7 +26,15 @@ describe("heading ids", () => {
     expect(headingIds("<h2>HTML</h2>\n\n== Wiki ==")).toEqual(["HTML", "Wiki"]);
     const html = renderView("<h2>HTML</h2>");
     expect(html).toContain('class="wikitext-html-block wikitext-html-h2 wikitext-heading"');
-    expect(html).toContain('id="HTML"');
+    expect(html).toContain('<span class="mw-headline" id="HTML">HTML</span>');
+  });
+
+  it("uses the MediaWiki 1.43 headline DOM", () => {
+    const html = renderView("== A heading ==");
+    expect(html).toContain(
+      '<h2 class="wikitext-heading"><span class="mw-headline" id="A_heading">A heading</span></h2>',
+    );
+    expect(html).not.toContain('<h2 class="wikitext-heading" id=');
   });
 
   it("strips link and quote markup from ids", () => {

@@ -237,7 +237,7 @@ playground/src/
 - 源码 HTML 属性按固定白名单过滤，丢弃事件属性与 `id`；`style` 只保留安全排版子集，非法声明产生诊断；表格标签允许安全 `data-*`，但拒绝库保留属性。完整列表见[渲染规范](./rendering-spec.md#10-html-白名单配对与禁止内容)。
 - rehype 插件之后统一调用 `hast-util-sanitize`：固定标签集合、属性白名单、协议白名单、`stripTags` 与受控 class 模式；不允许无条件关闭清洗。
 - 外链只允许 `http:`、`https:`、`mailto:`；图片只允许 `http:`/`https:`；解析 URL 前先做实体解码、控制字符清理与协议相对补全。
-- 绝对 HTTP(S)/mailto 链接带 `rel="nofollow noopener noreferrer"`；相对链接在 `_blank` 时带 `noopener noreferrer`；插件写入或修改的链接在最终整理中按同一规则补齐。`target` 只允许 `_blank`/`_self`。
+- 绝对 HTTP(S)/mailto 链接默认只带 `rel="nofollow"`，`_blank` 时追加 `noreferrer noopener`；相对链接在 `_blank` 时带 `noopener noreferrer`；插件写入或修改的链接在最终整理中按同一规则补齐。`target` 只允许 `_blank`/`_self`。
 - 默认不启用图片；只有 resolver 返回并通过 URL 校验的 `src` 会被授权。源码 HTML `img` 由 `allowSourceImages` 控制，插件新增或替换的 `img` 由 `allowPluginImages` 控制，未授权时移除并产生诊断。
 - 默认相对链接规则与 policy 默认值见[文档站 prepare 页面](../../website/docs/zh/api/prepare.mdx)。
 - 自定义组件与插件属于可信程序；库保证它们收到的数据经过约定处理，但不会再次清洗任意自定义组件输出的 HTML。

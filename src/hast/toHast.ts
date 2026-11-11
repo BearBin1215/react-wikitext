@@ -8,16 +8,21 @@ import {
   type WikitextExtension,
   type WikitextFile,
   type WikitextHtmlElement,
+  type WikitextLink,
   type WikitextNode,
   type WikitextReference,
 } from "../ast/model";
 import { getFileParameters } from "../ast/helpers";
 import { getSourceText } from "../ast/query";
+import { fileLayoutIsBlock } from "../ast/file-options";
 import {
+  REFERENCE_COLUMNS_CLASS,
   REFERENCE_GROUP_PROPERTY,
   REFERENCE_LIST_CLASS,
   REFERENCE_PLACEHOLDER_CLASS,
   REFERENCE_SECTION_CLASS,
+  REFERENCE_TEXT_CLASS,
+  REFERENCE_WRAP_CLASS,
   referenceGroupName,
   referenceNoteId,
 } from "./references";
@@ -47,6 +52,9 @@ interface ReferenceEntry {
   readonly node: WikitextReference;
   readonly number: number;
   readonly group: string;
+  /** Cite 1.43 的全局 key：命名引用首次出现时分配，重复引用不增加。 */
+  readonly key: number;
+  readonly name?: string;
   occurrences: number;
 }
 
@@ -59,6 +67,7 @@ interface ReferenceGroupState {
 interface ReferenceState {
   readonly groups: Map<string, ReferenceGroupState>;
   buildingList: boolean;
+  nextKey: number;
 }
 
 interface LinkState {
@@ -247,30 +256,63 @@ function categoriesFooter(
   if (categories.length === 0) {
     return undefined;
   }
-  return element("div", { className: ["catlinks", "wikitext-categories"], role: "navigation" }, [
-    element("div", { className: ["mw-normal-catlinks", "wikitext-categories__inner"] }, [
-      element("span", { className: ["wikitext-categories__label"] }, [
-        textNode(`${context.labels.categories}:`),
-      ]),
+  const labelHref = resolveInternalHref(
+    context,
+    categories[0]!,
+    "Special:Categories",
+    "Special:Categories",
+  );
+  const label = element(
+    labelHref ? "a" : "span",
+    {
+      className: ["wikitext-categories__label"],
+      title: "Special:Categories",
+      ...(labelHref ? { href: labelHref } : {}),
+    },
+    [textNode(context.labels.categories)],
+  );
+  return element(
+    "div",
+    {
+      id: "catlinks",
+      className: ["catlinks", "wikitext-categories"],
+      role: "navigation",
+      dataMw: "interface",
+    },
+    [
       element(
-        "ul",
-        { className: ["wikitext-categories__list"], role: "list" },
-        categories.map((category) =>
-          element("li", { className: ["wikitext-categories__item"] }, [
-            element(
-              "span",
-              {
-                className: ["wikitext-link", "wikitext-categories__link"],
-                title: categoryTitle(category.target),
-              },
-              [textNode(categoryName(category.target))],
-              category,
-            ),
-          ]),
-        ),
+        "div",
+        {
+          id: "mw-normal-catlinks",
+          className: ["mw-normal-catlinks", "wikitext-categories__inner"],
+        },
+        [
+          label,
+          textNode(": "),
+          element(
+            "ul",
+            { className: ["wikitext-categories__list"], role: "list" },
+            categories.map((category) => {
+              const target = categoryTitle(category.target);
+              const href = resolveInternalHref(context, category, target, target);
+              return element("li", { className: ["wikitext-categories__item"] }, [
+                element(
+                  href ? "a" : "span",
+                  {
+                    className: ["wikitext-link", "wikitext-categories__link"],
+                    title: target,
+                    ...(href ? { href } : {}),
+                  },
+                  [textNode(categoryName(category.target))],
+                  category,
+                ),
+              ]);
+            }),
+          ),
+        ],
       ),
-    ]),
-  ]);
+    ],
+  );
 }
 
 function paragraphElement(
@@ -395,6 +437,56 @@ function internalLinkTitle(
   return page.replace(/^:/u, "");
 }
 
+/** 为分类、文件说明页与重定向构造一个只用于 resolver 的链接描述节点。 */
+function auxiliaryLinkNode(
+  node: WikitextNode,
+  target: string,
+  page?: string,
+  fragment?: string,
+): WikitextLink {
+  return {
+    type: "link",
+    id: node.id,
+    kind: "internal",
+    target,
+    ...(page === undefined ? {} : { page }),
+    ...(fragment === undefined ? {} : { fragment }),
+    children: [],
+    ...(node.origin ? { origin: node.origin } : {}),
+    ...(node.position ? { position: node.position } : {}),
+  };
+}
+
+/** 通过 `resolveLink` 解析内部目标；没有可用地址时返回 null。 */
+function resolveInternalHref(
+  context: BuildContext,
+  node: WikitextNode,
+  target: string,
+  page?: string,
+  fragment?: string,
+): string | null {
+  if (!context.resolveLink) {
+    return null;
+  }
+  const resolved = context.resolveLink(
+    {
+      kind: "internal",
+      target,
+      ...(page === undefined ? {} : { page }),
+      ...(fragment === undefined ? {} : { fragment }),
+    },
+    {
+      document: context.document,
+      ast: context.ast,
+      node: auxiliaryLinkNode(node, target, page, fragment),
+    },
+  );
+  if (!resolved || resolved.href === undefined) {
+    return null;
+  }
+  return sanitizeHref(resolved.href, { allowRelative: context.policy.allowRelativeLinks });
+}
+
 function linkElement(
   context: BuildContext,
   node: Extract<WikitextNode, { type: "link" }>,
@@ -438,10 +530,15 @@ function linkElement(
     }
   }
 
+  const missing = node.kind === "internal" && resolved?.exists === false;
+  const internalTitle = missing
+    ? `${internalLinkTitle(context, node)} ${context.labels.pageDoesNotExist}`
+    : internalLinkTitle(context, node);
+
   if (href !== null) {
     const className =
       node.kind === "internal"
-        ? classNames("wikitext-link", "wikitext-link--resolved")
+        ? classNames("wikitext-link", "wikitext-link--resolved", ...(missing ? ["new"] : []))
         : classNames(
             "wikitext-ext-link",
             "external",
@@ -452,7 +549,7 @@ function linkElement(
       className,
       href,
       dataNodeId: node.id,
-      ...(node.kind === "internal" ? { title: internalLinkTitle(context, node) } : {}),
+      ...(node.kind === "internal" ? { title: internalTitle } : {}),
       ...(resolved?.target ? { target: resolved.target } : {}),
     };
     return element("a", properties, children, node);
@@ -464,11 +561,11 @@ function linkElement(
     {
       className: unsafeExternal
         ? classNames("wikitext-link", "wikitext-link--blocked")
-        : classNames("wikitext-link"),
+        : classNames("wikitext-link", ...(missing ? ["new"] : [])),
       title: unsafeExternal
         ? context.labels.blockedLink
         : node.kind === "internal"
-          ? internalLinkTitle(context, node)
+          ? internalTitle
           : node.target,
       dataNodeId: node.id,
     },
@@ -477,8 +574,26 @@ function linkElement(
   );
 }
 
+/** MediaWiki 1.43 新媒体 DOM 的 RDFa 类型。 */
+function fileTypeof(format: string | undefined): string {
+  switch (format) {
+    case "thumbnail":
+    case "thumb":
+    case "manualthumb":
+      return "mw:File/Thumb";
+    case "framed":
+    case "frame":
+      return "mw:File/Frame";
+    case "frameless":
+      return "mw:File/Frameless";
+    default:
+      return "mw:File";
+  }
+}
+
 function imageElement(context: BuildContext, node: WikitextFile): Element {
   const parameters = getFileParameters(node);
+  const blockLayout = node.block || fileLayoutIsBlock(parameters.parameters);
   const request = {
     name: parameters.name,
     parameters: parameters.parameters,
@@ -502,6 +617,10 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
   const height = clampDimension(resolved?.height ?? parameters.height);
   const captionText = semanticText(node.children);
   const alt = resolved?.alt ?? parameters.alt ?? (captionText || parameters.name);
+  const framed =
+    parameters.format === "framed" ||
+    parameters.format === "frame" ||
+    parameters.format === "manualthumb";
 
   if (!src) {
     reportDegrade(
@@ -541,43 +660,58 @@ function imageElement(context: BuildContext, node: WikitextFile): Element {
         body,
       ]);
     }
+  } else {
+    const href = resolveInternalHref(
+      context,
+      node,
+      `File:${parameters.name}`,
+      `File:${parameters.name}`,
+    );
+    if (href) {
+      const visibleCaption =
+        framed || parameters.format === "thumbnail" || parameters.format === "thumb";
+      body = element(
+        "a",
+        {
+          className: ["mw-file-description", "wikitext-file__link"],
+          href,
+          ...(!visibleCaption && captionText ? { title: captionText } : {}),
+        },
+        [body],
+      );
+    }
   }
 
   const caption = convertChildren(context, node.children);
-  const framed = parameters.format === "framed" || parameters.format === "manualthumb";
+  const stateClass = src ? "wikitext-file--media" : "wikitext-file--placeholder";
   const mwClasses = [
     ...(width === undefined && !framed ? ["mw-default-size"] : []),
     ...(parameters.alignment ? [`mw-halign-${parameters.alignment}`] : []),
+    ...(parameters.verticalAlignment ? [`mw-valign-${parameters.verticalAlignment}`] : []),
+    ...(parameters.border ? ["mw-image-border"] : []),
     ...(parameters.className ? [parameters.className] : []),
   ];
-  if (node.block) {
+  const type = fileTypeof(parameters.format);
+  if (blockLayout) {
     return element(
       "figure",
       {
-        className: classNames("wikitext-file", "wikitext-file--block", ...mwClasses),
+        className: classNames("wikitext-file", "wikitext-file--block", stateClass, ...mwClasses),
+        typeof: type,
         dataNodeId: node.id,
       },
-      [
-        body,
-        ...(caption.length > 0
-          ? [element("figcaption", { className: ["wikitext-file__caption"] }, caption)]
-          : []),
-      ],
+      [body, element("figcaption", { className: ["wikitext-file__caption"] }, caption)],
       node,
     );
   }
   return element(
     "span",
     {
-      className: classNames("wikitext-file", "wikitext-file--inline", ...mwClasses),
+      className: classNames("wikitext-file", "wikitext-file--inline", stateClass, ...mwClasses),
+      typeof: type,
       dataNodeId: node.id,
     },
-    [
-      body,
-      ...(caption.length > 0
-        ? [element("span", { className: ["wikitext-file__caption"] }, [textNode(" "), ...caption])]
-        : []),
-    ],
+    [body],
     node,
   );
 }
@@ -696,8 +830,14 @@ function referenceGroup(state: ReferenceState, name: string): ReferenceGroupStat
   return group;
 }
 
+/** 引用上标显示文本；非默认组带组名前缀，与 Cite 1.43 一致。 */
+function referenceLabel(entry: ReferenceEntry): string {
+  return entry.group ? `${entry.group} ${entry.number}` : String(entry.number);
+}
+
 /** 生成引用上标；同一注释的再次引用共享编号，但保留独立的上标 id。 */
 function referenceSup(context: BuildContext, entry: ReferenceEntry, occurrence: number): Element {
+  const label = referenceLabel(entry);
   const sup = element(
     "sup",
     {
@@ -710,10 +850,14 @@ function referenceSup(context: BuildContext, entry: ReferenceEntry, occurrence: 
         "a",
         {
           className: ["wikitext-ref__link"],
-          href: `#${referenceNoteId(entry.number, entry.group)}`,
-          ariaLabel: `${context.labels.reference} ${entry.number}`,
+          href: `#${referenceNoteId(entry)}`,
+          ariaLabel: `${context.labels.reference} ${label}`,
         },
-        [textNode(`[${entry.number}]`)],
+        [
+          element("span", { className: ["cite-bracket"] }, [textNode("[")]),
+          textNode(label),
+          element("span", { className: ["cite-bracket"] }, [textNode("]")]),
+        ],
       ),
     ],
     entry.node,
@@ -724,6 +868,8 @@ function referenceSup(context: BuildContext, entry: ReferenceEntry, occurrence: 
     wikitext: {
       ...data.wikitext,
       number: entry.number,
+      key: entry.key,
+      ...(entry.name ? { name: entry.name } : {}),
       ...(entry.group ? { group: entry.group } : {}),
       occurrence,
     },
@@ -758,6 +904,8 @@ function referenceElement(context: BuildContext, node: WikitextReference): Eleme
       node,
       number: group.entries.length + 1,
       group: group.name,
+      key: ++state.nextKey,
+      name,
       occurrences: 1,
     };
     group.entries.push(entry);
@@ -776,6 +924,7 @@ function referenceElement(context: BuildContext, node: WikitextReference): Eleme
     node,
     number: group.entries.length + 1,
     group: group.name,
+    key: ++state.nextKey,
     occurrences: 1,
   };
   group.entries.push(entry);
@@ -792,16 +941,22 @@ function referencesSections(context: BuildContext, state: ReferenceState): Eleme
   state.buildingList = true;
   const sections = [...state.groups.values()].map((group) => {
     const items = group.entries.map((entry) =>
-      element(
-        "li",
-        { className: ["wikitext-references__item"] },
-        convertChildren(context, entry.node.children),
-      ),
+      element("li", { className: ["wikitext-references__item"] }, [
+        element(
+          "span",
+          { className: [REFERENCE_TEXT_CLASS] },
+          convertChildren(context, entry.node.children),
+        ),
+      ]),
     );
     return element(
-      "section",
+      "div",
       {
-        className: [REFERENCE_SECTION_CLASS],
+        className: classNames(
+          REFERENCE_WRAP_CLASS,
+          REFERENCE_SECTION_CLASS,
+          ...(group.entries.length > 10 ? [REFERENCE_COLUMNS_CLASS] : []),
+        ),
         role: "doc-endnotes",
         [REFERENCE_GROUP_PROPERTY]: group.name,
       },
@@ -812,7 +967,7 @@ function referencesSections(context: BuildContext, state: ReferenceState): Eleme
   return sections;
 }
 
-function extensionElement(context: BuildContext, node: WikitextExtension): Element | null {
+function extensionElement(context: BuildContext, node: WikitextExtension): Element | Text | null {
   const raw = node.raw ?? "";
   switch (node.name) {
     case "references": {
@@ -829,12 +984,8 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
       );
     }
     case "nowiki":
-      return element(
-        "span",
-        { className: ["wikitext-nowiki"], dataNodeId: node.id },
-        [textNode(raw)],
-        node,
-      );
+      // MediaWiki 1.43 的 nowiki 只输出纯文本，不生成包裹元素。
+      return textNode(raw);
     case "pre":
       return element(
         "pre",
@@ -936,16 +1087,25 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
           } else {
             media = element("span", { className: ["wikitext-gallery__label"] }, [textNode(name)]);
           }
-          return element("figure", { className: ["wikitext-gallery__item"] }, [
-            media,
-            ...(caption
-              ? [
-                  element("figcaption", { className: ["wikitext-gallery__caption"] }, [
-                    textNode(caption),
-                  ]),
-                ]
-              : []),
-          ]);
+          return element(
+            "figure",
+            {
+              className: [
+                "wikitext-gallery__item",
+                src ? "wikitext-gallery__item--media" : "wikitext-gallery__item--placeholder",
+              ],
+            },
+            [
+              media,
+              ...(caption
+                ? [
+                    element("figcaption", { className: ["wikitext-gallery__caption"] }, [
+                      textNode(caption),
+                    ]),
+                  ]
+                : []),
+            ],
+          );
         }),
         node,
       );
@@ -1133,18 +1293,25 @@ function redirectElement(
   node: Extract<WikitextNode, { type: "redirect" }>,
 ): Element {
   const title = (node.page ?? node.target).replace(/^:/u, "");
+  const href = resolveInternalHref(context, node, node.target, node.page, node.fragment);
   return element(
     "div",
     { className: ["redirectMsg", "wikitext-redirect"], role: "note", dataNodeId: node.id },
     [
       element("p", { className: ["wikitext-redirect__label"] }, [
-        textNode(context.labels.redirectTo),
+        textNode(`${context.labels.redirectTo}:`),
       ]),
       element("ul", { className: ["redirectText", "wikitext-redirect__list"] }, [
         element("li", {}, [
-          element("span", { className: ["wikitext-redirect__target"], title }, [
-            textNode(node.target),
-          ]),
+          element(
+            href ? "a" : "span",
+            {
+              className: ["wikitext-redirect__target"],
+              title,
+              ...(href ? { href } : {}),
+            },
+            [textNode(node.target)],
+          ),
         ]),
       ]),
     ],
@@ -1264,7 +1431,7 @@ function convert(
  * @param input 转换输入。
  */
 export function toHast(input: WikitextToHastInput): WikitextToHastResult {
-  const state: ReferenceState = { groups: new Map(), buildingList: false };
+  const state: ReferenceState = { groups: new Map(), buildingList: false, nextKey: 0 };
   const linkState: LinkState = { nextAutonumber: 1 };
   const symbols = scanSymbols(input.ast);
   const toc: WikitextTocMode = !(input.tocSettings?.enabled ?? true)

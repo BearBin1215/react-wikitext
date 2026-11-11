@@ -1,4 +1,5 @@
 import type { Element, ElementContent, Properties } from "hast";
+import type { WikitextLabels } from "../ast/labels";
 import type { WikitextHeadingInfo } from "../ast/model";
 
 /** 生成目录的 class；同时保留 MediaWiki 的 `toc` class 便于宿主样式复用。 */
@@ -86,13 +87,18 @@ function tocEntryElement(entry: TocEntry, section: { value: number }): Element {
   );
 }
 
+/** MediaWiki 1.43 目录标题与折叠控件的固定 id。 */
+const TOC_ID = "toc";
+const TOC_HEADING_ID = "mw-toc-heading";
+const TOC_TOGGLE_ID = "toctogglecheckbox";
+
 /**
  * 根据最终标题列表生成目录。
  * 没有标题时返回 undefined；标题级别跳跃按最近层级嵌套。
  */
 export function buildToc(
   headings: readonly WikitextHeadingInfo[],
-  label: string,
+  labels: WikitextLabels,
   columns: 1 | 2 | 3 = 1,
 ): Element | undefined {
   if (headings.length === 0) {
@@ -104,13 +110,40 @@ export function buildToc(
   return element(
     "div",
     {
+      id: TOC_ID,
       className: ["toc", TOC_CLASS, ...(columns > 1 ? [`wikitext-toc--columns-${columns}`] : [])],
       role: "navigation",
-      ariaLabel: label,
+      ariaLabelledBy: [TOC_HEADING_ID],
       [TOC_DATA_PROPERTY]: "toc",
     },
     [
-      element("div", { className: ["toctitle", "wikitext-toc__title"] }, [textNode(label)]),
+      element(
+        "input",
+        {
+          type: "checkbox",
+          role: "button",
+          id: TOC_TOGGLE_ID,
+          className: ["toctogglecheckbox"],
+          style: "display:none",
+          ariaLabel: labels.tocToggle,
+        },
+        [],
+      ),
+      element("div", { className: ["toctitle", "wikitext-toc__title"] }, [
+        element("h2", { id: TOC_HEADING_ID }, [textNode(labels.toc)]),
+        element("span", { className: ["toctogglespan"] }, [
+          element(
+            "label",
+            {
+              className: ["toctogglelabel"],
+              htmlFor: [TOC_TOGGLE_ID],
+              dataHide: labels.tocHide,
+              dataShow: labels.tocShow,
+            },
+            [],
+          ),
+        ]),
+      ]),
       element(
         "ul",
         { className: ["wikitext-toc__list"], role: "list" },

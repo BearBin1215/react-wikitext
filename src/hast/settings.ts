@@ -1,5 +1,5 @@
 import { WikitextPrepareError } from "../ast/errors";
-import { resolveWikitextLabels, type WikitextLabels } from "../ast/labels";
+import { resolveWikitextLabels, WIKITEXT_LABEL_KEYS, type WikitextLabels } from "../ast/labels";
 import type { WikitextHeadingIdStrategy, WikitextResolvedPolicy } from "../ast/model";
 import {
   DEFAULT_PREPARE_POLICY,
@@ -35,20 +35,6 @@ const POLICY_FLAGS = [
 ] as const;
 const POLICY_LISTS = ["extraTags", "stripTags"] as const;
 const LINK_TARGETS = new Set(["_blank", "_self"]);
-const LABEL_KEYS = [
-  "templateNotExpanded",
-  "parserFunctionNotEvaluated",
-  "filePlaceholder",
-  "reference",
-  "toc",
-  "categories",
-  "unknownNode",
-  "redirectTo",
-  "blockedLink",
-  "blockedHtml",
-  "renderFailed",
-  "nestedTableUnsupported",
-] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -99,7 +85,7 @@ function validateLabels(value: unknown): void {
   if (!isRecord(value)) {
     invalidOption('"labels" must be an object.');
   }
-  for (const key of LABEL_KEYS) {
+  for (const key of WIKITEXT_LABEL_KEYS) {
     const current = value[key];
     if (current !== undefined && typeof current !== "string") {
       invalidOption(`"labels.${key}" must be a string.`);
