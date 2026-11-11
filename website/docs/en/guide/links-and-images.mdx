@@ -62,11 +62,15 @@ import "react-wikitext/styles.css";
 export default function Demo() {
   return (
     <Wikitext
-      source="See [[Wikitext|this library]] and the [https://example.com example site]."
+      source="See [[quick-start|Quick Start]] and the [https://example.com example site]."
       lang="en"
       prepareOptions={{
-        resolveLink: (request) =>
-          request.kind === "internal" ? { href: "/guide/quick-start", target: "_self" } : undefined,
+        resolveLink: (request) => {
+          if (request.kind !== "internal") return undefined;
+          const page = request.page ?? request.target.replace(/^:/u, "");
+          const fragment = request.fragment ? `#${request.fragment}` : "";
+          return { href: `/guide/${encodeURIComponent(page)}${fragment}`, target: "_self" };
+        },
       }}
     />
   );
@@ -91,7 +95,7 @@ File nodes render as a placeholder plus caption: the placeholder is `labels.file
 import type { WikitextImageResolver } from "react-wikitext/hast";
 
 const resolveImage: WikitextImageResolver = (request) => ({
-  src: `https://cdn.example.com/wiki/${encodeURIComponent(request.name)}`,
+  src: `https://example.com/wiki/${encodeURIComponent(request.name)}`,
   alt: request.alt ?? request.name,
   ...(request.width === undefined ? {} : { width: request.width }),
   ...(request.height === undefined ? {} : { height: request.height }),
@@ -101,16 +105,17 @@ const resolveImage: WikitextImageResolver = (request) => ({
 - Returning `null` or `undefined` keeps the placeholder; returning an object authorizes the resource.
 - `src` allows only `http:` / `https:`; enable `policy.allowRelativeImages` for relative images.
 - `request` provides `name`, `parameters`, parsed `width` / `height`, `alt`, and `caption`.
+- `resolveImage` is called once per file node (and once per `<gallery>` line). When the source has multiple images, return the address for each image based on `request.name`.
 - Dimensions are clamped to 1–4096; resolver values take precedence.
 - The generated `<img>` always has `loading="lazy"` and `decoding="async"`; `alt` falls back to the file name.
 
-The preview below shows the default placeholder next to an authorized image. It uses a public placeholder image service; replace the address with your own CDN when integrating:
+The preview below shows the default placeholder next to authorized images:
 
 ```tsx preview
 import { Wikitext } from "react-wikitext";
 import "react-wikitext/styles.css";
 
-const source = `[[File:Example.png|thumb|Image caption]]`;
+const source = `[[File:Example.png|thumb|Image caption]] [[File:Diagram.png|thumb|Another image]]`;
 const pane = { flex: 1, minWidth: 0 };
 
 export default function Demo() {
@@ -126,9 +131,9 @@ export default function Demo() {
           source={source}
           lang="en"
           prepareOptions={{
-            resolveImage: () => ({
-              src: "https://placehold.co/240x120/png?text=Example.png",
-              alt: "Example image",
+            resolveImage: (request) => ({
+              src: `https://placehold.co/240x120/png?text=${encodeURIComponent(request.name)}`,
+              alt: request.alt ?? request.name,
             }),
           }}
         />

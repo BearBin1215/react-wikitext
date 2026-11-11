@@ -27,7 +27,13 @@ const parser = createWikiparser();
 
 const processor = createWikitextProcessor({
   parser,
-  resolveLink: (request) => ({ href: `/wiki/${request.target}` }),
+  resolveLink: (request) => {
+    if (request.kind !== "internal") return undefined;
+    const page = request.page ?? request.target.replace(/^:/u, "");
+    return {
+      href: `/wiki/${encodeURIComponent(page)}${request.fragment ? `#${request.fragment}` : ""}`,
+    };
+  },
   headingIdStrategy: "mediawiki",
   wikitextPlugins: [semanticPlugin], // semantic stage
   rehypePlugins: [rehypePlugin], // HAST stage, still before sanitization

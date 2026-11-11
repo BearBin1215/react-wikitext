@@ -62,13 +62,15 @@ import "react-wikitext/styles.css";
 export default function Demo() {
   return (
     <Wikitext
-      source="参见 [[Wikitext|本库]] 与 [https://example.com 示例站点]。"
+      source="参见 [[quick-start|快速开始]] 与 [https://example.com 示例站点]。"
       lang="zh-CN"
       prepareOptions={{
-        resolveLink: (request) =>
-          request.kind === "internal"
-            ? { href: "/zh/guide/quick-start", target: "_self" }
-            : undefined,
+        resolveLink: (request) => {
+          if (request.kind !== "internal") return undefined;
+          const page = request.page ?? request.target.replace(/^:/u, "");
+          const fragment = request.fragment ? `#${request.fragment}` : "";
+          return { href: `/zh/guide/${encodeURIComponent(page)}${fragment}`, target: "_self" };
+        },
       }}
     />
   );
@@ -93,7 +95,7 @@ export default function Demo() {
 import type { WikitextImageResolver } from "react-wikitext/hast";
 
 const resolveImage: WikitextImageResolver = (request) => ({
-  src: `https://cdn.example.com/wiki/${encodeURIComponent(request.name)}`,
+  src: `https://example.com/wiki/${encodeURIComponent(request.name)}`,
   alt: request.alt ?? request.name,
   ...(request.width === undefined ? {} : { width: request.width }),
   ...(request.height === undefined ? {} : { height: request.height }),
@@ -103,16 +105,17 @@ const resolveImage: WikitextImageResolver = (request) => ({
 - 返回 `null` 或 `undefined` 保持占位；返回对象才授权图片资源。
 - `src` 只允许 `http:` / `https:`；需要相对图片时显式设置 `policy.allowRelativeImages: true`。
 - `request` 提供 `name`、`parameters`、解析出的 `width` / `height`、`alt` 与 `caption`。
+- `resolveImage` 对每个文件节点（以及 `<gallery>` 中的每一行）各调用一次；源码中有多个图片时，根据 `request.name` 返回各自的地址。
 - 宽高最终限制在 1–4096；解析回调返回的值优先。
 - 生成的 `<img>` 固定带 `loading="lazy"` 与 `decoding="async"`，`alt` 缺省使用文件名。
 
-下面的示例并排展示默认占位与授权后的图片。预览用公开占位图服务演示出图，接入时换成你自己的 CDN 地址：
+下面的示例并排展示默认占位与授权后的图片：
 
 ```tsx preview
 import { Wikitext } from "react-wikitext";
 import "react-wikitext/styles.css";
 
-const source = `[[File:Example.png|thumb|图片说明]]`;
+const source = `[[File:Example.png|thumb|图片说明]] [[File:Diagram.png|thumb|另一张图片]]`;
 const pane = { flex: 1, minWidth: 0 };
 
 export default function Demo() {
@@ -128,9 +131,9 @@ export default function Demo() {
           source={source}
           lang="zh-CN"
           prepareOptions={{
-            resolveImage: () => ({
-              src: "https://placehold.co/240x120/png?text=Example.png",
-              alt: "示例图片",
+            resolveImage: (request) => ({
+              src: `https://placehold.co/240x120/png?text=${encodeURIComponent(request.name)}`,
+              alt: request.alt ?? request.name,
             }),
           }}
         />

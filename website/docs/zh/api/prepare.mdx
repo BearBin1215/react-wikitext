@@ -26,10 +26,11 @@ import {
 ```ts
 const prepared = prepareWikitext(document, {
   resolveLink: (request) => {
-    if (request.kind === "internal") {
-      return { href: `/wiki/${request.page ?? request.target}` };
-    }
-    return undefined;
+    if (request.kind !== "internal") return undefined;
+    const page = request.page ?? request.target.replace(/^:/u, "");
+    return {
+      href: `/wiki/${encodeURIComponent(page)}${request.fragment ? `#${request.fragment}` : ""}`,
+    };
   },
   headingIdStrategy: "instance",
   labels: { toc: "目录" },
