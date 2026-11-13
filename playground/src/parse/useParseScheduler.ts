@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
-import type { WikitextDocument } from "react-wikitext/parse";
+import type { WikitextExpansionInfo } from "./protocol";
+import type { WikitextParsedSnapshot } from "react-wikitext/parse";
 import type { ParserConfigKey } from "./configs";
 import { serializeParseError } from "./errors";
 import type { ParseErrorInfo, ParseRequest, ParseResponse, ParseStats } from "./protocol";
@@ -24,7 +24,7 @@ export interface ParseSchedulerInput {
 /** 一次解析尝试的完整结果；`key` 标明它属于哪个防抖分组。 */
 export interface ParseSchedulerResult {
   readonly key: string;
-  readonly doc?: WikitextDocument;
+  readonly doc?: WikitextParsedSnapshot;
   readonly expansion?: WikitextExpansionInfo;
   readonly error?: ParseErrorInfo;
   readonly stats?: ParseStats;
@@ -283,6 +283,6 @@ export function useParseScheduler(input: ParseSchedulerInput): ParseSchedulerSta
 }
 
 interface ParsePayloadLike {
-  doc: WikitextDocument;
+  doc: WikitextParsedSnapshot;
   expansion?: WikitextExpansionInfo;
 }

@@ -32,8 +32,10 @@ describe("semantic AST construction", () => {
     const doc = parse("a [[b]] {{c|d=1}}\n== e ==");
     let previousEnd = 0;
     for (const child of doc.ast.children) {
-      expect(child.origin?.range[0] ?? 0).toBeGreaterThanOrEqual(previousEnd);
-      const range = child.origin?.range ?? [0, 0];
+      expect(child.origin?.start ?? 0).toBeGreaterThanOrEqual(previousEnd);
+      const range = child.origin
+        ? ([child.origin.start, child.origin.end] as const)
+        : ([0, 0] as const);
       expect(range[1]).toBeGreaterThanOrEqual(range[0]);
       previousEnd = range[1];
     }

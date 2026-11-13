@@ -3,27 +3,25 @@ import { unified } from "unified";
 import { VFile } from "vfile";
 import type {
   WikitextDiagnostic,
-  WikitextDocument,
-  WikitextRenderDocument,
+  WikitextParsedSnapshot,
+  WikitextRenderSnapshot,
   WikitextRoot,
 } from "../ast/model";
 import { WikitextPrepareError } from "../ast/errors";
-import type { WikitextParseOptions, WikitextParser } from "../ast/parser";
+import type { WikitextParseOptions, WikitextParser } from "../parser";
 import {
   assertPreparableDocument,
   cloneWorkingAst,
   convertWorkingAst,
   createRenderDocument,
   finishPreparedHast,
+  wrapPrepareError,
 } from "../hast/stages";
 import type { ResolvedPrepareSettings } from "../hast/settings";
 import { resolvePrepareSettings } from "../hast/settings";
 import type { WikitextPrepareOptions, WikitextTocMode } from "../hast/types";
 import { takeDiagnostics } from "../hast/vfile";
 import { validateWorkingAst } from "../hast/workingAst";
-
-/** unified 在同步路径遇到异步插件时抛出的固定消息；只按原文匹配，避免误判插件自身的错误。 */
-const ASYNC_IN_SYNC_MESSAGE = "`runSync` finished async. Use `run` instead";
 
 type WikitextTransformer = (tree: unknown, file: unknown) => unknown | Promise<unknown> | undefined;
 
@@ -32,12 +30,12 @@ function emptyRoot(): WikitextRoot {
 }
 
 /** 读取处理器写入的解析快照；供插件与消费方类型化访问。 */
-export function getWikitextDocument(file: unknown): WikitextDocument | undefined {
+export function getWikitextSnapshot(file: unknown): WikitextParsedSnapshot | undefined {
   return (file as VFile | undefined)?.data?.wikitextDocument;
 }
 
 /** 读取处理器写入的渲染快照；供消费方类型化访问。 */
-export function getWikitextRenderDocument(file: unknown): WikitextRenderDocument | undefined {
+export function getWikitextRenderSnapshot(file: unknown): WikitextRenderSnapshot | undefined {
   return (file as VFile | undefined)?.data?.wikitextRenderDocument;
 }
 
@@ -88,14 +86,14 @@ export interface WikitextProcessor {
   /** 追加处理 HAST 的插件；在清洗与最终整理之前运行。 */
   useHast(...plugins: WikitextTreePlugins<Root>): WikitextProcessor;
   /** 异步运行；插件可以返回 Promise。 */
-  run(source: string): Promise<WikitextRenderDocument>;
+  run(source: string): Promise<WikitextRenderSnapshot>;
   /** 同步运行；遇到异步插件时抛 `ASYNC_PLUGIN_IN_SYNC_PATH`。 */
-  runSync(source: string): WikitextRenderDocument;
+  runSync(source: string): WikitextRenderSnapshot;
 }
 
 /** 阶段间传递的内部状态；放在 WeakMap 中，不进入公共 VFile data。 */
 interface PreparedState {
-  readonly document: WikitextDocument;
+  readonly document: WikitextParsedSnapshot;
   readonly ast: WikitextRoot;
   readonly settings: ResolvedPrepareSettings;
   readonly authorizedImages: ReadonlySet<string>;
@@ -115,19 +113,6 @@ function asPlugin(plugin: WikitextTransformer): never {
 
 function invalidProcessor(message: string): never {
   throw new WikitextPrepareError("PREPARE_FAILED", message, { stage: "prepare" });
-}
-
-function wrapStageError(stage: string, error: unknown): never {
-  if (error instanceof WikitextPrepareError) {
-    throw error;
-  }
-  const message = error instanceof Error ? error.message : String(error);
-  const asyncInSync = error instanceof Error && message === ASYNC_IN_SYNC_MESSAGE;
-  throw new WikitextPrepareError(
-    asyncInSync ? "ASYNC_PLUGIN_IN_SYNC_PATH" : "PREPARE_FAILED",
-    `Wikitext processor failed during ${stage}: ${message}`,
-    { stage: "prepare", ...(error instanceof Error ? { cause: error } : {}) },
-  );
 }
 
 function parsePlugin(
@@ -158,7 +143,7 @@ function rehypePlugin(
       invalidProcessor("The processor requires a parsed snapshot; the parse stage did not run.");
     }
     assertPreparableDocument(document);
-    const diagnostics = takeDiagnostics(vfile, "wikitext");
+    const diagnostics = takeDiagnostics(vfile, "wikitext", document.activeSourceId);
     validateWorkingAst(tree);
     const converted = convertWorkingAst(document, tree as WikitextRoot, settings, diagnostics);
     preparedStates.set(vfile, {
@@ -180,7 +165,10 @@ function finalizePlugin(): WikitextTransformer {
     if (!prepare) {
       invalidProcessor("The processor requires a converted HAST; the rehype stage did not run.");
     }
-    const diagnostics = [...prepare.diagnostics, ...takeDiagnostics(vfile, "rehype")];
+    const diagnostics = [
+      ...prepare.diagnostics,
+      ...takeDiagnostics(vfile, "rehype", prepare.document.activeSourceId),
+    ];
     const finalized = finishPreparedHast(
       tree as Root,
       prepare.settings,
@@ -200,7 +188,7 @@ function finalizePlugin(): WikitextTransformer {
   };
 }
 
-function readRenderDocument(file: VFile): WikitextRenderDocument {
+function readRenderDocument(file: VFile): WikitextRenderSnapshot {
   const document = file.data.wikitextRenderDocument;
   if (!document) {
     invalidProcessor("The processor completed without producing a render snapshot.");
@@ -251,7 +239,7 @@ export function createWikitextProcessor(options: WikitextProcessorOptions): Wiki
       try {
         await build().run(emptyRoot(), file);
       } catch (error) {
-        wrapStageError("run", error);
+        wrapPrepareError("run", error, "Wikitext processor failed during");
       }
       return readRenderDocument(file);
     },
@@ -260,7 +248,7 @@ export function createWikitextProcessor(options: WikitextProcessorOptions): Wiki
       try {
         build().runSync(emptyRoot(), file);
       } catch (error) {
-        wrapStageError("runSync", error);
+        wrapPrepareError("runSync", error, "Wikitext processor failed during");
       }
       return readRenderDocument(file);
     },

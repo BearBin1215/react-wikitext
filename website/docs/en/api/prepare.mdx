@@ -14,8 +14,8 @@ import {
   sanitizeHref,
   sanitizeImageUrl,
   sanitizedAttributesToProps,
-  serializeWikitextRenderDocument,
-  restoreWikitextRenderDocument,
+  serializeWikitextRenderSnapshot,
+  restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
 
@@ -51,7 +51,7 @@ Preparation:
 2. Validates the working tree structure, node count, and depth, and reassigns node ids.
 3. Applies `resolveLink`, `resolveImage`, and `handlers`, converting the semantic tree to HAST.
 4. Runs `rehypePlugins`.
-5. Runs final sanitization and finalization, adding the TOC, references, category footer, and image authorization, and creates the `WikitextRenderDocument`.
+5. Runs final sanitization and finalization, adding the TOC, references, category footer, and image authorization, and creates the `WikitextRenderSnapshot`.
 
 The original parse snapshot is never modified.
 
@@ -68,6 +68,7 @@ interface WikitextPrepareOptions {
   headingIdStrategy?: WikitextHeadingIdStrategy;
   toc?: false | WikitextTocOptions;
   handlers?: WikitextHastHandlers;
+  profile?: WikitextStageSink;
 }
 
 interface WikitextTocOptions {
@@ -87,6 +88,7 @@ interface WikitextTocOptions {
 | `headingIdStrategy` | `instance` (default) / `mediawiki` / `none`             |
 | `toc`               | TOC threshold, columns, or `false` to disable           |
 | `handlers`          | HAST converters for custom semantic nodes               |
+| `profile`           | Stage timing sink (`WikitextStageSink`); omitted means no timing |
 
 Plugin lists are structured arrays. Elements can be plugin functions or `[plugin, options]` tuples and run in order. The signature follows unified's `(tree, file)`, where `file` is a VFile.
 
@@ -203,7 +205,7 @@ Defaults:
 ## Render snapshot
 
 ```ts
-interface WikitextRenderDocument {
+interface WikitextRenderSnapshot {
   source: string;
   ast: WikitextRoot;
   hast: import("hast").Root;
@@ -254,8 +256,8 @@ sanitizedAttributesToProps(attributes, tag?): Properties
 ## Serialization
 
 ```ts
-const payload = serializeWikitextRenderDocument(prepared);
-const restored = restoreWikitextRenderDocument(payload);
+const payload = serializeWikitextRenderSnapshot(prepared);
+const restored = restoreWikitextRenderSnapshot(payload);
 ```
 
 Restore validates AST / render schema versions, the root, HAST structure, and the fixed node budget, then runs final sanitization and finalization again. It still does not make arbitrary third-party HAST safe to pass to the view.

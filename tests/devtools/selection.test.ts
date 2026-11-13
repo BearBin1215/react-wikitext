@@ -84,7 +84,7 @@ describe("selection restoration", () => {
   it("treats restored ranges as half-open at adjacent boundaries", () => {
     const doc = parse("[[A]] [[B]]");
     const links = flattenNodes(doc.ast).filter((node) => node.type === "link");
-    const first = links[0]!.origin!.range;
+    const first = [links[0]!.origin!.start, links[0]!.origin!.end] as const;
     // 起点与第一个链接的结束边界重合：应视为不在其内部。
     const snapshot = {
       kind: "semantic" as const,
@@ -102,13 +102,20 @@ describe("selection restoration", () => {
       ast: {
         type: "root",
         id: "0",
-        origin: { range: [0, 10] },
+        origin: { sourceId: "test", start: 0, end: 10 },
         children: [
           {
             type: "link",
             id: "outer",
-            origin: { range: [0, 10] },
-            children: [{ type: "link", id: "inner", origin: { range: [0, 5] }, children: [] }],
+            origin: { sourceId: "test", start: 0, end: 10 },
+            children: [
+              {
+                type: "link",
+                id: "inner",
+                origin: { sourceId: "test", start: 0, end: 5 },
+                children: [],
+              },
+            ],
           },
         ],
       },

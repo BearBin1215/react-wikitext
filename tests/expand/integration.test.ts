@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandWikitext } from "@/expand";
+import { expandWikitext } from "../helpers/expand";
 import { prepareWikitext } from "@/hast";
 import { flattenNodes, isNodeType } from "@/ast";
 
@@ -8,8 +8,8 @@ describe("expanded pipeline", () => {
     const result = await expandWikitext("{{Box}}", {
       templates: { "Template:Box": "== Head ==\n[[A|label]]" },
     });
-    expect(result.document.ast.children.some((node) => node.type === "heading")).toBe(true);
-    const link = flattenNodes(result.document.ast).find((node) => isNodeType(node, "link"));
+    expect(result.snapshot.ast.children.some((node) => node.type === "heading")).toBe(true);
+    const link = flattenNodes(result.snapshot.ast).find((node) => isNodeType(node, "link"));
     expect(link).toMatchObject({ target: "A" });
   });
 
@@ -19,7 +19,7 @@ describe("expanded pipeline", () => {
         "Template:Unsafe": '<script>alert(1)</script><a href="javascript:x">bad</a>',
       },
     });
-    const prepared = prepareWikitext(result.document);
+    const prepared = prepareWikitext(result.snapshot);
     const elements: Array<{ tagName: string; properties: Record<string, unknown> }> = [];
     const walk = (node: unknown): void => {
       if (!node || typeof node !== "object") {
@@ -50,14 +50,14 @@ describe("expanded pipeline", () => {
 
   it("prepares documents with or without retained syntax", async () => {
     const plain = await expandWikitext("{{Box}}", { templates: { "Template:Box": "text" } });
-    expect(plain.document.meta.retainSyntax).toBe(false);
-    const plainPrepared = prepareWikitext(plain.document);
+    expect(plain.snapshot.meta.retainSyntax).toBe(false);
+    const plainPrepared = prepareWikitext(plain.snapshot);
     const retained = await expandWikitext("{{Box}}", {
       templates: { "Template:Box": "text" },
       parseOptions: { retainSyntax: true },
     });
-    expect(retained.document.meta.retainSyntax).toBe(true);
-    const retainedPrepared = prepareWikitext(retained.document);
+    expect(retained.snapshot.meta.retainSyntax).toBe(true);
+    const retainedPrepared = prepareWikitext(retained.snapshot);
     expect(JSON.stringify(retainedPrepared.hast)).toBe(JSON.stringify(plainPrepared.hast));
   });
 
@@ -69,7 +69,7 @@ describe("expanded pipeline", () => {
         return "text";
       },
     });
-    prepareWikitext(result.document);
+    prepareWikitext(result.snapshot);
     expect(requests).toEqual(["Template:Box"]);
   });
 });

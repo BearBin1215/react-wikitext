@@ -60,26 +60,28 @@ const parsed = parser.parse(source, { pageName: "Example" });
 const prepared = prepareWikitext(parsed);
 
 export function Article() {
-  return <WikitextView document={prepared} lang="zh-CN" />;
+  return <WikitextView snapshot={prepared} lang="zh-CN" />;
 }
 ```
 
-The prepared document is serializable, so preparation can run on the server or in a worker. See [How it works](https://react-wikitext.pages.dev/guide/concepts) and [Server rendering](https://react-wikitext.pages.dev/guide/server-rendering).
+The render snapshot is serializable, so preparation can run on the server or in a worker. See [How it works](https://react-wikitext.pages.dev/guide/concepts) and [Server rendering](https://react-wikitext.pages.dev/guide/server-rendering).
 
 ## Template expansion
 
-`expandWikitext` (`react-wikitext/expand`) expands supported templates, template arguments, and common parser functions before parsing. Template source comes from a host-provided `templates` table or a `resolveTemplate` fetch callback; table entries win. Without it, templates and parser functions render as placeholders. See [Template expansion](https://react-wikitext.pages.dev/guide/templates).
+`createWikitextCompiler` (`react-wikitext/expand`) expands supported templates, template arguments, and common parser functions before parsing. Template source comes from a provider: `createTemplateTableProvider` for an offline table, or a custom `provider.open()` for remote batches. Without it, templates and parser functions render as placeholders. See [Template expansion](https://react-wikitext.pages.dev/guide/templates).
 
 ## Entry points
 
 | Entry point                   | Purpose                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------- |
 | `react-wikitext`              | Source component `Wikitext` and view component `WikitextView`                |
-| `react-wikitext/view`         | Render a prepared document without loading a parser                          |
+| `react-wikitext/view`         | Render a prepared snapshot without loading a parser                          |
 | `react-wikitext/parse`        | Parsers and parse options                                                    |
 | `react-wikitext/ast`          | Semantic model, queries, serialization, and custom parsers                   |
 | `react-wikitext/hast`         | `prepareWikitext`, plugins, resolvers, policies, and labels                  |
-| `react-wikitext/expand`       | Template expansion                                                           |
+| `react-wikitext/expand`       | Compiler, template providers, and expansion types                            |
+| `react-wikitext/preview`      | Debounced preview scheduling over a host executor                            |
+| `react-wikitext/worker`       | Compile-and-prepare worker handler                                           |
 | `react-wikitext/unified`      | Fixed-order unified processor with the final sanitize stage owned by the library |
 | `react-wikitext/configs`      | Site configuration snapshot and override builder                             |
 | `react-wikitext/devtools`     | AST tree, node inspector, and selection restore helpers                      |

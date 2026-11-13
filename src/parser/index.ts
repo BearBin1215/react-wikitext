@@ -1,17 +1,25 @@
-import { WikitextParseError } from "./errors";
-import { assignSemanticIds } from "./ids";
+import { WikitextParseError } from "../ast/errors";
+import { assignSemanticIds } from "../ast/ids";
 import {
   AST_SCHEMA_VERSION,
   SYNTAX_SCHEMA_VERSION,
   isWikitextParentNode,
   type WikitextDiagnostic,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextRoot,
   type WikitextSyntaxRoot,
-} from "./model";
+} from "../ast/model";
 import { buildSemanticTree } from "../normalize/build";
-import { resolveParseLimits, type ResolvedParseLimits } from "./limits";
-import { normalizeSource } from "./source";
+import { resolveParseLimits, type ResolvedParseLimits } from "../ast/limits";
+import { normalizeSource } from "../ast/source";
+import {
+  bindSegmentSources,
+  createSourceGraphBuilder,
+  hashText,
+  inputSourceId,
+  normalizeWithSegments,
+  normalizedSourceId,
+} from "../ast/sourceGraph/graph";
 
 /** 生效的解析选项；合并创建时默认值与单次选项后的结果。 */
 export interface WikitextResolvedParseOptions extends ResolvedParseLimits {
@@ -36,10 +44,16 @@ export interface WikitextParseOptions {
   /**
    * 是否把上游 token 语法树放进公共快照，默认关闭。
    *
-   * 它只影响调试用语法树是否公开：源码文本、语义节点的 `position` 与
-   * `origin.range` 始终存在，查询函数也不读取语法树。
+   * 它只影响调试用语法树是否公开：源码文本、语义节点的 `origin` 始终存在，
+   * 查询函数也不读取语法树。
    */
   readonly retainSyntax?: boolean;
+}
+
+/** 语义构建选项；`diagnostics` 由调用方提供可写数组以便收集归一化诊断。 */
+export interface WikitextBuildOptions extends WikitextParseOptions {
+  /** 归一化阶段诊断的接收数组；省略时丢弃。 */
+  readonly diagnostics?: WikitextDiagnostic[];
 }
 
 /** 传给适配器的有效构造预算；只包含构造源码语法树需要的上限。 */
@@ -65,7 +79,7 @@ export interface WikitextParserContext {
  * 配置、页面上下文等上游选项由具体适配器处理。
  */
 export interface WikitextParserAdapter {
-  /** 适配器名称，会写入文档元数据。 */
+  /** 适配器名称，会写入快照元数据。 */
   readonly name: string;
   /** 上游解析器版本。 */
   readonly version: string;
@@ -77,30 +91,75 @@ export interface WikitextParserAdapter {
   parse(source: string, context: WikitextParserContext): WikitextSyntaxRoot;
 }
 
-/** 解析器实例：读取源码并返回解析快照。 */
+/** 编译选项：只影响源码语法编译，不构建语义树。 */
+export interface WikitextCompileOptions {
+  readonly pageName?: string;
+  readonly maxSourceLength?: number;
+  readonly maxSyntaxNodes?: number;
+  readonly maxDepth?: number;
+  /** 语义 origin 使用的文本源身份；缺省时使用归一化源身份。 */
+  readonly sourceId?: string;
+  /** 逻辑键；只有缺省 sourceId 时用于生成身份。 */
+  readonly key?: string;
+  /** 内容版本；只有缺省 sourceId 时用于生成身份。 */
+  readonly revision?: string;
+}
+
+/** 一次源码语法编译的产物；同一程序可以多次构建语义树。 */
+export interface WikitextSyntaxProgram {
+  /** LF 归一化后的源码。 */
+  readonly source: string;
+  readonly syntax: WikitextSyntaxRoot;
+  /** 语义 origin 应引用的文本源。 */
+  readonly sourceId: string;
+  /** 生效的解析预算；缓存键与重新校验都读取它。 */
+  readonly limits: ResolvedParseLimits;
+}
+
+/**
+ * 解析器实例：源码语法编译与语义构建分开提供，`parse` 是一次性便利入口。
+ *
+ * 分离的原因：模板只需要调用结构，最终展开文本才需要完整语义树；
+ * 缓存也按语法程序失效，避免每次展开重复解析。
+ */
 export interface WikitextParser {
   /** 解析器名称。 */
   readonly name: string;
   /** 解析器版本。 */
   readonly version: string;
+  /** 稳定的解析器身份；缓存键必须包含它。 */
+  readonly key: string;
   /**
    * 计算本次解析实际生效的选项；不会解析源码。
-   * 缓存键需要覆盖预算或 `pageName` 时，应使用这里的结果，而不是重新实现合并规则。
    * @param options 本次解析的选项，未提供的字段使用创建时的默认值。
    */
   resolveOptions(options?: WikitextParseOptions): WikitextResolvedParseOptions;
   /**
-   * 解析一份源码。
-   * @param source 待解析的源码，解析前会统一换行符并检查长度。
-   * @param options 本次解析的选项，未提供的字段使用创建时的默认值。
+   * 只编译源码语法树，不构建语义树。
+   * @param source 待编译的源码，编译前会统一换行符并检查长度。
+   * @param options 本次编译的选项。
    */
-  parse(source: string, options?: WikitextParseOptions): WikitextDocument;
+  compile(source: string, options?: WikitextCompileOptions): WikitextSyntaxProgram;
+  /**
+   * 在已编译的语法树上构建语义树。
+   * @param program 语法程序。
+   * @param options 本次构建的选项；预算变化会重新检查。
+   */
+  build(program: WikitextSyntaxProgram, options?: WikitextBuildOptions): WikitextRoot;
+  /**
+   * 一次性解析：编译语法并构建语义树，返回带最小来源图的快照。
+   * @param source 待解析的源码。
+   * @param options 本次解析的选项。
+   */
+  parse(source: string, options?: WikitextParseOptions): WikitextParsedSnapshot;
 }
 
 /** 创建解析器时的选项。 */
 export interface CreateParserOptions {
   /** 每次解析都会先套用的默认选项。 */
   readonly defaults?: WikitextParseOptions;
+  /** 稳定的解析器身份；缺省时由适配器名称与版本组成。 */
+  readonly key?: string;
 }
 
 function invalidRange(type: string): never {
@@ -243,6 +302,7 @@ function countSemanticTree(
 function buildAst(
   syntax: WikitextSyntaxRoot,
   source: string,
+  sourceId: string,
   limits: ResolvedParseLimits,
   diagnostics: WikitextDiagnostic[],
 ): WikitextRoot {
@@ -250,6 +310,7 @@ function buildAst(
     const ast = buildSemanticTree(syntax, source, {
       maxDepth: limits.maxDepth,
       diagnostics,
+      sourceId,
     });
     assignSemanticIds(ast);
     countSemanticTree(ast, limits);
@@ -265,9 +326,9 @@ function buildAst(
 }
 
 /**
- * 用适配器创建解析器；解析器负责归一化源码、构建语义树并检查各项上限。
+ * 用适配器创建解析器；解析器负责归一化源码、编译语法树、构建语义树并检查各项上限。
  * @param adapter 负责生成源码语法树的适配器。
- * @param options 创建选项，可以指定每次解析使用的默认值。
+ * @param options 创建选项，可以指定每次解析使用的默认值与缓存身份。
  */
 export function createWikitextParser(
   adapter: WikitextParserAdapter,
@@ -287,6 +348,7 @@ export function createWikitextParser(
   const defaults = options.defaults ?? {};
   // 创建时先校验一次默认预算，避免非法配置延迟到解析阶段才以别的错误类型出现。
   resolveParseLimits(defaults);
+  const key = options.key ?? `${adapter.name}@${adapter.version}`;
 
   const resolveOptions = (
     parseOptions: WikitextParseOptions = {},
@@ -300,60 +362,152 @@ export function createWikitextParser(
     };
   };
 
+  /** 在已归一化源码上编译语法树；`parse` 与 `compile` 共用同一条实现。 */
+  const compileNormalized = (
+    source: string,
+    pageName: string | undefined,
+    limits: ResolvedParseLimits,
+  ): WikitextSyntaxRoot => {
+    let syntax: WikitextSyntaxRoot;
+    try {
+      syntax = adapter.parse(source, {
+        source,
+        ...(pageName === undefined ? {} : { pageName }),
+        limits: {
+          maxSyntaxNodes: limits.maxSyntaxNodes,
+          maxDepth: limits.maxDepth,
+        },
+      });
+    } catch (error) {
+      if (error instanceof WikitextParseError) {
+        throw error;
+      }
+      throw new WikitextParseError("PARSE_FAILED", `${adapter.name} failed to parse the source.`, {
+        cause: error,
+      });
+    }
+    validateSyntaxTree(syntax, source, limits);
+    return syntax;
+  };
+
+  const compile = (
+    source: string,
+    compileOptions: WikitextCompileOptions = {},
+  ): WikitextSyntaxProgram => {
+    const limits = resolveParseLimits(defaults, {
+      ...(compileOptions.maxSourceLength === undefined
+        ? {}
+        : { maxSourceLength: compileOptions.maxSourceLength }),
+      ...(compileOptions.maxSyntaxNodes === undefined
+        ? {}
+        : { maxSyntaxNodes: compileOptions.maxSyntaxNodes }),
+      ...(compileOptions.maxDepth === undefined ? {} : { maxDepth: compileOptions.maxDepth }),
+    });
+    const pageName = compileOptions.pageName ?? defaults.pageName;
+    const normalized = normalizeSource(source, limits.maxSourceLength);
+    const sourceId =
+      compileOptions.sourceId ??
+      normalizedSourceId(
+        compileOptions.key ?? pageName ?? "page",
+        compileOptions.revision ?? hashText(source),
+      );
+    const syntax = compileNormalized(normalized.source, pageName, limits);
+    return { source: normalized.source, syntax, sourceId, limits };
+  };
+
+  const build = (
+    program: WikitextSyntaxProgram,
+    buildOptions: WikitextBuildOptions = {},
+  ): WikitextRoot => {
+    const limits = resolveParseLimits(defaults, buildOptions);
+    if (program.source.length > limits.maxSourceLength) {
+      throw new WikitextParseError(
+        "SOURCE_TOO_LONG",
+        `Source length ${program.source.length} exceeds the limit of ${limits.maxSourceLength}.`,
+      );
+    }
+    // 低预算不能绕过检查：缓存程序也要按本次生效预算重新校验。
+    if (
+      limits.maxSyntaxNodes < program.limits.maxSyntaxNodes ||
+      limits.maxDepth < program.limits.maxDepth
+    ) {
+      validateSyntaxTree(program.syntax, program.source, limits);
+    }
+    const diagnostics = buildOptions.diagnostics ?? [];
+    return buildAst(program.syntax, program.source, program.sourceId, limits, diagnostics);
+  };
+
   return {
     name: adapter.name,
     version: adapter.version,
+    key,
     resolveOptions,
+    compile,
+    build,
     parse(source, parseOptions = {}) {
       const resolved = resolveOptions(parseOptions);
-      const normalized = normalizeSource(source, resolved.maxSourceLength);
-      const { pageName, retainSyntax } = resolved;
+      // `limits` 只保存四个预算字段；页面名与 retainSyntax 属于解析选项。
+      const limits = resolveParseLimits(resolved);
+      const normalized = normalizeSource(source, limits.maxSourceLength);
+      const pageName = resolved.pageName;
+      const pageKey = pageName ?? "page";
+      const revision = hashText(source);
+      const inputId = inputSourceId(pageKey, revision);
+      const normalizedId = normalizedSourceId(pageKey, revision);
 
-      let syntax: WikitextSyntaxRoot;
-      try {
-        syntax = adapter.parse(normalized.source, {
-          source: normalized.source,
-          ...(pageName === undefined ? {} : { pageName }),
-          limits: {
-            maxSyntaxNodes: resolved.maxSyntaxNodes,
-            maxDepth: resolved.maxDepth,
-          },
-        });
-      } catch (error) {
-        if (error instanceof WikitextParseError) {
-          throw error;
-        }
-        throw new WikitextParseError(
-          "PARSE_FAILED",
-          `${adapter.name} failed to parse the source.`,
-          {
-            cause: error,
-          },
-        );
+      const builder = createSourceGraphBuilder();
+      builder.addSource({
+        id: inputId,
+        key: pageKey,
+        revision,
+        role: "input",
+        text: source,
+        ...(pageName === undefined ? {} : { title: pageName }),
+      });
+      builder.addSource({
+        id: normalizedId,
+        key: pageKey,
+        revision,
+        role: "normalized",
+        text: normalized.source,
+        ...(pageName === undefined ? {} : { title: pageName }),
+      });
+      for (const segment of bindSegmentSources(
+        normalizeWithSegments(source).segments,
+        inputId,
+        normalizedId,
+      )) {
+        builder.addSegment(segment);
       }
-      validateSyntaxTree(syntax, normalized.source, resolved);
+
+      const syntax = compileNormalized(normalized.source, pageName, limits);
+      const program: WikitextSyntaxProgram = {
+        source: normalized.source,
+        syntax,
+        sourceId: normalizedId,
+        limits,
+      };
       const diagnostics: WikitextDiagnostic[] = [];
-      const ast = buildAst(syntax, normalized.source, resolved, diagnostics);
+      const ast = buildAst(program.syntax, program.source, normalizedId, limits, diagnostics);
 
       return {
+        kind: "parsed",
+        id: normalizedId,
+        activeSourceId: normalizedId,
+        graph: builder.finalize(),
         source: normalized.source,
         ast,
-        ...(retainSyntax ? { syntax } : {}),
+        ...(resolved.retainSyntax ? { syntax: program.syntax } : {}),
         meta: {
           astSchemaVersion: AST_SCHEMA_VERSION,
-          ...(retainSyntax ? { syntaxSchemaVersion: SYNTAX_SCHEMA_VERSION } : {}),
+          ...(resolved.retainSyntax ? { syntaxSchemaVersion: SYNTAX_SCHEMA_VERSION } : {}),
           parser: adapter.name,
           parserVersion: adapter.version,
           ...(pageName === undefined ? {} : { pageName }),
           sourceNormalized: normalized.normalized,
           originalLength: normalized.originalLength,
-          limits: {
-            maxSourceLength: resolved.maxSourceLength,
-            maxSyntaxNodes: resolved.maxSyntaxNodes,
-            maxSemanticNodes: resolved.maxSemanticNodes,
-            maxDepth: resolved.maxDepth,
-          },
-          retainSyntax,
+          limits,
+          retainSyntax: resolved.retainSyntax,
         },
         diagnostics,
       };

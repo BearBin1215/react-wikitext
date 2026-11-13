@@ -120,7 +120,7 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
 | `nestedTableUnsupported`     | `Nested table not supported`    |
 | `pageDoesNotExist`           | `(page does not exist)`         |
 
-The effective labels are written to `WikitextRenderDocument.meta.labels`; the view and components read the same strings.
+The effective labels are written to `WikitextRenderSnapshot.meta.labels`; the view and components read the same strings.
 
 The preview below overrides both theme variables and placeholder labels so you can see the effect:
 
@@ -187,7 +187,7 @@ Overrides have the following precedence:
 
 ```tsx
 <WikitextView
-  document={prepared}
+  snapshot={prepared}
   components={{
     blockquote: ({ children, className }) => (
       <blockquote className={[className, "doc-quote"].filter(Boolean).join(" ")}>
@@ -214,7 +214,7 @@ function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
   );
 }
 
-<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+<WikitextView snapshot={prepared} semanticComponents={{ template: TemplateCard }} />;
 ```
 
 Available semantic types:

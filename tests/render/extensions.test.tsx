@@ -13,7 +13,7 @@ function renderWithComponents(
 ): string {
   return renderToStaticMarkup(
     <WikitextView
-      document={prepareWikitext(parse(source, { config: ZH_CONFIG }))}
+      snapshot={prepareWikitext(parse(source, { config: ZH_CONFIG }))}
       semanticComponents={semanticComponents}
     />,
   );
@@ -124,7 +124,7 @@ describe("extension tags", () => {
     });
     const html = renderToStaticMarkup(
       <WikitextView
-        document={document}
+        snapshot={document}
         components={{
           "custom-tag": ({ children }) => <span data-bridged="yes">{children}</span>,
         }}

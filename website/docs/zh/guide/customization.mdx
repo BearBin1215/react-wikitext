@@ -120,7 +120,7 @@ import "react-wikitext/tokens.css"; // 只有变量
 | `nestedTableUnsupported`     | `Nested table not supported`    |
 | `pageDoesNotExist`           | `(page does not exist)`         |
 
-实际生效的文案会写入 `WikitextRenderDocument.meta.labels`，视图与组件读取同一份文案。
+实际生效的文案会写入 `WikitextRenderSnapshot.meta.labels`，视图与组件读取同一份文案。
 
 下面的示例同时覆盖主题变量与占位文案，可以直接看到两者对输出的影响：
 
@@ -187,7 +187,7 @@ for (const heading of prepared.headings) {
 
 ```tsx
 <WikitextView
-  document={prepared}
+  snapshot={prepared}
   components={{
     blockquote: ({ children, className }) => (
       <blockquote className={[className, "doc-quote"].filter(Boolean).join(" ")}>
@@ -214,7 +214,7 @@ function TemplateCard({ displayName, node }: WikitextTemplateComponentProps) {
   );
 }
 
-<WikitextView document={prepared} semanticComponents={{ template: TemplateCard }} />;
+<WikitextView snapshot={prepared} semanticComponents={{ template: TemplateCard }} />;
 ```
 
 可覆盖的语义类型：

@@ -21,14 +21,14 @@ description: 服务端准备渲染快照、跨边界传输、Next.js App Router 
 ```tsx
 // server.tsx
 import { createWikiparser } from "react-wikitext/parse";
-import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+import { prepareWikitext, serializeWikitextRenderSnapshot } from "react-wikitext/hast";
 
 const parser = createWikiparser();
 
 export function preparePayload(source: string, pageName: string) {
   const document = parser.parse(source, { pageName });
   const prepared = prepareWikitext(document);
-  return serializeWikitextRenderDocument(prepared);
+  return serializeWikitextRenderSnapshot(prepared);
 }
 ```
 
@@ -37,16 +37,16 @@ export function preparePayload(source: string, pageName: string) {
 "use client";
 
 import { useMemo } from "react";
-import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { restoreWikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
 export function Article({ payload }: { payload: unknown }) {
-  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
-  return <WikitextView document={prepared} lang="zh-CN" />;
+  const prepared = useMemo(() => restoreWikitextRenderSnapshot(payload), [payload]);
+  return <WikitextView snapshot={prepared} lang="zh-CN" />;
 }
 ```
 
-`restoreWikitextRenderDocument` 会重新校验结构版本、根节点、HAST 结构与节点预算，并重新执行最终清洗。它不信任任意第三方 HAST；只恢复来自可信服务端或可信缓存的快照。
+`restoreWikitextRenderSnapshot` 会重新校验结构版本、根节点、HAST 结构与节点预算，并重新执行最终清洗。它不信任任意第三方 HAST；只恢复来自可信服务端或可信缓存的快照。
 
 :::note 说明
 快照同时包含语义树、HAST 与源码，体积明显大于纯 HTML。大文档应按页或按块准备，并评估传输预算。
@@ -59,7 +59,7 @@ export function Article({ payload }: { payload: unknown }) {
 ```tsx
 // app/wiki/[title]/page.tsx
 import { createWikiparser } from "react-wikitext/parse";
-import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+import { prepareWikitext, serializeWikitextRenderSnapshot } from "react-wikitext/hast";
 import { ArticleView } from "./article-view";
 import { loadPageSource } from "@/lib/wiki";
 
@@ -69,7 +69,7 @@ export default async function Page({ params }: { params: Promise<{ title: string
   const { title } = await params;
   const source = await loadPageSource(title);
   const document = parser.parse(source, { pageName: title });
-  const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+  const payload = serializeWikitextRenderSnapshot(prepareWikitext(document));
 
   return <ArticleView payload={payload} lang="zh-CN" />;
 }
@@ -80,12 +80,12 @@ export default async function Page({ params }: { params: Promise<{ title: string
 "use client";
 
 import { useMemo } from "react";
-import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { restoreWikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
 export function ArticleView({ payload, lang }: { payload: unknown; lang: string }) {
-  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
-  return <WikitextView document={prepared} lang={lang} />;
+  const prepared = useMemo(() => restoreWikitextRenderSnapshot(payload), [payload]);
+  return <WikitextView snapshot={prepared} lang={lang} />;
 }
 ```
 
@@ -106,7 +106,7 @@ import "react-wikitext/styles.css";
 
 ```ts
 // server entry
-const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+const payload = serializeWikitextRenderSnapshot(prepareWikitext(document));
 const html = template.replace("__WIKITEXT__", JSON.stringify(payload).replace(/</gu, "\\u003c"));
 ```
 

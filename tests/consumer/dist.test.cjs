@@ -11,9 +11,18 @@ assert.equal(parseApi.createWikiparserAdapter, undefined);
 assert.equal(parseApi.normalizeSource, undefined);
 
 const expandApi = require("react-wikitext/expand");
-assert.equal(typeof expandApi.expandWikitext, "function");
+assert.equal(expandApi.expandWikitext, undefined);
+assert.equal(typeof expandApi.createWikitextCompiler, "function");
+assert.equal(typeof expandApi.createTemplateTableProvider, "function");
 assert.equal(typeof expandApi.WikitextExpandError, "function");
 assert.equal(typeof expandApi.WikitextError, "function");
+
+const previewApi = require("react-wikitext/preview");
+assert.equal(typeof previewApi.useWikitextPreview, "function");
+assert.equal(typeof previewApi.createWikitextWorkerExecutor, "function");
+const workerApi = require("react-wikitext/worker");
+assert.equal(typeof workerApi.createWikitextWorkerHandler, "function");
+assert.equal(typeof workerApi.attachWikitextWorker, "function");
 
 const document = parseApi.parseWikitext("text {{Tpl}}");
 assert.equal(document.ast.type, "root");
@@ -77,6 +86,10 @@ for (const file of [
   "hast.js",
   "unified.js",
   "view.js",
+  "preview.js",
+  "preview.cjs",
+  "worker.js",
+  "worker.cjs",
   "configs.js",
   "devtools.js",
   "devtools.cjs",
@@ -126,19 +139,22 @@ assert.equal(packageJson.exports["./devtools"].import.default, "./dist/devtools.
 assert.equal(packageJson.exports["./devtools"].require.default, "./dist/devtools.cjs");
 assert.equal(packageJson.exports["./devtools.css"], "./dist/devtools.css");
 
-let resolveCalls = 0;
-expandApi
-  .expandWikitext("{{T}}", {
+let providerCalls = 0;
+const compiler = expandApi.createWikitextCompiler({
+  parser: parseApi.createWikiparser(),
+  provider: expandApi.createTemplateTableProvider({
+    key: "consumer",
+    revision: "v1",
     templates: new Map([["Template:T", "hello"]]),
-    resolveTemplate: () => {
-      resolveCalls += 1;
-      return "remote";
-    },
-  })
-  .then((expanded) => {
-    assert.equal(expanded.document.source, "hello");
-    assert.equal(expanded.expansion.status, "complete");
-    assert.equal(resolveCalls, 0, "table entries must win over the callback");
+  }),
+});
+compiler
+  .compile({ key: "page", revision: "1", text: "{{T}}" })
+  .then(async (compilation) => {
+    assert.equal(compilation.snapshot.source, "hello");
+    assert.equal(compilation.status, "complete");
+    assert.equal(providerCalls, 0, "table entries must not call a remote provider");
+    await compiler.dispose();
     console.log("CJS consumer smoke passed.");
     return undefined;
   })

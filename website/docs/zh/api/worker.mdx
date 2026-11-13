@@ -1,0 +1,68 @@
+---
+title: Worker /worker
+description: worker handler、消息协议、取消与错误载荷。
+---
+
+# Worker `/worker`
+
+```ts
+import { attachWikitextWorker, createWikitextWorkerHandler } from "react-wikitext/worker";
+```
+
+`/worker` 提供 worker handler：在 Worker 内复用宿主提供的 compiler，执行 compile 与 prepare，返回普通数据渲染快照。宿主负责创建 Worker、编译器与 URL、打包方式与 CSP。它只加载准备与序列化工具，不加载解析器与 React。
+
+## 接入
+
+```ts
+// worker.ts
+import { createWikitextCompiler, createTemplateTableProvider } from "react-wikitext/expand";
+import { attachWikitextWorker } from "react-wikitext/worker";
+
+const compiler = createWikitextCompiler({
+  parser,
+  provider: createTemplateTableProvider({ key: "site", revision, templates }),
+});
+
+attachWikitextWorker(self, { compiler, prepare: { resolveLink, resolveImage } });
+```
+
+```ts
+// main.ts
+const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+const transport = createWikitextWorkerExecutor(worker);
+```
+
+也可以直接使用 handler：
+
+```ts
+const handle = createWikitextWorkerHandler({ compiler });
+const response = await handle({
+  type: "compile",
+  id: "1",
+  input: { key: "page", revision: "1", text: source },
+});
+```
+
+## 协议
+
+```ts
+type WikitextWorkerRequest =
+  | { type: "compile"; id: string; input: WikitextInput; options?: WikitextPreviewCompileOptions }
+  | { type: "cancel"; id: string }
+  | { type: "dispose" };
+
+type WikitextWorkerResponse =
+  | { type: "result"; id: string; snapshot: SerializedWikitextRenderSnapshot }
+  | { type: "error"; id: string; error: WikitextWorkerErrorPayload }
+  | { type: "cancelled"; id: string };
+```
+
+- 只传可序列化数据；函数、compiler、provider 与 `AbortSignal` 不进入 `postMessage`。
+- 协议不转发 provider 请求：远程 provider 在 Worker 内实例化，鉴权、批量与取消由你在 `provider.getMany` 里处理。
+- 错误负载包含 `code`、`name`、`message` 与可选 `location`，与主线程的错误一致。
+
+## 取消
+
+取消是协作式的：`cancel` 停止该请求的排队与等待，并在下一次检查点生效；不会中断正在运行的同步 parser。
+
+需要硬中断同步计算时，宿主应 `worker.terminate()` 并重建执行实例，该实例内的缓存随之失效；库不会替你中断同步 parser。

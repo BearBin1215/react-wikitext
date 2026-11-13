@@ -45,9 +45,9 @@ Upgrading the parser changes AST shape, source ranges, and the rendering baselin
 
 | Constant                | Value | Applies to         |
 | ----------------------- | ----- | ------------------ |
-| `AST_SCHEMA_VERSION`    | `2`   | Semantic AST       |
-| `SYNTAX_SCHEMA_VERSION` | `1`   | Source syntax tree |
-| `RENDER_SCHEMA_VERSION` | `3`   | Render snapshot    |
+| `AST_SCHEMA_VERSION`    | `3`   | Semantic AST       |
+| `SYNTAX_SCHEMA_VERSION` | `2`   | Source syntax tree |
+| `RENDER_SCHEMA_VERSION` | `4`   | Render snapshot    |
 
 A version change is a structural break. Include versions in cache keys; restore rejects mismatched data.
 

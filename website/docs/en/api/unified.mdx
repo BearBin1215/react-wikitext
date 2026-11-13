@@ -6,7 +6,7 @@ description: Integrate wikitext processing into unified via createWikitextProces
 # unified
 
 ```ts
-import { createWikitextProcessor, getWikitextDocument } from "react-wikitext/unified";
+import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikitext/unified";
 ```
 
 `/unified` loads neither the default parser nor React. It provides a processor with a fixed stage order for reusing plugin combinations, registering transforms incrementally, or embedding wikitext processing in an existing unified-style build.
@@ -43,7 +43,7 @@ const prepared = processor.runSync(source);
 const asyncPrepared = await processor.run(source);
 ```
 
-The return value is the same `WikitextRenderDocument` produced by `prepareWikitext`, sanitized and finalized. Each `run` / `runSync` creates a fresh VFile; runs share no state.
+The return value is the same `WikitextRenderSnapshot` produced by `prepareWikitext`, sanitized and finalized. Each `run` / `runSync` creates a fresh VFile; runs share no state.
 
 ## Options
 
@@ -90,16 +90,16 @@ await processor.run(source); // plugins may return a Promise
 ## Reading snapshots inside plugins
 
 ```ts
-import { getWikitextDocument, getWikitextRenderDocument } from "react-wikitext/unified";
+import { getWikitextParsedSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
 
 processor.useWikitext(() => (tree, file) => {
-  const parsed = getWikitextDocument(file); // parse snapshot; read-only for plugins
+  const parsed = getWikitextParsedSnapshot(file); // parse snapshot; read-only for plugins
   void parsed;
 });
 ```
 
-- `getWikitextDocument(file)` returns the parse snapshot for the current run.
-- `getWikitextRenderDocument(file)` returns the render snapshot; it is written only in the final stage, so HAST plugins cannot read it yet.
+- `getWikitextParsedSnapshot(file)` returns the parse snapshot for the current run.
+- `getWikitextRenderSnapshot(file)` returns the render snapshot; it is written only in the final stage, so HAST plugins cannot read it yet.
 
 ## Relation to prepareWikitext
 

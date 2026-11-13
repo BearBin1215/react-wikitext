@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   createWikiparser,
   parseWikitext,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextParseOptions,
   type WikitextParser,
   type WikitextSyntaxNode,
@@ -52,7 +52,7 @@ function createParser(config: ParserConfig = MEDIAWIKI_CONFIG): WikitextParser {
   return createWikiparser({ config: cloneConfig(config) });
 }
 
-export function parse(source: string, options: TestParseOptions = {}): WikitextDocument {
+export function parse(source: string, options: TestParseOptions = {}): WikitextParsedSnapshot {
   const { config, ...rest } = options;
   const parseOptions: WikitextParseOptions = {
     pageName: "Demo",
@@ -73,12 +73,12 @@ const TEST_PREPARE_OPTIONS: WikitextPrepareOptions = { headingIdStrategy: "media
 
 export function renderView(
   source: string,
-  props: Omit<WikitextViewProps, "document"> = {},
+  props: Omit<WikitextViewProps, "snapshot"> = {},
   prepareOptions: WikitextPrepareOptions = {},
 ): string {
   return renderToStaticMarkup(
     createElement(WikitextView, {
-      document: prepare(source, { ...TEST_PREPARE_OPTIONS, ...prepareOptions }),
+      snapshot: prepare(source, { ...TEST_PREPARE_OPTIONS, ...prepareOptions }),
       ...props,
     }),
   );
@@ -87,12 +87,12 @@ export function renderView(
 export function renderViewWithConfig(
   source: string,
   config: ParserConfig,
-  props: Omit<WikitextViewProps, "document"> = {},
+  props: Omit<WikitextViewProps, "snapshot"> = {},
   prepareOptions: WikitextPrepareOptions = {},
 ): string {
   return renderToStaticMarkup(
     createElement(WikitextView, {
-      document: prepareWikitext(parse(source, { config }), {
+      snapshot: prepareWikitext(parse(source, { config }), {
         ...TEST_PREPARE_OPTIONS,
         ...prepareOptions,
       }),

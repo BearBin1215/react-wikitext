@@ -2,12 +2,13 @@ import type { Root } from "hast";
 import { describe, expect, it } from "vitest";
 import {
   prepareWikitext,
-  restoreWikitextRenderDocument,
-  serializeWikitextRenderDocument,
+  restoreWikitextRenderSnapshot,
+  serializeWikitextRenderSnapshot,
   WikitextError,
   WikitextPrepareError,
 } from "@/hast";
 import { RENDER_SCHEMA_VERSION } from "@/ast";
+import { getSourcePosition } from "@/ast";
 import { RENDER_HAST_BUDGET } from "@/hast/budget";
 import { parseWikitext } from "@/parse";
 import { prepare } from "../helpers/parse";
@@ -24,7 +25,7 @@ function invalidDocument(run: () => unknown): WikitextError {
 }
 
 function snapshot(source: string) {
-  return serializeWikitextRenderDocument(prepare(source)) as unknown as Record<string, unknown>;
+  return serializeWikitextRenderSnapshot(prepare(source)) as unknown as Record<string, unknown>;
 }
 
 function modifyFirstFiller() {
@@ -78,8 +79,8 @@ describe("render snapshot roundtrip", () => {
 
   it("serializes and restores the same HAST and headings", () => {
     const prepared = prepare(source);
-    const serialized = serializeWikitextRenderDocument(prepared);
-    const restored = restoreWikitextRenderDocument(
+    const serialized = serializeWikitextRenderSnapshot(prepared);
+    const restored = restoreWikitextRenderSnapshot(
       JSON.parse(JSON.stringify(serialized)) as unknown,
     );
     expect(restored.hast).toEqual(JSON.parse(JSON.stringify(prepared.hast)) as unknown);
@@ -91,11 +92,11 @@ describe("render snapshot roundtrip", () => {
   it("rejects snapshots without a well-formed meta", () => {
     const value = snapshot("== Head ==");
     const withoutMeta = { ...value, meta: undefined };
-    expect(invalidDocument(() => restoreWikitextRenderDocument(withoutMeta)).code).toBe(
+    expect(invalidDocument(() => restoreWikitextRenderSnapshot(withoutMeta)).code).toBe(
       "INVALID_DOCUMENT",
     );
     const withoutPolicy = { ...value, meta: { ...(value.meta as object), policy: undefined } };
-    expect(invalidDocument(() => restoreWikitextRenderDocument(withoutPolicy)).message).toContain(
+    expect(invalidDocument(() => restoreWikitextRenderSnapshot(withoutPolicy)).message).toContain(
       "policy",
     );
     const missingTagsField = {
@@ -108,7 +109,7 @@ describe("render snapshot roundtrip", () => {
         },
       },
     };
-    expect(invalidDocument(() => restoreWikitextRenderDocument(missingTagsField)).code).toBe(
+    expect(invalidDocument(() => restoreWikitextRenderSnapshot(missingTagsField)).code).toBe(
       "INVALID_DOCUMENT",
     );
   });
@@ -118,7 +119,7 @@ describe("render snapshot roundtrip", () => {
     const meta = value.meta as Record<string, unknown>;
     expect(
       invalidDocument(() =>
-        restoreWikitextRenderDocument({
+        restoreWikitextRenderSnapshot({
           ...value,
           meta: { ...meta, labels: { ...(meta.labels as object), toc: 1 } },
         }),
@@ -126,19 +127,19 @@ describe("render snapshot roundtrip", () => {
     ).toBe("INVALID_DOCUMENT");
     expect(
       invalidDocument(() =>
-        restoreWikitextRenderDocument({
+        restoreWikitextRenderSnapshot({
           ...value,
           meta: { ...meta, headingIdStrategy: "nope" },
         }),
       ).code,
     ).toBe("INVALID_DOCUMENT");
     expect(
-      invalidDocument(() => restoreWikitextRenderDocument({ ...value, headings: [{ nodeId: 1 }] }))
+      invalidDocument(() => restoreWikitextRenderSnapshot({ ...value, headings: [{ nodeId: 1 }] }))
         .code,
     ).toBe("INVALID_DOCUMENT");
     expect(
       invalidDocument(() =>
-        restoreWikitextRenderDocument({
+        restoreWikitextRenderSnapshot({
           ...value,
           diagnostics: [{ code: "X", stage: "nowhere", severity: "warning", message: "m" }],
         }),
@@ -150,7 +151,7 @@ describe("render snapshot roundtrip", () => {
     const value = snapshot("== Head ==");
     expect(
       invalidDocument(() =>
-        restoreWikitextRenderDocument({
+        restoreWikitextRenderSnapshot({
           ...value,
           renderSchemaVersion: RENDER_SCHEMA_VERSION + 1,
         }),
@@ -200,9 +201,13 @@ describe("prepare HAST budget", () => {
       (item) => item.code === "TABLE_FILLER_BUDGET_EXCEEDED",
     );
     expect(fillerDiagnostics).toHaveLength(45);
-    expect(fillerDiagnostics[0]?.position?.start.line).toBeGreaterThan(0);
+    const fillerLocation = fillerDiagnostics[0]?.location;
+    expect(fillerLocation).toBeDefined();
+    if (fillerLocation) {
+      expect(getSourcePosition(prepared.graph, fillerLocation).start.line).toBeGreaterThan(0);
+    }
     expect(countFillers(prepared.hast)).toBe(0);
-    const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
+    const restored = restoreWikitextRenderSnapshot(serializeWikitextRenderSnapshot(prepared));
     expect(countFillers(restored.hast)).toBe(0);
     expect(restored.hast).toEqual(prepared.hast);
   });

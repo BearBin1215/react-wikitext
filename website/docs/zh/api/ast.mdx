@@ -19,8 +19,8 @@ import {
   getTemplateParameters,
   getFileParameters,
   normalizeSource,
-  serializeWikitextDocument,
-  restoreWikitextDocument,
+  serializeWikitextParsedSnapshot,
+  restoreWikitextParsedSnapshot,
   type KnownWikitextDiagnosticCode,
   type WikitextNodeBase,
 } from "react-wikitext/ast";
@@ -34,15 +34,13 @@ import {
 interface WikitextNodeBase<TType extends string> {
   readonly type: TType;
   readonly id: string;
-  readonly position?: WikitextPosition;
   readonly origin?: WikitextOrigin;
   readonly data?: Readonly<Record<string, unknown>>;
 }
 ```
 
 - `id` 在单个快照内唯一，不保证跨编辑稳定。
-- `position` 的行列从 1 开始，offset 从 0 开始；生成节点会省略该字段。
-- `origin` 指向原始源码语法节点与范围。
+- `origin` 指向所属文本源与 `[start, end)`（可选 `syntaxId`）；需要行列时用 `getSourcePosition`。生成节点会省略该字段。
 - `data` 用于自定义扩展数据。
 - `WikitextNodeBase` 是公开类型；自定义节点可以扩展它，并把键写入 `WikitextNodeMap`，`handlers` 与查询函数会据此推导类型。
 
@@ -111,23 +109,25 @@ interface WikitextSyntaxNode {
 }
 ```
 
-源码语法树是上游 token 的调试视图：语义节点的 `position`、`origin.range`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部始终构建语法树，因此该选项在展开入口只控制是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
+源码语法树是上游 token 的调试视图：语义节点的 `origin`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部通过 `parser.compile` 构建语法，`retainSyntax` 只控制是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
 
 ## 查询
 
 ```ts
-interface SourceDocumentLike {
+interface SourceSnapshotLike {
   readonly source: string;
   readonly ast: WikitextRoot;
+  readonly graph: WikitextSourceGraph;
+  readonly activeSourceId: WikitextSourceId;
 }
 ```
 
 | 函数                                           | 行为                                                                                       |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `flattenNodes(root)`                           | 深度优先返回全部语义节点                                                                   |
-| `findNodeById(document, id)`                   | 按 id 查找节点；找不到时返回 `undefined`                                                   |
-| `findNodeAtOffset(document, offset, options?)` | 返回包含该 offset 的最深节点；范围为 `[start, end)`；`offset === source.length` 返回根节点 |
-| `getSourceText(document, node)`                | 返回节点对应的 LF 源码片段                                                                 |
+| `findNodeById(root, id)`                       | 按 id 查找节点；找不到时返回 `undefined`                                                   |
+| `findNodeAtOffset(snapshot, offset, options?)` | 返回包含该 offset 的最深节点；范围为 `[start, end)`；`offset === source.length` 返回根节点 |
+| `getSourceText(snapshot, node)`                | 返回 `origin` 所属文本源的片段                                                             |
 | `toPlainText(node)`                            | 返回已转换的语义文本，不再做实体解码                                                       |
 | `isNodeType(node, type)`                       | 泛型上下文中的类型收窄                                                                     |
 
@@ -136,6 +136,7 @@ interface SourceDocumentLike {
 - 需要按 id 建索引时用 `flattenNodes` 自行生成 `Map`。
 - 准备阶段会重新分配节点 id；插件在此之前持有的 `flattenNodes` 数组或 id 索引不会自动更新，需要重新生成。
 - 查询转换后的节点时，必须使用渲染快照；不要用渲染快照里的 id 查原始解析快照。
+- 按源码范围反查节点用 `findRenderedNodes`，把节点范围映射到其他文本源用 `mapSourceSpan`（见 [`/expand`](./expand.mdx#来源图与定位)）。
 
 ## 结构化辅助函数
 
@@ -176,16 +177,16 @@ const normalized = normalizeSource(raw, maxSourceLength);
 解析快照：
 
 ```ts
-const payload = serializeWikitextDocument(document);
-const restored = restoreWikitextDocument(payload);
+const payload = serializeWikitextParsedSnapshot(document);
+const restored = restoreWikitextParsedSnapshot(payload);
 ```
 
 渲染快照：
 
 ```ts
 import {
-  serializeWikitextRenderDocument,
-  restoreWikitextRenderDocument,
+  serializeWikitextRenderSnapshot,
+  restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
 
@@ -198,8 +199,8 @@ import {
 
 | 常量                    | 当前值 | 适用       |
 | ----------------------- | ------ | ---------- |
-| `AST_SCHEMA_VERSION`    | `2`    | 语义 AST   |
-| `SYNTAX_SCHEMA_VERSION` | `1`    | 源码语法树 |
-| `RENDER_SCHEMA_VERSION` | `3`    | 渲染快照   |
+| `AST_SCHEMA_VERSION`    | `3`    | 语义 AST   |
+| `SYNTAX_SCHEMA_VERSION` | `2`    | 源码语法树 |
+| `RENDER_SCHEMA_VERSION` | `4`    | 渲染快照   |
 
 版本变化意味着快照结构不兼容；缓存或跨进程传输时应把版本写入缓存键。

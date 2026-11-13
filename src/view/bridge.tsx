@@ -5,6 +5,7 @@ import { hastNodeId } from "../shared/hast";
 import { isExternalHref } from "../shared/url";
 import { WIKITEXT_TAG_NAMES } from "../shared/html-tags";
 import { useWikitextContext, type WikitextViewContextValue } from "./context";
+import { sourceAttributes } from "./sourceAttributes";
 import type { WikitextHtmlComponentProps } from "./types";
 
 type BridgeProps = WikitextHtmlComponentProps;
@@ -71,14 +72,17 @@ function TagBridge({ node, children, ...props }: BridgeProps): ReactElement {
   const context = useWikitextContext();
   const id = hastNodeId(node);
   const semantic = id ? context.semanticIndex.get(id) : undefined;
-  const mapped = mapProps(props, context);
+  const mapped = {
+    ...mapProps(props, context),
+    ...sourceAttributes(context.sourceAttributes, context.snapshot, semantic),
+  };
   const mappedRecord = mapped as unknown as Record<string, unknown>;
   const origin = semantic?.origin;
 
   if (node && semantic) {
     const base = {
       ...mapped,
-      document: context.document,
+      snapshot: context.snapshot,
       node: semantic,
       hastNode: node,
       ...(origin ? { origin } : {}),
@@ -174,7 +178,7 @@ function TagBridge({ node, children, ...props }: BridgeProps): ReactElement {
       {
         ...mapped,
         node,
-        document: context.document,
+        snapshot: context.snapshot,
         ...(semantic ? { semantic } : {}),
         ...(origin ? { origin } : {}),
       } as never,
@@ -189,7 +193,7 @@ function TagBridge({ node, children, ...props }: BridgeProps): ReactElement {
 }
 
 /**
- * 按文档构建桥接表：默认标签、`extraTags` 与调用方提供的组件键都会进入桥接。
+ * 按快照构建桥接表：默认标签、`extraTags` 与调用方提供的组件键都会进入桥接。
  * 每次渲染都重新生成，避免跨视图共享状态。
  */
 export function createBridgeComponents(tags: Iterable<string>): Partial<Components> {
@@ -211,8 +215,8 @@ export function bridgeTagNames(
   for (const tag of extraTags ?? []) {
     names.add(tag);
   }
-  for (const tag of Object.keys(components ?? {})) {
-    names.add(tag);
+  for (const key of Object.keys(components ?? {})) {
+    names.add(key);
   }
   return names;
 }

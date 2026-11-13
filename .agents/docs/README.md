@@ -15,6 +15,7 @@
 | [开发约定](./development.md) | 配置文件无法表达的验收、测试与合规约定 | 贡献者、发布者 |
 | [设计决策](./decisions.md) | 为什么这样设计，哪些方案被否决，有哪些已知风险 | 维护者 |
 | [路线图](./roadmap.md) | 还有哪些未完成能力与稳定限制 | 维护者、使用者 |
+| [实时预览整体改造实施方案](./plans/2026-11-12-realtime-preview-implementation.md) | 已授权改造的目标形态、实施顺序与验收条件；完成后归入规范并删除 | 改造实施者 |
 
 文档站的中英文页面一一对应。改动公共导出时，同步更新两边的 API 页面与 `tests/api/exports.test.ts` 的导出面。
 
@@ -35,6 +36,7 @@
 - 需要在渲染前展开模板或部分解析器函数：读文档站的 [expand](../../website/docs/zh/api/expand.mdx) 页面。
 - 需要查看解析结果或节点详情：读文档站的 [devtools](../../website/docs/zh/api/devtools.mdx) 页面。
 - 查“为什么这样做”：[设计决策](./decisions.md)；查“还不能做什么”：[路线图](./roadmap.md)。
+- 实施实时预览与模板展开整体改造：先读[实施方案](./plans/2026-11-12-realtime-preview-implementation.md)，当前待实施状态由[路线图](./roadmap.md#5-实时预览与模板展开整体改造)登记。
 
 ## 文档约定
 

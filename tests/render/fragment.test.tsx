@@ -6,10 +6,10 @@ import type { WikitextTemplateComponentProps } from "@/view";
 import { parse, prepare } from "../helpers/parse";
 
 function TemplatePreview({ node }: WikitextTemplateComponentProps) {
-  const { document } = useWikitextContext();
+  const { snapshot } = useWikitextContext();
   const [first] = getTemplateParameters(node);
   return (
-    <span data-label={document.meta.labels.templateNotExpanded}>
+    <span data-label={snapshot.meta.labels.templateNotExpanded}>
       <WikitextFragment nodes={first?.node.children ?? []} />
     </span>
   );
@@ -27,7 +27,7 @@ describe("WikitextFragment", () => {
   it("renders parameter nodes inside a custom component", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("{{T|[[A|nested]]}}")}
+        snapshot={prepare("{{T|[[A|nested]]}}")}
         semanticComponents={{ template: TemplatePreview }}
       />,
     );
@@ -55,7 +55,7 @@ describe("WikitextFragment", () => {
     expect(() =>
       renderToStaticMarkup(
         <WikitextView
-          document={prepare("{{T|x}}")}
+          snapshot={prepare("{{T|x}}")}
           semanticComponents={{ template: CrossDocument }}
         />,
       ),
@@ -65,7 +65,7 @@ describe("WikitextFragment", () => {
   it("wraps inline content only when className is provided", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("{{T|x}}")}
+        snapshot={prepare("{{T|x}}")}
         semanticComponents={{ template: WrappedPreview }}
       />,
     );
@@ -75,7 +75,7 @@ describe("WikitextFragment", () => {
   it("wraps block fragments in the fragment container", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("{{T|x}}")}
+        snapshot={prepare("{{T|x}}")}
         semanticComponents={{ template: BlockPreview }}
       />,
     );

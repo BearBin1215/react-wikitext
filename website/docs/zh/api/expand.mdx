@@ -1,186 +1,201 @@
 ---
 title: 展开 /expand
-description: expandWikitext 的选项、模板表、获取回调、结果、预算与错误。
+description: createWikitextCompiler 的选项、模板 provider、编译结果、缓存、预算与错误。
 ---
 
 # 展开 `/expand`
 
 ```ts
-import { expandWikitext, WikitextExpandError } from "react-wikitext/expand";
+import {
+  createWikitextCompiler,
+  createTemplateTableProvider,
+  WikitextExpandError,
+} from "react-wikitext/expand";
 ```
 
-`/expand` 在解析前展开受支持的模板与纯 wikitext 解析器函数。它加载解析器，不加载 React。展开是异步阶段，返回 Promise。
+`/expand` 提供可复用的编译器：模板展开在带来源信息的任务图中执行，缓存归编译器实例管理，输出、诊断与 DOM 定位共用同一份来源图。它不加载解析器与 React，`parser` 由宿主注入。
 
-## 签名
+编译器只执行已支持的纯 wikitext 子集：受支持的解析器函数与模板；未支持函数、Lua 与 modifier 在 `failureMode: "preserve"` 下原样保留，状态为 `partial`。
+
+## 基本用法
 
 ```ts
-function expandWikitext(
-  source: string,
-  options?: WikitextExpandOptions,
-): Promise<WikitextExpandedDocument>;
+const provider = createTemplateTableProvider({
+  key: "offline:demo",
+  revision: "templates-v1",
+  templates: { "Template:Echo": "{{{1}}}" },
+});
+
+const compiler = createWikitextCompiler({ parser, provider });
+
+const compilation = await compiler.compile(
+  { key: "page:demo", revision: "edit-42", text: source },
+  { pageName: "Demo", signal, failureMode: "preserve" },
+);
+const snapshot = prepareWikitext(compilation.snapshot);
 ```
 
-```ts
-type WikitextTemplateTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>;
+`createWikitextCompiler` 返回 `WikitextCompiler`；实例配置固定，更换 parser 或 provider 需要创建新实例。
 
-interface WikitextExpandOptions {
-  parser?: WikitextParser;
+```ts
+interface WikitextCompiler {
+  readonly parser: WikitextParser;
+  readonly providerKey: string;
+  compile(input: WikitextInput, options?: WikitextCompileCallOptions): Promise<WikitextCompilation>;
+  invalidate(): void;
+  clearCache(): void;
+  getStats(): WikitextCompilerStats;
+  dispose(): Promise<void>;
+}
+```
+
+## 编译选项
+
+```ts
+interface WikitextCompilerOptions {
+  parser: WikitextParser;
+  provider: WikitextTemplateProvider;
+  cache?: { maxEntries?: number; maxBytes?: number };
+  fetch?: { concurrency?: number; batchSize?: number };
+  limits?: {
+    maxSources?: number;
+    maxSegments?: number;
+    maxInvocations?: number;
+    maxDiagnostics?: number;
+    maxTemplateBytes?: number;
+  };
+}
+
+interface WikitextCompileCallOptions {
   pageName?: string;
+  signal?: AbortSignal;
+  failureMode?: "preserve" | "throw";
+  retainSyntax?: boolean;
   parseOptions?: Omit<WikitextParseOptions, "pageName">;
-  templates?: WikitextTemplateTable;
-  resolveTemplate?: WikitextTemplateResolver;
-  maxDepth?: number;
-  maxInvocations?: number;
-  maxExpandedLength?: number;
-  strict?: boolean;
-  signal?: AbortSignal;
+  budget?: WikitextCompileBudget;
+  profile?: WikitextStageSink;
 }
 ```
 
-| 选项                | 默认值                            | 说明                                          |
-| ------------------- | --------------------------------- | --------------------------------------------- |
-| `parser`            | 默认解析器                        | 可注入自定义解析器                            |
-| `pageName`          | —                                 | 原始页面名                                    |
-| `parseOptions`      | —                                 | 原始与最终解析共用，`pageName` 由顶层字段提供 |
-| `templates`         | 空表                              | 模板源码表，按请求标题精确匹配，表中条目优先  |
-| `resolveTemplate`   | —                                 | 模板表未命中时获取源码的回调，支持同步或异步  |
-| `maxDepth`          | 40                                | 嵌套深度                                      |
-| `maxInvocations`    | 1,000                             | 调用次数                                      |
-| `maxExpandedLength` | 与原始页面长度上限相同（100,000） | 展开后源码长度                                |
-| `strict`            | `false`                           | 可恢复失败是否抛错                            |
-| `signal`            | —                                 | 取消信号                                      |
+| 选项                              | 默认值                       | 说明                                                   |
+| --------------------------------- | ---------------------------- | ------------------------------------------------------ |
+| `failureMode`                     | `preserve`                   | 已定义的可恢复失败保留原文并记录诊断；`throw` 直接抛错 |
+| `budget.maxDepth`                 | `40`                         | 求值调用栈深度上限，正整数                             |
+| `budget.maxInvocations`           | `1000`                       | 实际进入求值的调用次数上限，非负安全整数               |
+| `budget.maxExpandedLength`        | 解析预算的 `maxSourceLength` | 展开后源码长度上限                                     |
+| `budget.maxTemplates`             | `5000`                       | 单次编译读取的模板数量上限                             |
+| `profile`                         | 无                           | 阶段计时接收器 `WikitextStageSink`；省略时不计量        |
+| `cache.maxEntries` / `maxBytes`   | `500` / `16 MiB`             | 条目与字节双重 LRU                                     |
+| `fetch.concurrency` / `batchSize` | `4` / `50`                   | 并发上限与 `getMany` 批大小                            |
 
-省略 `options` 或传 `undefined` 时使用空选项；显式传入 `null` 等非法选项抛 `INVALID_EXPAND_OPTIONS`。不提供任何模板来源时，模板调用按缺失处理，纯函数仍可展开。
+原始解析失败、硬资源上限、取消与不兼容 parser 始终失败，不受 `failureMode` 影响。
 
-## 模板表与查找顺序
+## 模板 provider
 
 ```ts
-interface WikitextTemplateRequest {
-  title: string;
-  pageName?: string;
-  callerTitle?: string;
-  invocation: WikitextRange;
-  signal?: AbortSignal;
+interface WikitextTemplateProvider {
+  readonly key: string;
+  open(context: WikitextProviderContext): WikitextTemplateSnapshot | Promise<WikitextTemplateSnapshot>;
 }
 
-type WikitextTemplateResolver = (
-  request: WikitextTemplateRequest,
-) => string | null | undefined | Promise<string | null | undefined>;
+interface WikitextTemplateSnapshot {
+  readonly key: string;
+  readonly revision: string;
+  get(title: string, request: WikitextTemplateRequest):
+    | WikitextTemplateSource
+    | null
+    | undefined
+    | Promise<WikitextTemplateSource | null | undefined>;
+  getMany?(titles: readonly string[], requests: readonly WikitextTemplateRequest[]):
+    | ReadonlyMap<string, WikitextTemplateSource | null>
+    | Readonly<Record<string, WikitextTemplateSource | null>>
+    | Promise</* 同上 */>;
+  release?(): void | Promise<void>;
+}
 ```
 
-- 键是 parser 规范化后的页面标题；查找按请求标题精确匹配，不做标题转换。默认配置下 `{{Box}}` 请求 `Template:Box`；其他命名空间的嵌入或自定义 parser 配置使用实际请求的完整标题，不要求所有键都以 `Template:` 开头。
-- 值为字符串，空字符串是合法模板。
-- 每次调用都会为本次展开复制一份模板表。调用开始后修改原集合不影响本次结果，下一次展开读取修改后的集合；继承属性不会进入副本。
-- 副本中存在 `request.title` 条目时直接返回对应源码，包括 `""`，不调用回调；副本中没有时才调用 `resolveTemplate`，未提供回调则按缺失处理。
-- 模板表中的源码解析失败时按现有失败路径处理（`TEMPLATE_PARSE_FAILED`），不再尝试远程回退；回退只用于表中缺失的标题。
-- 以下情况都会在解析任何源码前以 `INVALID_EXPAND_OPTIONS` 拒绝：模板表不是普通对象或 `Map`（例如数组、字符串）、键或值不是字符串、显式提供的 `resolveTemplate` 不是函数。省略这些字段或设为 `undefined` 均合法。
+- 一次编译固定使用同一个快照；编辑期间模板更新不会把两个版本混入一个结果。
+- 同一快照对同一标题必须返回稳定内容；内容变化必须更换 `revision`。
+- `null` 表示明确不存在；`undefined` 或类型不符按获取失败处理。
+- `createTemplateTableProvider` 在构造时校验并复制一次，后续编译复用；更新表要构造新版本。
+- 远程 provider 负责鉴权、重定向、站点数据、限流与 I/O；库不猜测站点 URL。
+- `release` 在成功、失败与取消后各调用一次；`dispose` 不销毁宿主提供的 provider。
 
-## 获取回调
-
-- `null` / `undefined` 表示模板不存在；空字符串是合法模板。
-- 回调抛错或返回非字符串时会记录 `TEMPLATE_RESOLVE_FAILED`。
-- 同一标题在一次展开中只获取一次源码，成功、缺失与失败都会缓存；缺失与失败的诊断按调用点记录。同一 `title` 必须返回稳定源码。
-- `callerTitle` 只作为上下文，不参与缓存键。
-- `invocation` 指向 `original.source` 中的顶层调用范围；嵌套请求复用所属顶层范围。
-- 远程获取由回调完成；库不发起网络请求。把 `request.signal` 传给 `fetch`，取消展开时请求也会中断。
-
-## 结果
+## 编译结果
 
 ```ts
-interface WikitextExpandedDocument {
-  original: WikitextDocument;
-  document: WikitextDocument;
-  expansion: WikitextExpansionInfo;
-}
+type WikitextCompilationStatus = "complete" | "partial" | "fallback";
 
-interface WikitextExpansionInfo {
-  status: "complete" | "partial" | "fallback";
-  records: readonly WikitextExpansionRecord[];
-  diagnostics: readonly WikitextExpansionDiagnostic[];
-}
-
-interface WikitextExpansionRecord {
-  kind: "template" | "parserFunction" | "argument";
-  name: string;
-  originalRange: WikitextRange;
-  expandedRange: WikitextRange;
-  status: "expanded" | "preserved";
+interface WikitextCompilation {
+  readonly schemaVersion: 1;
+  readonly status: WikitextCompilationStatus;
+  readonly inputSourceId: string;
+  readonly outputSourceId: string;
+  readonly attemptedSourceId?: string;
+  readonly snapshot: WikitextParsedSnapshot;
+  readonly dependencies: readonly WikitextCompilationDependency[];
+  readonly stats: WikitextCompilationStats;
 }
 ```
 
-- `original` 是原始源码的解析快照。
-- `document` 是展开后源码的解析快照，可直接交给 `prepareWikitext`。
-- `status`：
-  - `complete`：全部调用已展开。
-  - `partial`：存在保留的调用或未解析依赖。
-  - `fallback`：最终源码解析失败，返回原始快照。
-- `expansion.diagnostics` 的坐标基于 `original.source`；`document.diagnostics` 合并最终解析诊断与换算后的展开诊断。
+- `complete`：受支持且实际求值的调用全部完成。
+- `partial`：有保留调用、未解决依赖或受支持函数产生的可见错误结果。
+- `fallback`：最终语义解析失败，活动快照使用原始 LF 源码；`attemptedSourceId` 指向被放弃的展开源，尝试展开的输出范围不会被改写。
 
-## 展开内容
+诊断与来源图只保存在 `snapshot`，外层只描述状态、源码身份、依赖与统计。
 
-支持模板嵌入与参数替换、include 标签、`#if`、`#ifeq`、`#switch`、`#iferror`、`{{!}}`、`{{=}}` 与隐式换行。
+## 来源图与定位
 
-默认保留并产生诊断的调用：
+`snapshot.graph` 登记输入原文、LF 文本、模板原文、有效正文与展开结果，以及片段关系与调用记录。
 
-- `#invoke` 与 Lua。
-- `subst` 等嵌入修饰符。
-- `#ifexist`、`#time` 等依赖站点状态或外部运行环境的函数。
+```ts
+import {
+  mapSourceSpan,
+  locateRenderedNode,
+  findRenderedNodes,
+  getSourcePosition,
+} from "react-wikitext/ast";
 
-细节见[模板展开指南](../guide/templates.mdx)。
+const located = locateRenderedNode(snapshot, nodeId); // 默认投影到页面原文
+const nodes = findRenderedNodes(snapshot, {
+  sourceId: snapshot.activeSourceId,
+  start: 0,
+  end: 10,
+});
+const position = getSourcePosition(snapshot.graph, span);
+```
 
-## 预算与失败
+- `WikitextMappingMatch.precision` 为 `exact` 或 `enclosing-invocation`；多阶段组合不会提升精度。
+- 重复模板出现位置全部返回，不任选第一个；达到上限时 `truncated` 为 `true`。
+- 被删除片段、生成字符与函数转换结果不能冒充精确映射。
+- 行列坐标由所属文本源按需计算，不与 span 分别存储。
 
-- 单次调用超长：保留调用并记录 `LENGTH_BUDGET_EXCEEDED`。
-- 连保留源码都超过 `maxExpandedLength`：抛 `EXPANSION_TOO_LARGE`。
-- `strict: true` 下预算超限：抛 `EXPANSION_BUDGET_EXCEEDED`。
-- 默认模式下最终解析失败：退回原始有效快照，`status: "fallback"`。
-- 取消时，Promise 以 `WikitextExpandError` 拒绝，错误码为 `ABORTED`，原始原因保存在 `cause` 中。
+## 缓存与调度
 
-`parseOptions.maxSourceLength`、模板源码长度与 `maxExpandedLength` 分别生效；最终解析使用实际生效的 `maxExpandedLength`。
+| 缓存         | 键包含                                                | 失效                                                     |
+| ------------ | ----------------------------------------------------- | -------------------------------------------------------- |
+| 模板获取结果 | provider 键、快照版本、规范化标题                     | 版本变化失效；缺失在同一版本内复用；瞬态错误不跨编译缓存 |
+| 模板语法程序 | parser 身份、预算、页面上下文、归一化内容、预处理规则 | 容量受控，按 LRU 淘汰                                    |
+| 页面语法编译 | parser 身份、输入内容、预算                           | 静态或未变文本复用                                       |
+
+求值按确定顺序进行：纯计算先推进，需要未编译模板时记录需求并推迟本轮；调度器按 provider 快照去重、批量获取后按固定任务地址提交，再继续下一轮。因此输出、调用状态与诊断不依赖网络返回顺序，`concurrency: 1` 与更大并发结果相同。
+
+并发编译共享同一 provider 快照的未完成获取任务；取消某次编译只移除该订阅者，全部订阅者取消后才中断底层请求。
+
+## 资源上限
+
+来源数量、片段数量、调用记录、诊断数量、模板源码总量与展开文本长度都有独立上限。超过硬上限且不能生成完整有效快照时整次编译失败，不截断文本或伪造来源。
 
 ## 错误
 
 ```ts
-class WikitextExpandError extends WikitextError {
-  readonly templateTitle?: string;
-  readonly range?: WikitextRange;
-  constructor(
-    code: WikitextExpandErrorCode,
-    message: string,
-    options?: { cause?: unknown; templateTitle?: string; range?: WikitextRange },
-  );
-}
+import { WikitextExpandError } from "react-wikitext/expand";
 ```
 
-常见错误码：
+`WikitextExpandError.code` 取值包括 `INVALID_EXPAND_OPTIONS`、`INVALID_PROVIDER`、`INCOMPATIBLE_PARSER`、`TEMPLATE_NOT_FOUND`、`TEMPLATE_RESOLVE_FAILED`、`TEMPLATE_PARSE_FAILED`、`TEMPLATE_LOOP`、`UNSUPPORTED_CALL`、`UNRESOLVED_DEPENDENCY`、`EXPANSION_BUDGET_EXCEEDED`、`EXPANSION_TOO_LARGE`、`FINAL_PARSE_FAILED`、`SOURCE_GRAPH_TOO_LARGE`、`ABORTED`、`DISPOSED`。
 
-| 错误码                      | 触发条件                       |
-| --------------------------- | ------------------------------ |
-| `INVALID_EXPAND_OPTIONS`    | 选项不合法                     |
-| `INCOMPATIBLE_PARSER`       | 注入的解析器不满足展开要求     |
-| `TEMPLATE_NOT_FOUND`        | strict 模式下模板缺失          |
-| `TEMPLATE_RESOLVE_FAILED`   | strict 模式下获取回调失败      |
-| `TEMPLATE_PARSE_FAILED`     | strict 模式下模板源码解析失败  |
-| `TEMPLATE_LOOP`             | strict 模式下检测到循环        |
-| `UNSUPPORTED_CALL`          | strict 模式下遇到不支持的调用  |
-| `UNRESOLVED_DEPENDENCY`     | strict 模式下依赖未解析        |
-| `EXPANSION_BUDGET_EXCEEDED` | strict 模式下预算超限          |
-| `EXPANSION_TOO_LARGE`       | 展开结果或保留源码超过长度上限 |
-| `FINAL_PARSE_FAILED`        | strict 模式下最终解析失败      |
-| `ABORTED`                   | 通过 `signal` 取消             |
+错误对象与快照诊断共用 `WikitextSourceSpan` 位置模型；`location` 指向真实失败所在的文本源。
 
-## 与视图组合
+## 与实时预览
 
-```tsx
-import { expandWikitext } from "react-wikitext/expand";
-import { prepareWikitext } from "react-wikitext/hast";
-import { WikitextView } from "react-wikitext/view";
-
-const expanded = await expandWikitext(source, {
-  templates: { "Template:Note": "说明" },
-});
-const prepared = prepareWikitext(expanded.document);
-const view = <WikitextView document={prepared} />;
-```
-
-展开后的文档已经是解析结果，不必再次解析。未展开的调用仍按模板、函数或参数占位渲染。
+`/expand` 只提供编译能力。实时调度使用 [`/preview`](./preview.mdx) 的 `useWikitextPreview`，Worker 执行使用 [`/worker`](./worker.mdx)。

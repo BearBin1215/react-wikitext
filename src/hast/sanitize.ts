@@ -513,14 +513,14 @@ function sanitizeHastStyles(root: Root, diagnostics: WikitextDiagnostic[] | unde
           delete properties!.style;
         }
         if (result.dropped.length > 0) {
-          const origin = (node.data as { wikitext?: { origin?: unknown } } | undefined)?.wikitext
+          const location = (node.data as { wikitext?: { origin?: unknown } } | undefined)?.wikitext
             ?.origin;
           diagnostics?.push({
             code: "STYLE_DECLARATION_DROPPED",
             stage: "sanitize",
             severity: "warning",
             message: `Dropped unsupported inline style declaration: ${result.dropped.join(", ")}.`,
-            ...(origin ? { origin: origin as WikitextDiagnostic["origin"] } : {}),
+            ...(location ? { location: location as WikitextDiagnostic["location"] } : {}),
           });
         }
       }

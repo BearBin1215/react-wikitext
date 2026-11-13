@@ -50,6 +50,6 @@ describe("getFileParameters", () => {
     expect(parameters.caption).toBeUndefined();
     expect(parameters.captionNodes).toEqual([]);
     expect(parameters.border).toBe(false);
-    expect(findNodeById(document, file.id)).toBe(file);
+    expect(findNodeById(document.ast, file.id)).toBe(file);
   });
 });

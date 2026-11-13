@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getSourcePosition } from "@/ast";
 import { prepareWikitext } from "@/hast";
 import { configWithHtmlTags } from "../helpers/configs";
 import { parse } from "../helpers/parse";
@@ -39,9 +40,14 @@ describe("degradation diagnostics", () => {
   });
 
   it("attaches source positions to diagnostics", () => {
-    const diagnostics = prepareWikitext(parse("<timeline>y</timeline>")).diagnostics;
+    const prepared = prepareWikitext(parse("<timeline>y</timeline>"));
+    const diagnostics = prepared.diagnostics;
     const entry = diagnostics.find((diagnostic) => diagnostic.code === "EXTENSION_UNSUPPORTED");
-    expect(entry?.origin?.range).toEqual([0, 22]);
-    expect(entry?.position?.start.offset).toBe(0);
+    expect(entry?.location).toMatchObject({ start: 0, end: 22 });
+    if (!entry?.location) {
+      throw new Error("expected the diagnostic to carry a source location");
+    }
+    // 行列坐标由所属文本源按需计算，不再与 span 分别存储。
+    expect(getSourcePosition(prepared.graph, entry.location).start.offset).toBe(0);
   });
 });

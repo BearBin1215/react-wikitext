@@ -1,0 +1,68 @@
+---
+title: Worker /worker
+description: Worker handler, message protocol, cancellation and error payload.
+---
+
+# Worker `/worker`
+
+```ts
+import { attachWikitextWorker, createWikitextWorkerHandler } from "react-wikitext/worker";
+```
+
+`/worker` provides a worker handler: it reuses a host-provided compiler inside a Worker, runs compile and prepare, and returns a plain-data render snapshot. The host owns Worker creation, the compiler, URLs, bundling and CSP. It loads only preparation and serialization tools, not a parser or React.
+
+## Wiring
+
+```ts
+// worker.ts
+import { createWikitextCompiler, createTemplateTableProvider } from "react-wikitext/expand";
+import { attachWikitextWorker } from "react-wikitext/worker";
+
+const compiler = createWikitextCompiler({
+  parser,
+  provider: createTemplateTableProvider({ key: "site", revision, templates }),
+});
+
+attachWikitextWorker(self, { compiler, prepare: { resolveLink, resolveImage } });
+```
+
+```ts
+// main.ts
+const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+const transport = createWikitextWorkerExecutor(worker);
+```
+
+Or call the handler directly:
+
+```ts
+const handle = createWikitextWorkerHandler({ compiler });
+const response = await handle({
+  type: "compile",
+  id: "1",
+  input: { key: "page", revision: "1", text: source },
+});
+```
+
+## Protocol
+
+```ts
+type WikitextWorkerRequest =
+  | { type: "compile"; id: string; input: WikitextInput; options?: WikitextPreviewCompileOptions }
+  | { type: "cancel"; id: string }
+  | { type: "dispose" };
+
+type WikitextWorkerResponse =
+  | { type: "result"; id: string; snapshot: SerializedWikitextRenderSnapshot }
+  | { type: "error"; id: string; error: WikitextWorkerErrorPayload }
+  | { type: "cancelled"; id: string };
+```
+
+- Only serializable data crosses the boundary; functions, compilers, providers and `AbortSignal` never enter `postMessage`.
+- The protocol does not forward provider requests: instantiate a remote provider inside the Worker and handle auth, batching and cancellation in `provider.getMany`.
+- Error payloads carry `code`, `name`, `message` and an optional `location`, matching main-thread errors.
+
+## Cancellation
+
+Cancellation is cooperative: `cancel` stops that request's queueing and waiting at the next checkpoint; it never interrupts a running synchronous parser.
+
+To hard-interrupt synchronous work, call `worker.terminate()` and rebuild the execution instance; its caches are discarded. The library does not interrupt a synchronous parser for you.

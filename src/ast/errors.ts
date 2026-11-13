@@ -1,4 +1,5 @@
-import type { WikitextRange, WikitextStage } from "./model";
+import type { WikitextStage } from "./model";
+import type { WikitextSourceSpan } from "./sourceGraph/types";
 
 /** 库内错误码，按处理阶段分组。 */
 export type WikitextErrorCode =
@@ -21,7 +22,11 @@ export type WikitextErrorCode =
   | "EXPANSION_BUDGET_EXCEEDED"
   | "EXPANSION_TOO_LARGE"
   | "FINAL_PARSE_FAILED"
-  | "ABORTED";
+  | "SOURCE_GRAPH_TOO_LARGE"
+  | "INVALID_PROVIDER"
+  | "INVALID_PREVIEW_OPTIONS"
+  | "ABORTED"
+  | "DISPOSED";
 
 /** 展开阶段错误的失败类别。 */
 export type WikitextExpandErrorCode = Extract<
@@ -37,23 +42,35 @@ export type WikitextExpandErrorCode = Extract<
   | "EXPANSION_BUDGET_EXCEEDED"
   | "EXPANSION_TOO_LARGE"
   | "FINAL_PARSE_FAILED"
+  | "SOURCE_GRAPH_TOO_LARGE"
+  | "INVALID_PROVIDER"
   | "ABORTED"
+  | "DISPOSED"
 >;
 
 /** 所有库错误的基类。 */
 export class WikitextError extends Error {
   /** 失败类别，调用方可以据此分支处理。 */
   readonly code: WikitextErrorCode;
+  /** 失败位置；错误对象与快照诊断共用同一 span 模型。 */
+  readonly location?: WikitextSourceSpan;
 
   /**
    * @param code 失败类别。
    * @param message 面向开发者的错误说明。
-   * @param options 标准错误选项，可通过 `cause` 保留底层异常。
+   * @param options 标准错误选项，可通过 `cause` 保留底层异常与失败位置。
    */
-  constructor(code: WikitextErrorCode, message: string, options?: { cause?: unknown }) {
-    super(message, options);
+  constructor(
+    code: WikitextErrorCode,
+    message: string,
+    options: { cause?: unknown; location?: WikitextSourceSpan } = {},
+  ) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "WikitextError";
     this.code = code;
+    if (options.location !== undefined) {
+      this.location = options.location;
+    }
   }
 }
 
@@ -74,9 +91,9 @@ export class WikitextParseError extends WikitextError {
       | "PARSER_UNAVAILABLE"
     >,
     message: string,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; location?: WikitextSourceSpan },
   ) {
-    super(code, message, options);
+    super(code, message, options ?? {});
     this.name = "WikitextParseError";
   }
 }
@@ -85,13 +102,11 @@ export class WikitextParseError extends WikitextError {
 export class WikitextExpandError extends WikitextError {
   /** 失败涉及的模板标题；无法确定时省略。 */
   readonly templateTitle?: string;
-  /** 失败调用在原始源码中的范围；无法定位时省略。 */
-  readonly range?: WikitextRange;
 
   /**
    * @param code 展开阶段的失败类别。
    * @param message 面向开发者的错误说明。
-   * @param options 失败涉及的模板、原始调用范围和底层异常。
+   * @param options 失败涉及的模板、原始调用位置和底层异常。
    */
   constructor(
     code: WikitextExpandErrorCode,
@@ -99,16 +114,16 @@ export class WikitextExpandError extends WikitextError {
     options: {
       cause?: unknown;
       templateTitle?: string;
-      range?: WikitextRange;
+      location?: WikitextSourceSpan;
     } = {},
   ) {
-    super(code, message, { cause: options.cause });
+    super(code, message, {
+      ...(options.cause === undefined ? {} : { cause: options.cause }),
+      ...(options.location === undefined ? {} : { location: options.location }),
+    });
     this.name = "WikitextExpandError";
     if (options.templateTitle !== undefined) {
       this.templateTitle = options.templateTitle;
-    }
-    if (options.range !== undefined) {
-      this.range = options.range;
     }
   }
 }
@@ -129,9 +144,12 @@ export class WikitextPrepareError extends WikitextError {
       "PREPARE_FAILED" | "INVALID_DOCUMENT" | "ASYNC_PLUGIN_IN_SYNC_PATH"
     >,
     message: string,
-    options: { stage: WikitextStage; cause?: unknown },
+    options: { stage: WikitextStage; cause?: unknown; location?: WikitextSourceSpan },
   ) {
-    super(code, message, { cause: options.cause });
+    super(code, message, {
+      ...(options.cause === undefined ? {} : { cause: options.cause }),
+      ...(options.location === undefined ? {} : { location: options.location }),
+    });
     this.name = "WikitextPrepareError";
     this.stage = options.stage;
   }

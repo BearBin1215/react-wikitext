@@ -7,34 +7,38 @@
 import type { Root as HastRoot } from "hast";
 import type { WikitextLabels } from "./labels";
 import type { ResolvedParseLimits } from "./limits";
+import type {
+  WikitextSourceGraph,
+  WikitextSourceId,
+  WikitextSourcePosition,
+  WikitextSourceSpan,
+} from "./sourceGraph/types";
 
 /** 语义 AST 的版本号；恢复快照时用来拒绝不兼容的数据。 */
-export const AST_SCHEMA_VERSION = 2 as const;
+export const AST_SCHEMA_VERSION = 3 as const;
 /** 源码语法树的版本号。 */
-export const SYNTAX_SCHEMA_VERSION = 1 as const;
+export const SYNTAX_SCHEMA_VERSION = 2 as const;
 /** 渲染快照的版本号，覆盖 HAST 与渲染元数据。 */
-export const RENDER_SCHEMA_VERSION = 3 as const;
+export const RENDER_SCHEMA_VERSION = 4 as const;
+/** 编译封装的版本号，覆盖依赖清单与统计字段。 */
+export const COMPILATION_SCHEMA_VERSION = 1 as const;
 
-/** 源码区间，按 `[start, end)` 的 UTF-16 offset 表示。 */
+/**
+ * parser 内部的偏移区间，按 `[start, end)` 的 UTF-16 offset 表示。
+ *
+ * 它只出现在源码语法树等 parser 内部结构；diagnostic、origin、resolver 请求、
+ * 组件属性与公共查询统一使用 {@link WikitextSourceSpan}。
+ */
 export type WikitextRange = readonly [start: number, end: number];
 
 /** 源码中的单个坐标；行列从 1 开始，offset 从 0 开始。 */
-export interface WikitextPoint {
-  readonly line: number;
-  readonly column: number;
-  readonly offset: number;
-}
-
-/** 一段源码的起止坐标。 */
-export interface WikitextPosition {
-  readonly start: WikitextPoint;
-  readonly end: WikitextPoint;
-}
+export type { WikitextPoint } from "./sourceGraph/types";
+/** 一段源码的起止坐标；由所属文本源按需计算。 */
+export type WikitextPosition = WikitextSourcePosition;
 
 /** 语义节点与源码语法节点的对应关系；生成的节点可以没有 origin。 */
-export interface WikitextOrigin {
+export interface WikitextOrigin extends WikitextSourceSpan {
   readonly syntaxId?: string;
-  readonly range: WikitextRange;
 }
 
 /**
@@ -87,10 +91,20 @@ export type KnownWikitextDiagnosticCode =
   | "INVOCATION_BUDGET_EXCEEDED"
   | "LENGTH_BUDGET_EXCEEDED"
   | "EXPRESSION_ERROR"
-  | "FINAL_PARSE_FALLBACK";
+  | "FINAL_PARSE_FALLBACK"
+  | "UNCLOSED_CALL"
+  | "SOURCE_GRAPH_BUDGET_EXCEEDED"
+  | "TEMPLATE_BUDGET_EXCEEDED";
 
 /** 诊断码；已知词表之外允许插件自定义 rule id。 */
 export type WikitextDiagnosticCode = KnownWikitextDiagnosticCode | (string & {});
+
+/** 诊断的附带位置；主位置仍是 `location`，这里只补充相关来源。 */
+export interface WikitextRelatedLocation {
+  readonly location: WikitextSourceSpan;
+  readonly message: string;
+  readonly stage?: WikitextStage;
+}
 
 /** 管线产生的诊断信息，用于定位解析、转换或清洗问题。 */
 export interface WikitextDiagnostic {
@@ -98,8 +112,16 @@ export interface WikitextDiagnostic {
   readonly stage: WikitextStage;
   readonly severity: WikitextDiagnosticSeverity;
   readonly message: string;
-  readonly position?: WikitextPosition;
-  readonly origin?: WikitextOrigin;
+  /** 主位置：真实失败位置所在的文本源与范围。 */
+  readonly location?: WikitextSourceSpan;
+  /** 相关位置；页面调用位置、模板原文等补充信息。 */
+  readonly related?: readonly WikitextRelatedLocation[];
+  /** 失败涉及的调用；与来源图中的调用记录对应。 */
+  readonly invocationId?: string;
+  /** 失败涉及的模板标题；展开阶段诊断提供。 */
+  readonly templateTitle?: string;
+  /** 同一诊断码在该次编译中出现的次数；只有全局摘要诊断提供。 */
+  readonly count?: number;
   /** 产生诊断的规则或插件标识。 */
   readonly rule?: string;
 }
@@ -156,9 +178,11 @@ export interface WikitextNodeBase<TType extends string = string> {
   readonly type: TType;
   /** 在一份快照内唯一；不承诺跨编辑稳定。 */
   readonly id: string;
-  /** 归一化源码中的位置；生成节点不伪造位置。 */
-  readonly position?: WikitextPosition;
-  /** 来源语法节点或区间。 */
+  /**
+   * 来源文本源与范围；生成节点不伪造来源。
+   *
+   * 行列坐标由 `getSourcePosition` 从所属文本源计算，不在节点上另存一份。
+   */
   readonly origin?: WikitextOrigin;
   readonly data?: Readonly<Record<string, unknown>>;
 }
@@ -420,8 +444,23 @@ export function isWikitextParentNode(node: WikitextNode): node is WikitextParent
   return Array.isArray((node as { children?: unknown }).children);
 }
 
+/** 快照公共字段：判别类型、快照身份、活动源码与来源图。 */
+export interface WikitextSnapshotBase {
+  /** 快照判别类型；恢复与查询据此区分解析快照和渲染快照。 */
+  readonly kind: "parsed" | "render";
+  /** 快照身份；实时调度不得把旧快照的 node id 直接用于新快照。 */
+  readonly id: string;
+  /** 活动文本源；`source` 与之一致。 */
+  readonly activeSourceId: WikitextSourceId;
+  /** 来源图；诊断与 AST origin 都引用这里的范围。 */
+  readonly graph: WikitextSourceGraph;
+  /** 活动源码文本。 */
+  readonly source: string;
+  readonly diagnostics: readonly WikitextDiagnostic[];
+}
+
 /** 解析快照的元数据。 */
-export interface WikitextDocumentMeta {
+export interface WikitextParsedMeta {
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
   readonly syntaxSchemaVersion?: typeof SYNTAX_SCHEMA_VERSION;
   readonly parser: string;
@@ -438,14 +477,12 @@ export interface WikitextDocumentMeta {
   readonly retainSyntax: boolean;
 }
 
-/** 一次解析的结果。 */
-export interface WikitextDocument {
-  /** 归一化后的源码（LF）；所有坐标都基于它。 */
-  readonly source: string;
+/** 一次解析的结果；静态解析与展开路径共用同一种快照。 */
+export interface WikitextParsedSnapshot extends WikitextSnapshotBase {
+  readonly kind: "parsed";
   readonly ast: WikitextRoot;
   readonly syntax?: WikitextSyntaxRoot;
-  readonly meta: WikitextDocumentMeta;
-  readonly diagnostics: readonly WikitextDiagnostic[];
+  readonly meta: WikitextParsedMeta;
 }
 
 /** 标题在文档中的位置与锚点信息。 */
@@ -478,7 +515,7 @@ export interface WikitextResolvedPolicy {
 
 /** 渲染快照的元数据。 */
 export interface WikitextRenderMeta extends Omit<
-  WikitextDocumentMeta,
+  WikitextParsedMeta,
   "syntaxSchemaVersion" | "retainSyntax"
 > {
   readonly renderSchemaVersion: typeof RENDER_SCHEMA_VERSION;
@@ -489,14 +526,67 @@ export interface WikitextRenderMeta extends Omit<
   readonly authorizedImages: readonly string[];
 }
 
-/** 准备阶段的结果，可以直接交给视图渲染。 */
-export interface WikitextRenderDocument {
-  /** 原始解析快照的源码。 */
-  readonly source: string;
+/** 准备阶段的结果，可以直接交给视图渲染；继承解析快照的来源图。 */
+export interface WikitextRenderSnapshot extends WikitextSnapshotBase {
+  readonly kind: "render";
   /** 插件处理后的语义树。 */
   readonly ast: WikitextRoot;
   readonly hast: HastRoot;
   readonly headings: readonly WikitextHeadingInfo[];
   readonly meta: WikitextRenderMeta;
-  readonly diagnostics: readonly WikitextDiagnostic[];
+}
+
+/** 整次编译的完成状态。 */
+export type WikitextCompilationStatus = "complete" | "partial" | "fallback";
+
+/** 本次编译实际读取的模板依赖；不收录未选中分支。 */
+export interface WikitextCompilationDependency {
+  /** 规范化后的模板标题。 */
+  readonly title: string;
+  /** 内容版本；命中缓存时保留原版本。 */
+  readonly revision: string;
+  /** 是否取到了模板。 */
+  readonly found: boolean;
+  /** 是否由缓存命中。 */
+  readonly cached: boolean;
+}
+
+/** 一次编译的可观测统计；不包含每次编辑的历史记录。 */
+export interface WikitextCompilationStats {
+  /** 实际发出的 provider 请求数（按标题去重后）。 */
+  readonly providerRequests: number;
+  /** 需求批次数量。 */
+  readonly batches: number;
+  /** 模板语法程序的缓存命中与未命中。 */
+  readonly programCacheHits: number;
+  readonly programCacheMisses: number;
+  /** 实际编译模板语法程序的次数。 */
+  readonly programCompilations: number;
+  /** 参与求值的调用数量。 */
+  readonly invocationCount: number;
+  /** 来源图片段数量。 */
+  readonly segmentCount: number;
+  /** 来源图文本源数量。 */
+  readonly sourceCount: number;
+  /** 端到端耗时（毫秒）。 */
+  readonly durationMs: number;
+}
+
+/**
+ * 编译结果。
+ *
+ * 诊断与来源图只保存在 `snapshot`；外层只描述状态、源码身份、依赖与统计。
+ */
+export interface WikitextCompilation {
+  readonly schemaVersion: typeof COMPILATION_SCHEMA_VERSION;
+  readonly status: WikitextCompilationStatus;
+  /** 页面原文源身份。 */
+  readonly inputSourceId: WikitextSourceId;
+  /** 实际输出对应的文本源；回退时与 `inputSourceId` 的归一化源一致。 */
+  readonly outputSourceId: WikitextSourceId;
+  /** 尝试展开但失败时的输出源身份；失败诊断指向它。 */
+  readonly attemptedSourceId?: WikitextSourceId;
+  readonly snapshot: WikitextParsedSnapshot;
+  readonly dependencies: readonly WikitextCompilationDependency[];
+  readonly stats: WikitextCompilationStats;
 }

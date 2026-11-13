@@ -9,4 +9,4 @@ const root = globalThis.document.getElementById("root");
 if (!root) {
   throw new Error("missing root");
 }
-createRoot(root).render(createElement(WikitextView, { document: snapshot, idPrefix: "" }));
+createRoot(root).render(createElement(WikitextView, { snapshot, idPrefix: "" }));

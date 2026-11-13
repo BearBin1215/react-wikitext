@@ -4,8 +4,8 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import {
   prepareWikitext,
-  restoreWikitextRenderDocument,
-  serializeWikitextRenderDocument,
+  restoreWikitextRenderSnapshot,
+  serializeWikitextRenderSnapshot,
 } from "@/hast";
 import { WikitextView } from "@/view";
 import { parse, prepare, renderView } from "../helpers/parse";
@@ -128,8 +128,8 @@ describe("table of contents", () => {
 
   it("keeps a TOC after serializing and restoring the render document", () => {
     const prepared = prepare(FOUR_HEADINGS, { headingIdStrategy: "mediawiki" });
-    const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
-    const html = renderToStaticMarkup(<WikitextView document={restored} />);
+    const restored = restoreWikitextRenderSnapshot(serializeWikitextRenderSnapshot(prepared));
+    const html = renderToStaticMarkup(<WikitextView snapshot={restored} />);
     expect(html.match(/class="toc wikitext-toc"/gu)).toHaveLength(1);
     expect(html).toContain('href="#A"');
     expect(restored.headings).toEqual(prepared.headings);
@@ -142,8 +142,8 @@ describe("table of contents", () => {
       headingIdStrategy: "mediawiki",
       toc: { columns: 3 },
     });
-    const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
-    const html = renderToStaticMarkup(<WikitextView document={restored} />);
+    const restored = restoreWikitextRenderSnapshot(serializeWikitextRenderSnapshot(prepared));
+    const html = renderToStaticMarkup(<WikitextView snapshot={restored} />);
     expect(html).toContain("wikitext-toc--columns-3");
   });
 
@@ -183,7 +183,7 @@ describe("table of contents", () => {
         },
       ],
     });
-    const html = renderToStaticMarkup(<WikitextView document={document} />);
+    const html = renderToStaticMarkup(<WikitextView snapshot={document} />);
     expect(html).toContain("wikitext-toc");
     expect(html).toContain('href="#C"');
     expect(html).toContain('href="#D"');

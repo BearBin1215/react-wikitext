@@ -1,5 +1,4 @@
-import type { WikitextRange, WikitextSyntaxNode, WikitextSyntaxRoot } from "../ast/model";
-import { isOpaqueNode } from "./syntax";
+import type { WikitextRange } from "../ast/model";
 
 type IncludeTagName = "noinclude" | "includeonly" | "onlyinclude";
 
@@ -26,19 +25,6 @@ function findTagEnd(source: string, start: number): number {
     }
   }
   return -1;
-}
-
-function collectProtected(
-  node: WikitextSyntaxNode | WikitextSyntaxRoot,
-  ranges: WikitextRange[],
-): void {
-  if (node.type !== "root" && isOpaqueNode(node)) {
-    ranges.push(node.range);
-    return;
-  }
-  for (const child of node.children) {
-    collectProtected(child, ranges);
-  }
 }
 
 function scanTags(source: string, protectedRanges: readonly WikitextRange[]): IncludeTag[] {
@@ -142,22 +128,15 @@ function onlyincludeSegments(tags: readonly IncludeTag[]): WikitextRange[] {
   return segments;
 }
 
-function removeRanges(
-  source: string,
-  start: number,
-  end: number,
-  ranges: readonly WikitextRange[],
-): string {
-  const clipped = ranges
-    .filter(([rangeStart, rangeEnd]) => rangeEnd > start && rangeStart < end)
-    .map(([rangeStart, rangeEnd]): WikitextRange => [
-      Math.max(rangeStart, start),
-      Math.min(rangeEnd, end),
-    ])
-    // oxlint-disable-next-line unicorn/no-array-sort -- 产物 target 为 ES2022，不使用 ES2023 的 toSorted。
+function mergeRanges(ranges: readonly WikitextRange[]): WikitextRange[] {
+  const sorted = [...ranges]
+    // oxlint-disable-next-line unicorn/no-array-sort -- 产物 target 为 ES2022。
     .sort((left, right) => left[0] - right[0] || left[1] - right[1]);
   const merged: WikitextRange[] = [];
-  for (const range of clipped) {
+  for (const range of sorted) {
+    if (range[1] <= range[0]) {
+      continue;
+    }
     const previous = merged.at(-1);
     if (previous && range[0] <= previous[1]) {
       if (range[1] > previous[1]) {
@@ -167,26 +146,50 @@ function removeRanges(
       merged.push(range);
     }
   }
-  let output = "";
+  return merged;
+}
+
+/** 从 `[start, end)` 中扣除区间，返回保留片段。 */
+function keepRanges(start: number, end: number, drops: readonly WikitextRange[]): WikitextRange[] {
+  const clipped = mergeRanges(
+    drops
+      .filter(([dropStart, dropEnd]) => dropEnd > start && dropStart < end)
+      .map(([dropStart, dropEnd]): WikitextRange => [
+        Math.max(dropStart, start),
+        Math.min(dropEnd, end),
+      ]),
+  );
+  const kept: WikitextRange[] = [];
   let cursor = start;
-  for (const [rangeStart, rangeEnd] of merged) {
-    if (rangeStart > cursor) {
-      output += source.slice(cursor, rangeStart);
+  for (const [dropStart, dropEnd] of clipped) {
+    if (dropStart > cursor) {
+      kept.push([cursor, dropStart]);
     }
-    cursor = Math.max(cursor, rangeEnd);
+    cursor = Math.max(cursor, dropEnd);
   }
-  return output + source.slice(cursor, end);
+  if (cursor < end) {
+    kept.push([cursor, end]);
+  }
+  return kept;
+}
+
+/** 模板嵌入过滤结果：有效正文与它在原模板源码中保留的片段。 */
+export interface IncludeFilterResult {
+  readonly text: string;
+  /** 保留片段在输入源码中的范围，按源码顺序排列；片段之间即为被删除内容。 */
+  readonly kept: readonly WikitextRange[];
 }
 
 /**
  * 按模板嵌入模式过滤 include 标签：移除 noinclude 内容、去除 includeonly 标签，
  * 存在 onlyinclude 时只保留其片段。注释与原文扩展标签内的标签文本不参与识别。
  * @param source LF 归一化后的模板源码。
- * @param syntax 原始模板源码的语法树。
+ * @param protectedRanges 注释与原文扩展标签范围，由预处理扫描提供。
  */
-export function filterTransclusionSource(source: string, syntax: WikitextSyntaxRoot): string {
-  const protectedRanges: WikitextRange[] = [];
-  collectProtected(syntax, protectedRanges);
+export function filterTransclusionSource(
+  source: string,
+  protectedRanges: readonly WikitextRange[],
+): IncludeFilterResult {
   const tags = scanTags(source, protectedRanges);
 
   const drops = [
@@ -194,16 +197,19 @@ export function filterTransclusionSource(source: string, syntax: WikitextSyntaxR
     ...tags.filter((tag) => tag.name === "includeonly").map((tag) => tag.range),
   ];
   const segments = onlyincludeSegments(tags);
-  if (segments.length > 0) {
-    return segments
-      .map(([start, end]) => {
-        // 包住整个片段的 noinclude 不应删除 onlyinclude 选中的内容。
-        const effective = drops.filter(
-          ([dropStart, dropEnd]) => !(dropStart <= start && dropEnd >= end),
-        );
-        return removeRanges(source, start, end, effective);
-      })
-      .join("");
-  }
-  return removeRanges(source, 0, source.length, drops);
+  const kept =
+    segments.length > 0
+      ? segments.flatMap(([start, end]) => {
+          // 包住整个片段的 noinclude 不应删除 onlyinclude 选中的内容。
+          const effective = drops.filter(
+            ([dropStart, dropEnd]) => !(dropStart <= start && dropEnd >= end),
+          );
+          return keepRanges(start, end, effective);
+        })
+      : keepRanges(0, source.length, drops);
+
+  return {
+    text: kept.map(([start, end]) => source.slice(start, end)).join(""),
+    kept,
+  };
 }

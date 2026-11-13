@@ -152,7 +152,7 @@ function Article({ source }: { source: string }) {
           ))}
         </ol>
       </nav>
-      <WikitextView document={prepared} />
+      <WikitextView snapshot={prepared} />
     </div>
   );
 }
@@ -177,14 +177,14 @@ export default function Demo() {
 视图按顶层块隔离失败；解析与准备的错误需要调用方捕获：
 
 ```tsx
-import type { WikitextDocument } from "react-wikitext/ast";
+import type { WikitextParsedSnapshot } from "react-wikitext/ast";
 import type { WikitextPrepareOptions } from "react-wikitext/hast";
 import { prepareWikitext, WikitextPrepareError } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
-function renderPrepared(document: WikitextDocument, prepareOptions: WikitextPrepareOptions) {
+function renderPrepared(document: WikitextParsedSnapshot, prepareOptions: WikitextPrepareOptions) {
   try {
-    return <WikitextView document={prepareWikitext(document, prepareOptions)} />;
+    return <WikitextView snapshot={prepareWikitext(document, prepareOptions)} />;
   } catch (error) {
     if (error instanceof WikitextPrepareError) {
       report(error.code, error.stage, error.cause);

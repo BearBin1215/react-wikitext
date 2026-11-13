@@ -13,8 +13,8 @@ import type {
 } from "react-wikitext/view";
 import type { ReactNode } from "react";
 
-function sourceOf(document: WikitextTemplateComponentProps["document"], node: WikitextNode) {
-  const source = getSourceText({ source: document.source }, node);
+function sourceOf(snapshot: WikitextTemplateComponentProps["snapshot"], node: WikitextNode) {
+  const source = getSourceText(snapshot, node);
   return source.length > 120 ? `${source.slice(0, 120)}…` : source;
 }
 
@@ -41,42 +41,42 @@ function DemoShell({
   );
 }
 
-function DemoTemplate({ document, node, displayName }: WikitextTemplateComponentProps) {
+function DemoTemplate({ snapshot, node, displayName }: WikitextTemplateComponentProps) {
   return (
     <DemoShell kind="Template" name={displayName} block>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }
 
-function DemoParserFunction({ document, node, displayName }: WikitextTemplateComponentProps) {
+function DemoParserFunction({ snapshot, node, displayName }: WikitextTemplateComponentProps) {
   return (
     <DemoShell kind="ParserFunction" name={displayName}>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }
 
-function DemoFile({ document, node, name }: WikitextFileComponentProps) {
+function DemoFile({ snapshot, node, name }: WikitextFileComponentProps) {
   return (
     <DemoShell kind="File" name={name} block>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }
 
-function DemoReference({ document, node, number }: WikitextReferenceComponentProps) {
+function DemoReference({ snapshot, node, number }: WikitextReferenceComponentProps) {
   return (
     <DemoShell kind="Reference" name={`${node.name ?? node.type} #${number}`}>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }
 
-function DemoUnknown({ document, node, parsedType, block }: WikitextUnknownComponentProps) {
+function DemoUnknown({ snapshot, node, parsedType, block }: WikitextUnknownComponentProps) {
   return (
     <DemoShell kind="Unknown" name={parsedType} block={block}>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }
@@ -89,10 +89,10 @@ function DemoLink({ target, href, children }: WikitextLinkComponentProps) {
   );
 }
 
-function DemoExtension({ document, node, name, block }: WikitextExtensionComponentProps) {
+function DemoExtension({ snapshot, node, name, block }: WikitextExtensionComponentProps) {
   return (
     <DemoShell kind="Extension" name={name} block={block}>
-      {sourceOf(document, node)}
+      {sourceOf(snapshot, node)}
     </DemoShell>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { WikitextDocument } from "react-wikitext/ast";
-import { prepareWikitext, type WikitextRenderDocument } from "react-wikitext/hast";
+import type { WikitextParsedSnapshot } from "react-wikitext/ast";
+import { prepareWikitext, type WikitextRenderSnapshot } from "react-wikitext/hast";
 import type { WikitextViewProps } from "react-wikitext/view";
 import type { AstTreeLabels, NodeInspectorLabels } from "react-wikitext/devtools";
 import { serializeParseError } from "@pg/parse/errors";
@@ -15,7 +15,7 @@ function signature(values: readonly (string | number | boolean | undefined)[]): 
 
 /** 准备结果；错误与解析错误分开保存。 */
 export interface PrepareOutcome {
-  readonly prepared?: WikitextRenderDocument;
+  readonly prepared?: WikitextRenderSnapshot;
   readonly prepareError?: ParseErrorInfo;
 }
 
@@ -24,7 +24,7 @@ export interface PrepareOutcome {
  * 例如页面名、解析上限、`lang`、`dir` 不会触发清洗与插件。
  */
 export function usePrepareOutcome(
-  document: WikitextDocument | undefined,
+  document: WikitextParsedSnapshot | undefined,
   options: PlaygroundOptions,
 ): PrepareOutcome {
   const key = signature([
@@ -49,7 +49,7 @@ export function usePrepareOutcome(
 }
 
 /** 视图属性；只在组件模式、语言、方向与标题策略变化时重建。 */
-export function useViewProps(options: PlaygroundOptions): Omit<WikitextViewProps, "document"> {
+export function useViewProps(options: PlaygroundOptions): Omit<WikitextViewProps, "snapshot"> {
   const key = signature([
     options.componentsMode,
     options.lang,

@@ -5,20 +5,20 @@ import {
   getSourceText,
   getTemplateParameters,
   toPlainText,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextNode,
   type WikitextParameter,
 } from "react-wikitext/ast";
 import {
   sanitizeHref,
   sanitizedAttributesToProps,
-  type WikitextRenderDocument,
+  type WikitextRenderSnapshot,
 } from "react-wikitext/hast";
 import { CopyButton } from "./CopyButton";
 
 interface ApiPanelProps {
-  document?: WikitextDocument;
-  prepared?: WikitextRenderDocument;
+  document?: WikitextParsedSnapshot;
+  prepared?: WikitextRenderSnapshot;
   node?: WikitextNode;
   onSelect: (node: WikitextNode) => void;
 }
@@ -32,7 +32,10 @@ function parametersJson(parameters: readonly WikitextParameter[]) {
   }));
 }
 
-function selectedPayload(document: WikitextDocument, node: WikitextNode): Record<string, unknown> {
+function selectedPayload(
+  document: WikitextParsedSnapshot,
+  node: WikitextNode,
+): Record<string, unknown> {
   switch (node.type) {
     case "template": {
       return {
@@ -123,7 +126,13 @@ export function ApiPanel({ document, prepared, node, onSelect }: ApiPanelProps) 
       return undefined;
     }
     const base: Record<string, unknown> = {
-      node: { id: node.id, type: node.type, range: node.origin?.range },
+      node: {
+        id: node.id,
+        type: node.type,
+        sourceId: node.origin?.sourceId,
+        start: node.origin?.start,
+        end: node.origin?.end,
+      },
     };
     try {
       return { ...base, ...selectedPayload(document, node) };
@@ -158,7 +167,7 @@ export function ApiPanel({ document, prepared, node, onSelect }: ApiPanelProps) 
             </thead>
             <tbody>
               {headings.map((heading) => {
-                const headingNode = findNodeById(prepared, heading.nodeId);
+                const headingNode = findNodeById(prepared.ast, heading.nodeId);
                 return (
                   <tr key={heading.nodeId}>
                     <td>{heading.level}</td>

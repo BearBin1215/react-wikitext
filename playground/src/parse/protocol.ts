@@ -1,6 +1,22 @@
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
-import type { WikitextDocument } from "react-wikitext/parse";
+import type { WikitextCompilationStatus } from "react-wikitext/expand";
+import type { WikitextDiagnostic, WikitextParsedSnapshot } from "react-wikitext/parse";
 import type { ParserConfigKey } from "./configs";
+
+/** 验收台展示用的顶层调用记录；由来源图派生。 */
+export interface PlaygroundExpansionRecord {
+  readonly kind: string;
+  readonly name: string;
+  readonly originalRange: readonly [number, number];
+  readonly expandedRange: readonly [number, number];
+  readonly status: string;
+}
+
+/** 验收台展示用的展开信息；不是库的公共类型。 */
+export interface WikitextExpansionInfo {
+  readonly status: WikitextCompilationStatus;
+  readonly records: readonly PlaygroundExpansionRecord[];
+  readonly diagnostics: readonly WikitextDiagnostic[];
+}
 
 /** worker 与主线程共用的解析请求 DTO；不含输入源身份。 */
 export interface ParseRequest {
@@ -31,7 +47,7 @@ export interface ParseStats {
 
 /** 一次成功解析的结果。 */
 export interface ParsePayload {
-  doc: WikitextDocument;
+  doc: WikitextParsedSnapshot;
   expansion?: WikitextExpansionInfo;
 }
 

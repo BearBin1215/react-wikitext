@@ -41,7 +41,7 @@ description: 解析与准备的成本、预算上限、Worker、缓存与按入�
 | HAST 节点      | 50,000 |
 | HAST 深度      | 1,000  |
 
-这些值是防护阈值，不是性能目标。触发时准备阶段直接失败；库产生的合法快照总能被 `restoreWikitextRenderDocument` 恢复。
+这些值是防护阈值，不是性能目标。触发时准备阶段直接失败；库产生的合法快照总能被 `restoreWikitextRenderSnapshot` 恢复。
 
 ### 模板展开
 
@@ -58,20 +58,20 @@ description: 解析与准备的成本、预算上限、Worker、缓存与按入�
 ```ts
 // worker.ts
 import { parseWikitext } from "react-wikitext/parse";
-import { serializeWikitextDocument } from "react-wikitext/ast";
+import { serializeWikitextParsedSnapshot } from "react-wikitext/ast";
 
 self.onmessage = (event: MessageEvent<string>) => {
   const document = parseWikitext(event.data, { pageName: "Example" });
-  self.postMessage(serializeWikitextDocument(document));
+  self.postMessage(serializeWikitextParsedSnapshot(document));
 };
 ```
 
 ```ts
 // main.ts
-import { restoreWikitextDocument } from "react-wikitext/ast";
+import { restoreWikitextParsedSnapshot } from "react-wikitext/ast";
 import { prepareWikitext } from "react-wikitext/hast";
 
-const document = restoreWikitextDocument(payload);
+const document = restoreWikitextParsedSnapshot(payload);
 const prepared = prepareWikitext(document);
 ```
 
@@ -113,11 +113,11 @@ const prepared = prepareWikitext(document);
 
 ```tsx
 async function loadViewer() {
-  const [{ WikitextView }, { restoreWikitextRenderDocument }] = await Promise.all([
+  const [{ WikitextView }, { restoreWikitextRenderSnapshot }] = await Promise.all([
     import("react-wikitext/view"),
     import("react-wikitext/hast"),
   ]);
-  return { WikitextView, restoreWikitextRenderDocument };
+  return { WikitextView, restoreWikitextRenderSnapshot };
 }
 ```
 

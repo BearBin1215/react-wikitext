@@ -1,15 +1,16 @@
 import {
   isWikitextParentNode,
-  type WikitextDocument,
   type WikitextNode,
   type WikitextNodeType,
   type WikitextOrigin,
   type WikitextParentNode,
   type WikitextRoot,
+  type WikitextSnapshotBase,
 } from "./model";
+import { getSpanText } from "./sourceGraph/query";
 
-/** 只需要源码和语义树的文档结构，便于复用查询函数。 */
-export interface SourceDocumentLike {
+/** 只需要语义树与来源图的快照结构，便于复用查询函数。 */
+export interface SourceSnapshotLike extends Pick<WikitextSnapshotBase, "graph" | "activeSourceId"> {
   readonly source: string;
   readonly ast: WikitextRoot;
 }
@@ -46,37 +47,33 @@ export function flattenNodes(root: WikitextRoot): readonly WikitextNode[] {
   return result;
 }
 
-function getNodeIndex(document: SourceDocumentLike): Map<string, WikitextNode> {
-  const key = document.ast;
-  const cached = indexCache.get(key);
+function getNodeIndex(root: WikitextRoot): Map<string, WikitextNode> {
+  const cached = indexCache.get(root);
   if (cached) {
     return cached;
   }
   const index = new Map<string, WikitextNode>();
-  for (const node of flattenNodes(document.ast)) {
+  for (const node of flattenNodes(root)) {
     index.set(node.id, node);
   }
-  indexCache.set(key, index);
+  indexCache.set(root, index);
   return index;
 }
 
 /** 按 id 查找语义节点。 */
-export function findNodeById(document: SourceDocumentLike, id: string): WikitextNode | undefined {
-  return getNodeIndex(document).get(id);
+export function findNodeById(root: WikitextRoot, id: string): WikitextNode | undefined {
+  return getNodeIndex(root).get(id);
 }
 
-/** 读取节点对应的原始源码；生成内容没有来源时返回空字符串。 */
+/** 读取节点对应的来源源码；生成内容没有来源时返回空字符串。 */
 export function getSourceText(
-  document: Pick<WikitextDocument, "source">,
-  node: { readonly origin?: WikitextOrigin; readonly range?: readonly [number, number] },
+  snapshot: Pick<WikitextSnapshotBase, "graph">,
+  node: { readonly origin?: WikitextOrigin },
 ): string {
-  if (node.range) {
-    return document.source.slice(node.range[0], node.range[1]);
-  }
   if (!node.origin) {
     return "";
   }
-  return document.source.slice(node.origin.range[0], node.origin.range[1]);
+  return getSpanText(snapshot.graph, node.origin);
 }
 
 /** 读取节点转换后的语义文本，不做实体解码。 */
@@ -119,36 +116,42 @@ export interface FindNodeAtOffsetOptions {
 
 /**
  * 返回包含该 offset 的最深语义节点。
- * 范围按 `[start, end)` 处理；文档末尾回退到根节点。
+ *
+ * 只考虑活动文本源中的来源；范围按 `[start, end)` 处理，文档末尾回退到根节点。
+ * @param snapshot 快照。
+ * @param offset 活动源码中的 UTF-16 offset。
+ * @param options 查询选项。
  */
 export function findNodeAtOffset(
-  document: SourceDocumentLike,
+  snapshot: SourceSnapshotLike,
   offset: number,
   options: FindNodeAtOffsetOptions = {},
 ): WikitextNode | undefined {
   let best: WikitextNode | undefined;
   let bestSpan = Number.POSITIVE_INFINITY;
-  for (const node of flattenNodes(document.ast)) {
-    const range = node.origin?.range;
-    if (!range) {
+  for (const node of flattenNodes(snapshot.ast)) {
+    const origin = node.origin;
+    if (!origin || origin.sourceId !== snapshot.activeSourceId) {
       continue;
     }
-    const [start, end] = range;
-    if (!options.includeZeroLength && end === start) {
+    if (!options.includeZeroLength && origin.end === origin.start) {
       continue;
     }
-    const contains = end === start ? offset === start : offset >= start && offset < end;
+    const contains =
+      origin.end === origin.start
+        ? offset === origin.start
+        : offset >= origin.start && offset < origin.end;
     if (!contains) {
       continue;
     }
-    const span = end - start;
+    const span = origin.end - origin.start;
     if (span <= bestSpan) {
       best = node;
       bestSpan = span;
     }
   }
-  if (!best && offset === document.source.length) {
-    return document.ast;
+  if (!best && offset === snapshot.source.length) {
+    return snapshot.ast;
   }
   return best;
 }

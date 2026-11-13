@@ -1,15 +1,18 @@
 export * from "./view";
 export {
   Wikitext,
-  type WikitextProps,
   type WikitextErrorInfo,
   type WikitextFailureStage,
+  type WikitextProps,
 } from "./Wikitext";
 export type {
+  WikitextBuildOptions,
+  WikitextCompileOptions,
   WikitextParseOptions,
   WikitextParser,
   WikitextResolvedParseOptions,
-} from "./ast/parser";
+  WikitextSyntaxProgram,
+} from "./parser";
 export {
   WikitextError,
   WikitextExpandError,
@@ -32,6 +35,10 @@ export type {
   KnownWikitextDiagnosticCode,
   WikitextArgument,
   WikitextAttribute,
+  WikitextCompilation,
+  WikitextCompilationDependency,
+  WikitextCompilationStats,
+  WikitextCompilationStatus,
   WikitextDiagnostic,
   WikitextDiagnosticCode,
   WikitextDiagnosticSeverity,
@@ -47,18 +54,29 @@ export type {
   WikitextNodeBase,
   WikitextNodeType,
   WikitextOrigin,
+  WikitextParsedMeta,
+  WikitextParsedSnapshot,
   WikitextParserFunction,
   WikitextPoint,
   WikitextPosition,
-  WikitextRange,
   WikitextReference,
-  WikitextRenderDocument,
+  WikitextRelatedLocation,
   WikitextRenderMeta,
+  WikitextRenderSnapshot,
   WikitextResolvedPolicy,
   WikitextRoot,
+  WikitextSnapshotBase,
   WikitextStage,
   WikitextTable,
   WikitextTemplate,
   WikitextTemplateParameter,
   WikitextUnknown,
 } from "./ast/model";
+
+export type {
+  WikitextSourceGraph,
+  WikitextSourceId,
+  WikitextSourceSegment,
+  WikitextSourceSpan,
+  WikitextTextSource,
+} from "./ast/sourceGraph";

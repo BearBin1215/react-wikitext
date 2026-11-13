@@ -6,7 +6,7 @@ import { normalizeList } from "./lists";
 import { normalizeTable } from "./tables";
 import {
   hasMeaningfulPieces,
-  mergeOrigins,
+  enclosingOrigin,
   normalizeInlinePieces,
   normalizeInlineSyntax,
   piecesFromNodes,
@@ -71,7 +71,7 @@ function isStandaloneLine(source: string, node: WikitextSyntaxNode): boolean {
 }
 
 function paragraphNode(context: NormalizeContext, children: readonly WikitextNode[]): WikitextNode {
-  const origin = mergeOrigins(children);
+  const origin = enclosingOrigin(children);
   const location = origin ? nodeLocation(context, { origin }) : {};
   return { type: "paragraph", id: "", children: [...children], ...location };
 }

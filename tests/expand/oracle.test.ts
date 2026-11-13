@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
 import { MEDIAWIKI_CONFIG } from "@/configs";
 import { normalizeConfig } from "@/configs/config";
-import { expandWikitext } from "@/expand";
+import { expandWikitext } from "../helpers/expand";
 
 interface NodeParser {
   templates: Map<string, string>;
@@ -101,7 +101,7 @@ describe("upstream expansion oracle", () => {
       fixtures.map((source) => expandWikitext(source, { templates: TEMPLATES })),
     );
     for (const [index, source] of fixtures.entries()) {
-      expect(results[index]?.document.source, source).toBe(oracleExpand(source));
+      expect(results[index]?.snapshot.source, source).toBe(oracleExpand(source));
     }
   });
 });

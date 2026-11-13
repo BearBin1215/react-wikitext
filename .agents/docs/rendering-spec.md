@@ -22,12 +22,12 @@
 ## 2. 处理链
 
 ```text
-WikitextDocument.ast
+WikitextParsedSnapshot.ast
   ── 语义归一化结果（parse 阶段已完成）──
   ── wikitextPlugins（克隆工作树）──
   ── resolver + toHast ──▶ HAST（含引用区、分类底栏、目录占位）
   ── rehypePlugins ──▶ HAST
-  ── sanitize + finalize ──▶ WikitextRenderDocument（链接/图片属性、引用 id、标题锚点、目录）
+  ── sanitize + finalize ──▶ WikitextRenderSnapshot（链接/图片属性、引用 id、标题锚点、目录）
   ── WikitextView / hast-util-to-jsx-runtime ──▶ React
 ```
 
@@ -244,13 +244,13 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ### 7.3 展开后的文档
 
-- `expandWikitext` 返回的 `document` 已经过重新解析；展开产生的标题、段落、列表、表格、链接与 HTML 按本规范正常渲染，不再进入模板占位。
+- `compilation.snapshot` 已经过重新解析；展开产生的标题、段落、列表、表格、链接与 HTML 按本规范正常渲染，不再进入模板占位。
 - 展开阶段无法处理的调用、缺失模板、循环和预算超限通常保留原始调用文本，并继续使用模板、函数或参数占位；连保留源码都超过长度上限时整次抛错。
-- 整体回退时 `document` 使用原始快照，渲染结果与未展开时一致；展开诊断仍会进入渲染诊断。
+- 整体回退时 `snapshot` 使用原始 LF 快照（`status: "fallback"`，`attemptedSourceId` 指向被放弃的展开源），渲染结果与未展开时一致；展开诊断仍会进入渲染诊断。
 - 展开结果和模板源码都不跳过语义归一化、HAST 转换与最终清洗。
 - `{{!}}` 与 `{{=}}` 在展开阶段变成普通字符，因此不会改变参数分隔，也不会产生额外的占位节点。
 - 纯函数范围包括 `#if`、`#ifeq`、`#switch`、`#iferror`、`#expr`、`#ifexpr`、`#len`、`#sub`、`#replace`、`#titleparts`、`#padleft`、`#padright`、`#urlencode`、`#urldecode`、`#lc`、`#uc`、`#lcfirst`、`#ucfirst` 与 `#tag`；表达式错误产生 `EXPRESSION_ERROR`。`#invoke`、`#time`、`#ifexist` 等站点状态函数保留原文并产生 `UNSUPPORTED_CALL`。
-- 展开诊断在视图层没有专门组件；宿主通过 `document.diagnostics` 或 `expansion.records` 定位保留调用。
+- 展开诊断在视图层没有专门组件；宿主通过 `snapshot.diagnostics` 与 `snapshot.graph.invocations` 定位保留调用。
 
 ### 7.4 引用
 

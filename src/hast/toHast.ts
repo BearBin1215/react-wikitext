@@ -153,8 +153,7 @@ function reportDegrade(
     stage: "hast",
     severity,
     message,
-    ...(node.origin ? { origin: node.origin } : {}),
-    ...(node.position ? { position: node.position } : {}),
+    ...(node.origin ? { location: node.origin } : {}),
   });
 }
 
@@ -453,7 +452,6 @@ function auxiliaryLinkNode(
     ...(fragment === undefined ? {} : { fragment }),
     children: [],
     ...(node.origin ? { origin: node.origin } : {}),
-    ...(node.position ? { position: node.position } : {}),
   };
 }
 
@@ -1059,7 +1057,6 @@ function extensionElement(context: BuildContext, node: WikitextExtension): Eleme
             attributes: [],
             children: [],
             ...(node.origin ? { origin: node.origin } : {}),
-            ...(node.position ? { position: node.position } : {}),
           };
           const resolved = context.resolveImage?.(
             { name, parameters: [], caption },
@@ -1417,8 +1414,7 @@ function convert(
         stage: "hast",
         severity: "warning",
         message: `No HAST handler registered for semantic node type "${node.type}"; rendered as a safe card.`,
-        ...(node.origin ? { origin: node.origin } : {}),
-        ...(node.position ? { position: node.position } : {}),
+        ...(node.origin ? { location: node.origin } : {}),
       });
       return unknownElement(context, node, node.type, sourceOf(context, node), false);
     }

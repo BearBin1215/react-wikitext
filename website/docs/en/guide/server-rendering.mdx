@@ -21,14 +21,14 @@ The second shape keeps parsing cost on the server; the client no longer loads `w
 ```tsx
 // server.tsx
 import { createWikiparser } from "react-wikitext/parse";
-import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+import { prepareWikitext, serializeWikitextRenderSnapshot } from "react-wikitext/hast";
 
 const parser = createWikiparser();
 
 export function preparePayload(source: string, pageName: string) {
   const document = parser.parse(source, { pageName });
   const prepared = prepareWikitext(document);
-  return serializeWikitextRenderDocument(prepared);
+  return serializeWikitextRenderSnapshot(prepared);
 }
 ```
 
@@ -37,16 +37,16 @@ export function preparePayload(source: string, pageName: string) {
 "use client";
 
 import { useMemo } from "react";
-import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { restoreWikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
 export function Article({ payload }: { payload: unknown }) {
-  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
-  return <WikitextView document={prepared} lang="en" />;
+  const prepared = useMemo(() => restoreWikitextRenderSnapshot(payload), [payload]);
+  return <WikitextView snapshot={prepared} lang="en" />;
 }
 ```
 
-`restoreWikitextRenderDocument` revalidates schema versions, the root, HAST structure, and the node budget, then reruns sanitization and finalization. It does not trust arbitrary third-party HAST; only restore snapshots from a trusted server or cache.
+`restoreWikitextRenderSnapshot` revalidates schema versions, the root, HAST structure, and the node budget, then reruns sanitization and finalization. It does not trust arbitrary third-party HAST; only restore snapshots from a trusted server or cache.
 
 :::note
 A snapshot contains the semantic tree, HAST, and source, so it is noticeably larger than plain HTML. Prepare large documents per page or per block, and budget the transfer.
@@ -59,7 +59,7 @@ The root entry and `/view` create Context at module load and use React hooks, so
 ```tsx
 // app/wiki/[title]/page.tsx
 import { createWikiparser } from "react-wikitext/parse";
-import { prepareWikitext, serializeWikitextRenderDocument } from "react-wikitext/hast";
+import { prepareWikitext, serializeWikitextRenderSnapshot } from "react-wikitext/hast";
 import { ArticleView } from "./article-view";
 import { loadPageSource } from "@/lib/wiki";
 
@@ -69,7 +69,7 @@ export default async function Page({ params }: { params: Promise<{ title: string
   const { title } = await params;
   const source = await loadPageSource(title);
   const document = parser.parse(source, { pageName: title });
-  const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+  const payload = serializeWikitextRenderSnapshot(prepareWikitext(document));
 
   return <ArticleView payload={payload} lang="en" />;
 }
@@ -80,12 +80,12 @@ export default async function Page({ params }: { params: Promise<{ title: string
 "use client";
 
 import { useMemo } from "react";
-import { restoreWikitextRenderDocument } from "react-wikitext/hast";
+import { restoreWikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
 export function ArticleView({ payload, lang }: { payload: unknown; lang: string }) {
-  const prepared = useMemo(() => restoreWikitextRenderDocument(payload), [payload]);
-  return <WikitextView document={prepared} lang={lang} />;
+  const prepared = useMemo(() => restoreWikitextRenderSnapshot(payload), [payload]);
+  return <WikitextView snapshot={prepared} lang={lang} />;
 }
 ```
 
@@ -106,7 +106,7 @@ The idea is the same: prepare the snapshot on the server, send it as page data, 
 
 ```ts
 // server entry
-const payload = serializeWikitextRenderDocument(prepareWikitext(document));
+const payload = serializeWikitextRenderSnapshot(prepareWikitext(document));
 const html = template.replace("__WIKITEXT__", JSON.stringify(payload).replace(/</gu, "\\u003c"));
 ```
 

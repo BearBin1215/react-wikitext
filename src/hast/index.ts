@@ -30,9 +30,9 @@ export {
   type SanitizedStyle,
 } from "./sanitize";
 export {
-  restoreWikitextRenderDocument,
-  serializeWikitextRenderDocument,
-  type SerializedWikitextRenderDocument,
+  restoreWikitextRenderSnapshot,
+  serializeWikitextRenderSnapshot,
+  type SerializedWikitextRenderSnapshot,
 } from "./serialize";
 export { WikitextError, WikitextPrepareError } from "../ast/errors";
 export { DEFAULT_WIKITEXT_LABELS } from "../ast/labels";
@@ -44,8 +44,13 @@ export type {
   WikitextHeadingIdStrategy,
   WikitextHeadingInfo,
   WikitextNodeBase,
-  WikitextRenderDocument,
+  WikitextRenderSnapshot,
   WikitextRenderMeta,
   WikitextResolvedPolicy,
   WikitextStage,
 } from "../ast/model";
+export type {
+  WikitextPrepareStageName,
+  WikitextStageName,
+  WikitextStageSink,
+} from "../instrumentation";

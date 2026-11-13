@@ -1,4 +1,4 @@
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
+import type { WikitextExpansionInfo } from "@pg/parse/protocol";
 import type { ParseErrorInfo } from "@pg/parse/protocol";
 import { formatDuration, formatExecution, type StatusFacts } from "./facts";
 

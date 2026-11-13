@@ -2,6 +2,8 @@ import type { Root } from "hast";
 import { isWikitextDiagnostic } from "../ast/diagnostic";
 import { WikitextError } from "../ast/errors";
 import { isResolvedParseLimits } from "../ast/limits";
+import { validateSourceGraph } from "../ast/sourceGraph/validate";
+import type { WikitextSourceGraph } from "../ast/sourceGraph/types";
 import { hastBudgetViolation } from "./budget";
 import { finalizeHast } from "./finalize";
 import { sanitizeHast } from "./sanitize";
@@ -13,7 +15,7 @@ import {
   type WikitextDiagnostic,
   type WikitextHeadingIdStrategy,
   type WikitextHeadingInfo,
-  type WikitextRenderDocument,
+  type WikitextRenderSnapshot,
   type WikitextRenderMeta,
   type WikitextResolvedPolicy,
   type WikitextRoot,
@@ -21,9 +23,13 @@ import {
 import { WIKITEXT_LABEL_KEYS, type WikitextLabels } from "../ast/labels";
 
 /** 可序列化的渲染快照，带有 schema 版本。 */
-export interface SerializedWikitextRenderDocument {
+export interface SerializedWikitextRenderSnapshot {
+  readonly kind: "render";
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
   readonly renderSchemaVersion: typeof RENDER_SCHEMA_VERSION;
+  readonly id: string;
+  readonly activeSourceId: string;
+  readonly graph: WikitextSourceGraph;
   readonly source: string;
   readonly ast: WikitextRoot;
   readonly hast: Root;
@@ -38,13 +44,17 @@ export interface SerializedWikitextRenderDocument {
  * 序列化结果是普通数据，修改它不会影响原始快照。
  * @param document 准备阶段的结果。
  */
-export function serializeWikitextRenderDocument(
-  document: WikitextRenderDocument,
-): SerializedWikitextRenderDocument {
+export function serializeWikitextRenderSnapshot(
+  document: WikitextRenderSnapshot,
+): SerializedWikitextRenderSnapshot {
   const snapshot = structuredClone(document);
   return {
+    kind: "render",
     astSchemaVersion: AST_SCHEMA_VERSION,
     renderSchemaVersion: RENDER_SCHEMA_VERSION,
+    id: snapshot.id,
+    activeSourceId: snapshot.activeSourceId,
+    graph: snapshot.graph,
     source: snapshot.source,
     ast: snapshot.ast,
     hast: snapshot.hast,
@@ -195,20 +205,35 @@ function assertMeta(value: unknown): asserts value is WikitextRenderMeta {
  * 快照内的 `policy`、`labels` 与 `authorizedImages` 属于**可信边界**：它们由库在准备阶段生成，
  * 恢复时会按快照内的 policy 重新清洗，以重建引用 id、目录与标题锚点等派生结构，
  * 而不是把任意第三方 HAST 变成可信内容。不要用它处理不可信输入。
- * @param value 来自 `serializeWikitextRenderDocument` 或等价结构的数据。
+ * @param value 来自 `serializeWikitextRenderSnapshot` 或等价结构的数据。
  */
-export function restoreWikitextRenderDocument(value: unknown): WikitextRenderDocument {
+export function restoreWikitextRenderSnapshot(value: unknown): WikitextRenderSnapshot {
   if (!isRecord(value)) {
-    invalid("Serialized render document is not an object.");
+    invalid("Serialized render snapshot is not an object.");
+  }
+  if (value.kind !== "render") {
+    invalid("Serialized value is not a render snapshot.");
   }
   if (
     value.astSchemaVersion !== AST_SCHEMA_VERSION ||
     value.renderSchemaVersion !== RENDER_SCHEMA_VERSION
   ) {
-    invalid("Unsupported render document schema version.");
+    invalid("Unsupported render snapshot schema version.");
   }
   if (typeof value.source !== "string") {
-    invalid("Render document source is not a string.");
+    invalid("Render snapshot source is not a string.");
+  }
+  if (typeof value.id !== "string" || typeof value.activeSourceId !== "string") {
+    invalid("Render snapshot is missing its identity.");
+  }
+  validateSourceGraph(value.graph);
+  const graph = value.graph;
+  const active = graph.sources.find((source) => source.id === value.activeSourceId);
+  if (!active) {
+    invalid("Render snapshot active source is not in its source graph.");
+  }
+  if (active.text !== value.source) {
+    invalid("Render snapshot source does not match its active text source.");
   }
   const ast = value.ast;
   if (
@@ -244,6 +269,10 @@ export function restoreWikitextRenderDocument(value: unknown): WikitextRenderDoc
     tocColumns: 1,
   });
   return {
+    kind: "render",
+    id: value.id,
+    activeSourceId: value.activeSourceId,
+    graph,
     source: value.source,
     ast: ast as unknown as WikitextRoot,
     hast: finalized.hast,

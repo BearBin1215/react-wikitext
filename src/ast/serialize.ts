@@ -1,44 +1,57 @@
 import { isWikitextDiagnostic } from "./diagnostic";
 import { WikitextError } from "./errors";
+import { isSpanWithin } from "./sourceGraph/span";
 import { isResolvedParseLimits } from "./limits";
 import {
   AST_SCHEMA_VERSION,
   SYNTAX_SCHEMA_VERSION,
   isWikitextParentNode,
   type WikitextDiagnostic,
-  type WikitextDocument,
-  type WikitextDocumentMeta,
   type WikitextNode,
+  type WikitextParsedMeta,
+  type WikitextParsedSnapshot,
   type WikitextRoot,
   type WikitextSyntaxRoot,
 } from "./model";
+import { validateSourceGraph } from "./sourceGraph/validate";
+import type { WikitextSourceGraph, WikitextSourceSpan } from "./sourceGraph/types";
 
-/** 可序列化的解析快照，带有 schema 版本。 */
-export interface SerializedWikitextDocument {
+/** 可序列化的解析快照，带有 schema 版本与判别类型。 */
+export interface SerializedWikitextParsedSnapshot {
+  readonly kind: "parsed";
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
   readonly syntaxSchemaVersion?: typeof SYNTAX_SCHEMA_VERSION;
+  readonly id: string;
+  readonly activeSourceId: string;
+  readonly graph: WikitextSourceGraph;
   readonly source: string;
   readonly ast: WikitextRoot;
   readonly syntax?: WikitextSyntaxRoot;
-  readonly meta: WikitextDocumentMeta;
+  readonly meta: WikitextParsedMeta;
   readonly diagnostics: readonly WikitextDiagnostic[];
 }
 
 /**
  * 给解析快照补上 schema 版本，并返回与输入分离的深拷贝。
  * 序列化结果是普通数据，修改它不会影响原始快照。
- * @param document 解析结果。
+ * @param snapshot 解析结果。
  */
-export function serializeWikitextDocument(document: WikitextDocument): SerializedWikitextDocument {
-  const snapshot = structuredClone(document);
+export function serializeWikitextSnapshot(
+  snapshot: WikitextParsedSnapshot,
+): SerializedWikitextParsedSnapshot {
+  const copy = structuredClone(snapshot);
   return {
+    kind: "parsed",
     astSchemaVersion: AST_SCHEMA_VERSION,
-    ...(snapshot.syntax ? { syntaxSchemaVersion: SYNTAX_SCHEMA_VERSION } : {}),
-    source: snapshot.source,
-    ...(snapshot.syntax ? { syntax: snapshot.syntax } : {}),
-    ast: snapshot.ast,
-    meta: snapshot.meta,
-    diagnostics: snapshot.diagnostics,
+    ...(copy.syntax ? { syntaxSchemaVersion: SYNTAX_SCHEMA_VERSION } : {}),
+    id: copy.id,
+    activeSourceId: copy.activeSourceId,
+    graph: copy.graph,
+    source: copy.source,
+    ...(copy.syntax ? { syntax: copy.syntax } : {}),
+    ast: copy.ast,
+    meta: copy.meta,
+    diagnostics: copy.diagnostics,
   };
 }
 
@@ -136,15 +149,41 @@ function assertDiagnostics(value: unknown): asserts value is readonly WikitextDi
   }
 }
 
+/** 校验语义节点的 origin 是否指向已有文本源与合法范围。 */
+function assertOrigins(root: WikitextRoot, graph: WikitextSourceGraph): void {
+  const texts = new Map(graph.sources.map((source) => [source.id, source.text.length]));
+  const stack: unknown[] = [root];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    assertAstNode(value);
+    const origin: WikitextSourceSpan | undefined = value.origin;
+    if (origin !== undefined) {
+      const length = texts.get(origin.sourceId);
+      if (length === undefined || !isSpanWithin(origin, length)) {
+        throw new WikitextError("INVALID_DOCUMENT", "Serialized AST node origin is invalid.");
+      }
+    }
+    if (isWikitextParentNode(value)) {
+      stack.push(...value.children);
+    }
+  }
+}
+
 /**
  * 校验并恢复解析快照；结构或版本不对时抛出 `WikitextError`。
- * @param value 来自 `serializeWikitextDocument` 或等价结构的数据。
+ * @param value 来自 `serializeWikitextSnapshot` 或等价结构的数据。
  */
-export function restoreWikitextDocument(value: unknown): WikitextDocument {
+export function restoreWikitextSnapshot(value: unknown): WikitextParsedSnapshot {
   if (!value || typeof value !== "object") {
-    throw new WikitextError("INVALID_DOCUMENT", "Serialized document is not an object.");
+    throw new WikitextError("INVALID_DOCUMENT", "Serialized snapshot is not an object.");
   }
-  const candidate = value as Partial<SerializedWikitextDocument>;
+  const candidate = value as Partial<SerializedWikitextParsedSnapshot>;
+  if (candidate.kind !== "parsed") {
+    throw new WikitextError(
+      "INVALID_DOCUMENT",
+      "Serialized value is not a parsed snapshot; use the render snapshot restorer instead.",
+    );
+  }
   if (candidate.astSchemaVersion !== AST_SCHEMA_VERSION) {
     throw new WikitextError(
       "INVALID_DOCUMENT",
@@ -152,9 +191,28 @@ export function restoreWikitextDocument(value: unknown): WikitextDocument {
     );
   }
   if (typeof candidate.source !== "string") {
-    throw new WikitextError("INVALID_DOCUMENT", "Serialized document source is not a string.");
+    throw new WikitextError("INVALID_DOCUMENT", "Serialized snapshot source is not a string.");
+  }
+  if (typeof candidate.id !== "string" || typeof candidate.activeSourceId !== "string") {
+    throw new WikitextError("INVALID_DOCUMENT", "Serialized snapshot is missing its identity.");
+  }
+  validateSourceGraph(candidate.graph);
+  const graph = candidate.graph;
+  const active = graph.sources.find((source) => source.id === candidate.activeSourceId);
+  if (!active) {
+    throw new WikitextError(
+      "INVALID_DOCUMENT",
+      "Serialized snapshot active source is not in its source graph.",
+    );
+  }
+  if (active.text !== candidate.source) {
+    throw new WikitextError(
+      "INVALID_DOCUMENT",
+      "Serialized snapshot source does not match its active text source.",
+    );
   }
   assertTree(candidate.ast);
+  assertOrigins(candidate.ast, graph);
   if (candidate.syntax !== undefined) {
     if (candidate.syntaxSchemaVersion !== SYNTAX_SCHEMA_VERSION) {
       throw new WikitextError(
@@ -166,21 +224,25 @@ export function restoreWikitextDocument(value: unknown): WikitextDocument {
   } else if (candidate.syntaxSchemaVersion !== undefined) {
     throw new WikitextError(
       "INVALID_DOCUMENT",
-      "Serialized document has a syntax schema version without a syntax tree.",
+      "Serialized snapshot has a syntax schema version without a syntax tree.",
     );
   }
   const meta = candidate.meta;
   if (!meta || typeof meta !== "object" || meta.astSchemaVersion !== AST_SCHEMA_VERSION) {
-    throw new WikitextError("INVALID_DOCUMENT", "Serialized document meta is invalid.");
+    throw new WikitextError("INVALID_DOCUMENT", "Serialized snapshot meta is invalid.");
   }
   if (!isResolvedParseLimits((meta as { limits?: unknown }).limits)) {
     throw new WikitextError(
       "INVALID_DOCUMENT",
-      "Serialized document meta does not record valid effective parse limits.",
+      "Serialized snapshot meta does not record valid effective parse limits.",
     );
   }
   assertDiagnostics(candidate.diagnostics);
   return {
+    kind: "parsed",
+    id: candidate.id,
+    activeSourceId: candidate.activeSourceId,
+    graph,
     source: candidate.source,
     ast: candidate.ast,
     ...(candidate.syntax ? { syntax: candidate.syntax } : {}),

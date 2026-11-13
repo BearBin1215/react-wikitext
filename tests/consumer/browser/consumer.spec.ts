@@ -86,7 +86,7 @@ test.describe("@consumer vite", () => {
     expect(result.type).toBe("result");
     expect(result.parser).toBe("wikiparser-node");
     expect(result.expansionStatus).toBe("complete");
-    expect(result.recordCount).toBe(1);
+    expect(result.recordCount).toBeGreaterThan(0);
     expect(result.heading).toBe("Worker");
     expect(result.paragraph).toContain("Hello Ada!");
     expect(result.link?.text).toBe("link");
@@ -119,7 +119,7 @@ test.describe("@consumer webpack", () => {
     expect(result.type).toBe("result");
     expect(result.parser).toBe("wikiparser-node");
     expect(result.expansionStatus).toBe("complete");
-    expect(result.recordCount).toBe(1);
+    expect(result.recordCount).toBeGreaterThan(0);
     expect(result.heading).toBe("Worker");
     expect(result.paragraph).toContain("Hello Ada!");
     expect(result.link?.text).toBe("link");

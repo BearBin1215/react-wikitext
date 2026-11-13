@@ -1,10 +1,5 @@
 import type { Element, Root, RootContent } from "hast";
-import type {
-  WikitextDiagnostic,
-  WikitextDocument,
-  WikitextOrigin,
-  WikitextPosition,
-} from "../ast/model";
+import type { WikitextDiagnostic, WikitextParsedSnapshot, WikitextOrigin } from "../ast/model";
 import { flattenNodes } from "../ast/query";
 
 const FILLER_CLASS = "wikitext-table__cell--filler";
@@ -81,7 +76,7 @@ function tableRows(table: Element): Element[] {
  */
 export function omitEmptyTableFillers(
   root: Root,
-  document: WikitextDocument | undefined,
+  document: WikitextParsedSnapshot | undefined,
   diagnostics: WikitextDiagnostic[],
 ): FillerOmissionResult {
   const semanticById = document
@@ -109,15 +104,13 @@ export function omitEmptyTableFillers(
         tables++;
         const meta = (element as TableMetaCarrier).data?.wikitext;
         const semantic = meta?.id ? semanticById?.get(meta.id) : undefined;
-        const origin: WikitextOrigin | undefined = semantic?.origin ?? meta?.origin;
-        const position: WikitextPosition | undefined = semantic?.position;
+        const location: WikitextOrigin | undefined = semantic?.origin ?? meta?.origin;
         diagnostics.push({
           code: "TABLE_FILLER_BUDGET_EXCEEDED",
           stage: "finalize",
           severity: "warning",
           message: `Omitted ${tableOmitted} empty table filler cells to keep the render HAST within the node budget.`,
-          ...(origin ? { origin } : {}),
-          ...(position ? { position } : {}),
+          ...(location ? { location } : {}),
         });
       }
     }

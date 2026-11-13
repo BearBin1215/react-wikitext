@@ -60,7 +60,7 @@ describe("security", () => {
   it("rejects entity-encoded javascript resolver URLs", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("[[A|label]]", {
+        snapshot={prepare("[[A|label]]", {
           resolveLink: () => ({ href: "&#106;avascript:alert(1)" }),
         })}
       />,
@@ -155,7 +155,7 @@ describe("security", () => {
       new Set(["noopener", "noreferrer"]),
     );
 
-    const html = renderToStaticMarkup(<WikitextView document={prepared} idPrefix="" />);
+    const html = renderToStaticMarkup(<WikitextView snapshot={prepared} idPrefix="" />);
     for (const anchor of anchors) {
       expect(html).toContain(`href="${String(anchor.properties.href)}"`);
       expect(html).toContain(`rel="${(anchor.properties.rel as string[]).join(" ")}"`);
@@ -177,7 +177,7 @@ describe("security", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <WikitextView
-        document={prepare("<tt>x</tt>\n\n== Healthy heading ==")}
+        snapshot={prepare("<tt>x</tt>\n\n== Healthy heading ==")}
         semanticComponents={{ unknown: ThrowingUnknown }}
       />,
     );
@@ -191,7 +191,7 @@ describe("security", () => {
     const onRenderError = vi.fn();
     render(
       <WikitextView
-        document={prepare("<tt>x</tt>")}
+        snapshot={prepare("<tt>x</tt>")}
         semanticComponents={{ unknown: ThrowingUnknown }}
         onRenderError={onRenderError}
       />,
@@ -209,12 +209,12 @@ describe("security", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { rerender } = render(
       <WikitextView
-        document={prepare("<tt>x</tt>")}
+        snapshot={prepare("<tt>x</tt>")}
         semanticComponents={{ unknown: ThrowingUnknown }}
       />,
     );
     expect(screen.getByText("Render failed: html")).toBeTruthy();
-    rerender(<WikitextView document={prepare("<tt>y</tt>")} />);
+    rerender(<WikitextView snapshot={prepare("<tt>y</tt>")} />);
     expect(screen.queryByText("Render failed: html")).toBeNull();
     expect(screen.getByText("y")).toBeTruthy();
     error.mockRestore();

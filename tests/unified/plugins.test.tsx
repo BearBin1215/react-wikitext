@@ -4,13 +4,13 @@ import type { Root, RootContent } from "hast";
 import {
   findNodeById,
   flattenNodes,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextNode,
   type WikitextRoot,
 } from "@/ast";
 import { WikitextPrepareError } from "@/hast";
 import { createWikiparser } from "@/parse";
-import { createWikitextProcessor, getWikitextDocument, getWikitextRenderDocument } from "@/unified";
+import { createWikitextProcessor, getWikitextSnapshot, getWikitextRenderSnapshot } from "@/unified";
 
 const parser = createWikiparser();
 
@@ -99,10 +99,10 @@ describe("wikitext processor", () => {
   });
 
   it("adopts a replaced working tree and keeps the parsed snapshot intact", () => {
-    let original: WikitextDocument | undefined;
+    let original: WikitextParsedSnapshot | undefined;
     const processor = createWikitextProcessor({ parser });
     processor.useWikitext(() => (tree: WikitextRoot, file: VFile) => {
-      original = getWikitextDocument(file);
+      original = getWikitextSnapshot(file);
       const next = structuredClone(tree);
       for (const node of flattenNodes(next)) {
         if (node.type === "text") {
@@ -120,10 +120,10 @@ describe("wikitext processor", () => {
   it("isolates the parsed snapshot from in-place plugin edits", () => {
     let metaBefore: string | undefined;
     let diagnosticsBefore: unknown;
-    let original: WikitextDocument | undefined;
+    let original: WikitextParsedSnapshot | undefined;
     const processor = createWikitextProcessor({ parser });
     processor.useWikitext(() => (tree: WikitextRoot, file: VFile) => {
-      original = getWikitextDocument(file);
+      original = getWikitextSnapshot(file);
       metaBefore = JSON.stringify(original!.meta);
       diagnosticsBefore = structuredClone(original!.diagnostics);
       for (const node of flattenNodes(tree)) {
@@ -151,10 +151,10 @@ describe("wikitext processor", () => {
     const ids = flattenNodes(prepared.ast).map((node) => node.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const node of flattenNodes(prepared.ast)) {
-      expect(findNodeById(prepared, node.id)).toBe(node);
+      expect(findNodeById(prepared.ast, node.id)).toBe(node);
     }
     for (const id of collectHastNodeIds(prepared.hast)) {
-      expect(findNodeById(prepared, id)).toBeDefined();
+      expect(findNodeById(prepared.ast, id)).toBeDefined();
     }
   });
 
@@ -228,13 +228,13 @@ describe("wikitext processor", () => {
   });
 
   it("exposes the rendered snapshot through typed VFile readers", () => {
-    let parsed: WikitextDocument | undefined;
-    let rendered: ReturnType<typeof getWikitextRenderDocument>;
+    let parsed: WikitextParsedSnapshot | undefined;
+    let rendered: ReturnType<typeof getWikitextRenderSnapshot>;
     const processor = createWikitextProcessor({ parser });
     processor.useHast(() => (tree: Root, file: VFile) => {
       void tree;
-      parsed = getWikitextDocument(file);
-      rendered = getWikitextRenderDocument(file);
+      parsed = getWikitextSnapshot(file);
+      rendered = getWikitextRenderSnapshot(file);
     });
     processor.runSync("text");
     expect(parsed?.ast.type).toBe("root");

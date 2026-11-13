@@ -43,11 +43,26 @@ assert.equal(typeof devtools.snapshotSelection, "function");
 assert.equal("WikitextView" in devtools, false);
 assert.equal("AstTree" in rootModule, false);
 
-const expanded = await expand.expandWikitext("{{T}}", {
-  templates: { "Template:T": "hello" },
+assert.equal("expandWikitext" in expand, false);
+assert.equal(typeof expand.createWikitextCompiler, "function");
+assert.equal(typeof expand.createTemplateTableProvider, "function");
+const compiler = expand.createWikitextCompiler({
+  parser: parseApi.createWikiparser(),
+  provider: expand.createTemplateTableProvider({
+    key: "consumer",
+    revision: "v1",
+    templates: { "Template:T": "hello" },
+  }),
 });
-assert.equal(expanded.document.source, "hello");
-assert.equal(expanded.expansion.status, "complete");
+const compilation = await compiler.compile({
+  key: "page",
+  revision: "1",
+  text: "{{T}}",
+});
+assert.equal(compilation.snapshot.source, "hello");
+assert.equal(compilation.status, "complete");
+assert.equal(compilation.snapshot.graph.sources.length > 0, true);
+await compiler.dispose();
 
 const document = parseApi.parseWikitext("== Head ==\n[[A|label]]");
 assert.equal(document.ast.type, "root");

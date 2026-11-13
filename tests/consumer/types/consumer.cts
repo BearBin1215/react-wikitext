@@ -5,12 +5,12 @@
 import { createElement } from "react";
 import { MEDIAWIKI_CONFIG, type ParserConfig } from "react-wikitext/configs";
 import {
-  expandWikitext,
-  type WikitextExpandOptions,
+  createTemplateTableProvider,
+  createWikitextCompiler,
   type WikitextTemplateTable,
 } from "react-wikitext/expand";
-import { prepareWikitext, type WikitextRenderDocument } from "react-wikitext/hast";
-import { parseWikitext, type WikitextDocument } from "react-wikitext/parse";
+import { prepareWikitext, type WikitextRenderSnapshot } from "react-wikitext/hast";
+import { createWikiparser, parseWikitext, type WikitextParsedSnapshot } from "react-wikitext/parse";
 import {
   AstTree,
   NodeInspector,
@@ -20,9 +20,9 @@ import {
 import { WikitextView, type WikitextViewProps } from "react-wikitext/view";
 
 const config: ParserConfig = MEDIAWIKI_CONFIG;
-const document: WikitextDocument = parseWikitext("== A ==", { pageName: "Page" });
-const prepared: WikitextRenderDocument = prepareWikitext(document);
-const props: WikitextViewProps = { document: prepared, idPrefix: "" };
+const document: WikitextParsedSnapshot = parseWikitext("== A ==", { pageName: "Page" });
+const prepared: WikitextRenderSnapshot = prepareWikitext(document);
+const props: WikitextViewProps = { snapshot: prepared, idPrefix: "" };
 const astTreeProps: AstTreeProps = {
   document,
   kind: "semantic",
@@ -35,15 +35,23 @@ const inspectorProps: NodeInspectorProps = {
   style: { height: 480 },
 };
 
-const templateTable: WikitextTemplateTable = new Map([["Template:A", "a"]]);
-const expandOptions: WikitextExpandOptions = {
-  templates: templateTable,
-  resolveTemplate: ({ title }) => (title === "Template:B" ? "b" : null),
-};
+const templateTable: WikitextTemplateTable = new Map([
+  ["Template:A", "a"],
+  ["Template:B", "b"],
+]);
+const compiler = createWikitextCompiler({
+  parser: createWikiparser(),
+  provider: createTemplateTableProvider({
+    key: "consumer",
+    revision: "v1",
+    templates: templateTable,
+  }),
+});
+const input = { key: "page", revision: "1", text: "{{A}}{{B}}" };
 
 export const element = createElement(WikitextView, props);
 export const astTreeElement = createElement(AstTree, astTreeProps);
 export const inspectorElement = createElement(NodeInspector, inspectorProps);
 export const parserName = config.parserFunction.length;
-export const expanded = expandWikitext("{{A}}{{B}}", expandOptions);
-export const expandedPure = expandWikitext("{{#if:1|a|b}}");
+export const expanded = compiler.compile(input);
+export const expandedPure = compiler.compile({ ...input, text: "{{#if:1|a|b}}" });

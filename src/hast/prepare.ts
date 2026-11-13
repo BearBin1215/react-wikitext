@@ -3,11 +3,11 @@ import type { VFile } from "vfile";
 import type { Root } from "hast";
 import type {
   WikitextDiagnostic,
-  WikitextDocument,
-  WikitextRenderDocument,
+  WikitextParsedSnapshot,
+  WikitextRenderSnapshot,
   WikitextRoot,
 } from "../ast/model";
-import { WikitextPrepareError } from "../ast/errors";
+import { measureAsync, measureSync } from "../instrumentation";
 import {
   assertPreparableDocument,
   cloneWorkingAst,
@@ -15,28 +15,13 @@ import {
   createRenderDocument,
   createWikitextFile,
   finishPreparedHast,
+  wrapPrepareError,
 } from "./stages";
 import type { ResolvedPrepareSettings } from "./settings";
 import { resolvePrepareSettings } from "./settings";
 import type { WikitextPrepareOptions } from "./types";
 import { takeDiagnostics } from "./vfile";
 import { validateWorkingAst } from "./workingAst";
-
-/** unified 在同步路径遇到异步插件时抛出的固定消息；只按原文匹配，避免误判插件自身的错误。 */
-const ASYNC_IN_SYNC_MESSAGE = "`runSync` finished async. Use `run` instead";
-
-function wrapStageError(stage: "wikitext" | "rehype" | "prepare", error: unknown): never {
-  if (error instanceof WikitextPrepareError) {
-    throw error;
-  }
-  const message = error instanceof Error ? error.message : String(error);
-  const asyncInSync = error instanceof Error && message === ASYNC_IN_SYNC_MESSAGE;
-  throw new WikitextPrepareError(
-    asyncInSync ? "ASYNC_PLUGIN_IN_SYNC_PATH" : "PREPARE_FAILED",
-    `Preparation failed during ${stage}: ${message}`,
-    { stage, ...(error instanceof Error ? { cause: error } : {}) },
-  );
-}
 
 function runPluginsSync<T>(
   tree: T,
@@ -52,7 +37,7 @@ function runPluginsSync<T>(
     processor.use(plugins as PluggableList);
     return processor.runSync(tree as never, file) as unknown as T;
   } catch (error) {
-    return wrapStageError(stage, error);
+    return wrapPrepareError(stage, error);
   }
 }
 
@@ -70,19 +55,19 @@ async function runPluginsAsync<T>(
     processor.use(plugins as PluggableList);
     return (await processor.run(tree as never, file)) as unknown as T;
   } catch (error) {
-    return wrapStageError(stage, error);
+    return wrapPrepareError(stage, error);
   }
 }
 
 /** 装配最终快照；同步与异步路径共用。 */
 function assembleRenderDocument(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   processed: WikitextRoot,
   pluginTree: Root,
   settings: ResolvedPrepareSettings,
   converted: ReturnType<typeof convertWorkingAst>,
   diagnostics: WikitextDiagnostic[],
-): WikitextRenderDocument {
+): WikitextRenderSnapshot {
   const finalized = finishPreparedHast(
     pluginTree,
     settings,
@@ -104,76 +89,67 @@ function assembleRenderDocument(
 }
 
 function prepareSync(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   options: WikitextPrepareOptions,
-): WikitextRenderDocument {
+): WikitextRenderSnapshot {
   const settings = resolvePrepareSettings(options);
+  const profile = options.profile;
   const diagnostics: WikitextDiagnostic[] = [];
   const file = createWikitextFile(document);
   try {
-    const processed = runPluginsSync(
-      cloneWorkingAst(document),
-      file,
-      options.wikitextPlugins,
-      "wikitext",
+    const cloned = measureSync("prepare-clone", profile, () => cloneWorkingAst(document));
+    const processed = measureSync("prepare-plugin", profile, () =>
+      runPluginsSync(cloned, file, options.wikitextPlugins, "wikitext"),
     );
-    diagnostics.push(...takeDiagnostics(file, "wikitext"));
+    diagnostics.push(...takeDiagnostics(file, "wikitext", document.activeSourceId));
     validateWorkingAst(processed);
-    const converted = convertWorkingAst(document, processed, settings, diagnostics);
-    const pluginTree = runPluginsSync(
-      converted.hast,
-      file,
-      options.rehypePlugins,
-      "rehype",
-    ) as Root;
-    diagnostics.push(...takeDiagnostics(file, "rehype"));
-    return assembleRenderDocument(
-      document,
-      processed,
-      pluginTree,
-      settings,
-      converted,
-      diagnostics,
+    const converted = measureSync("prepare-convert", profile, () =>
+      convertWorkingAst(document, processed, settings, diagnostics),
+    );
+    const pluginTree = measureSync(
+      "prepare-rehype",
+      profile,
+      () => runPluginsSync(converted.hast, file, options.rehypePlugins, "rehype") as Root,
+    );
+    diagnostics.push(...takeDiagnostics(file, "rehype", document.activeSourceId));
+    return measureSync("prepare-assemble", profile, () =>
+      assembleRenderDocument(document, processed, pluginTree, settings, converted, diagnostics),
     );
   } catch (error) {
-    return wrapStageError("prepare", error);
+    return wrapPrepareError("prepare", error);
   }
 }
 
 async function prepareAsync(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   options: WikitextPrepareOptions,
-): Promise<WikitextRenderDocument> {
+): Promise<WikitextRenderSnapshot> {
   const settings = resolvePrepareSettings(options);
+  const profile = options.profile;
   const diagnostics: WikitextDiagnostic[] = [];
   const file = createWikitextFile(document);
   try {
-    const processed = await runPluginsAsync(
-      cloneWorkingAst(document),
-      file,
-      options.wikitextPlugins,
-      "wikitext",
+    const cloned = measureSync("prepare-clone", profile, () => cloneWorkingAst(document));
+    const processed = await measureAsync("prepare-plugin", profile, () =>
+      runPluginsAsync(cloned, file, options.wikitextPlugins, "wikitext"),
     );
-    diagnostics.push(...takeDiagnostics(file, "wikitext"));
+    diagnostics.push(...takeDiagnostics(file, "wikitext", document.activeSourceId));
     validateWorkingAst(processed);
-    const converted = convertWorkingAst(document, processed, settings, diagnostics);
-    const pluginTree = (await runPluginsAsync(
-      converted.hast,
-      file,
-      options.rehypePlugins,
-      "rehype",
-    )) as Root;
-    diagnostics.push(...takeDiagnostics(file, "rehype"));
-    return assembleRenderDocument(
-      document,
-      processed,
-      pluginTree,
-      settings,
-      converted,
-      diagnostics,
+    const converted = measureSync("prepare-convert", profile, () =>
+      convertWorkingAst(document, processed, settings, diagnostics),
+    );
+    const pluginTree = await measureAsync(
+      "prepare-rehype",
+      profile,
+      async () =>
+        (await runPluginsAsync(converted.hast, file, options.rehypePlugins, "rehype")) as Root,
+    );
+    diagnostics.push(...takeDiagnostics(file, "rehype", document.activeSourceId));
+    return measureSync("prepare-assemble", profile, () =>
+      assembleRenderDocument(document, processed, pluginTree, settings, converted, diagnostics),
     );
   } catch (error) {
-    return wrapStageError("prepare", error);
+    return wrapPrepareError("prepare", error);
   }
 }
 
@@ -184,9 +160,9 @@ async function prepareAsync(
  * @param options 准备选项。
  */
 export function prepareWikitext(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   options: WikitextPrepareOptions = {},
-): WikitextRenderDocument {
+): WikitextRenderSnapshot {
   assertPreparableDocument(document);
   return prepareSync(document, options);
 }
@@ -197,9 +173,9 @@ export function prepareWikitext(
  * @param options 准备选项。
  */
 export async function prepareWikitextAsync(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   options: WikitextPrepareOptions = {},
-): Promise<WikitextRenderDocument> {
+): Promise<WikitextRenderSnapshot> {
   assertPreparableDocument(document);
   return prepareAsync(document, options);
 }

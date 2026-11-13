@@ -181,7 +181,7 @@ const document = parser.parse("== Demo ==\n\nPlain [[Target page|label]] text.",
 const prepared = prepareWikitext(document);
 
 export default function Demo() {
-  return <WikitextView document={prepared} lang="en" />;
+  return <WikitextView snapshot={prepared} lang="en" />;
 }
 ```
 

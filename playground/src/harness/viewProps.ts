@@ -11,7 +11,7 @@ import {
   THROWING_SEMANTIC_COMPONENTS,
 } from "./extensions";
 
-type ViewProps = Omit<WikitextViewProps, "document">;
+type ViewProps = Omit<WikitextViewProps, "snapshot">;
 
 export function buildPrepareOptions(options: PlaygroundOptions): WikitextPrepareOptions {
   const labels = viewLabels(options.labelLanguage);

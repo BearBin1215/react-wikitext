@@ -1,3 +1,4 @@
+import { isSpanShape } from "./sourceGraph/span";
 import { WIKITEXT_DIAGNOSTIC_SEVERITIES, WIKITEXT_STAGES, type WikitextDiagnostic } from "./model";
 
 const DIAGNOSTIC_STAGES: ReadonlySet<string> = new Set(WIKITEXT_STAGES);
@@ -15,12 +16,31 @@ export function isWikitextDiagnostic(value: unknown): value is WikitextDiagnosti
   if (!isRecord(value)) {
     return false;
   }
-  return (
-    typeof value.code === "string" &&
-    typeof value.message === "string" &&
-    typeof value.stage === "string" &&
-    DIAGNOSTIC_STAGES.has(value.stage) &&
-    typeof value.severity === "string" &&
-    DIAGNOSTIC_SEVERITIES.has(value.severity)
-  );
+  if (
+    typeof value.code !== "string" ||
+    typeof value.message !== "string" ||
+    typeof value.stage !== "string" ||
+    !DIAGNOSTIC_STAGES.has(value.stage) ||
+    typeof value.severity !== "string" ||
+    !DIAGNOSTIC_SEVERITIES.has(value.severity)
+  ) {
+    return false;
+  }
+  if (value.location !== undefined && !isSpanShape(value.location)) {
+    return false;
+  }
+  if (value.related !== undefined) {
+    if (!Array.isArray(value.related)) {
+      return false;
+    }
+    for (const entry of value.related) {
+      if (!isRecord(entry) || !isSpanShape(entry.location) || typeof entry.message !== "string") {
+        return false;
+      }
+    }
+  }
+  if (value.count !== undefined && !Number.isSafeInteger(value.count)) {
+    return false;
+  }
+  return true;
 }

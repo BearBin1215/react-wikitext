@@ -4,9 +4,9 @@ import {
   AST_SCHEMA_VERSION,
   RENDER_SCHEMA_VERSION,
   type WikitextDiagnostic,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextHeadingIdStrategy,
-  type WikitextRenderDocument,
+  type WikitextRenderSnapshot,
   type WikitextRoot,
 } from "../ast/model";
 import { WikitextPrepareError } from "../ast/errors";
@@ -24,7 +24,7 @@ function invalidDocument(message: string): never {
 }
 
 /** 为一次准备创建 VFile，并把原始快照放进 `data` 供插件读取。 */
-export function createWikitextFile(document: WikitextDocument): VFile {
+export function createWikitextFile(document: WikitextParsedSnapshot): VFile {
   const file = new VFile({
     value: document.source,
     ...(document.meta.pageName === undefined ? {} : { path: document.meta.pageName }),
@@ -37,13 +37,26 @@ export function createWikitextFile(document: WikitextDocument): VFile {
  * 校验准备阶段的输入：文档形状、schema 版本、语义根与诊断数组。
  * 畸形输入统一抛 `WikitextPrepareError("INVALID_DOCUMENT")`，不会让原生 TypeError 直接抛出。
  */
-export function assertPreparableDocument(document: unknown): asserts document is WikitextDocument {
+export function assertPreparableDocument(
+  document: unknown,
+): asserts document is WikitextParsedSnapshot {
   if (!document || typeof document !== "object") {
-    invalidDocument("prepareWikitext requires a parsed document.");
+    invalidDocument("prepareWikitext requires a parsed snapshot.");
   }
-  const candidate = document as Partial<WikitextDocument>;
+  const candidate = document as Partial<WikitextParsedSnapshot> & { kind?: unknown };
+  if (candidate.kind !== undefined && candidate.kind !== "parsed") {
+    invalidDocument(
+      "prepare requires a parse snapshot; this value is a render snapshot that has already been prepared.",
+    );
+  }
   if (typeof candidate.source !== "string") {
-    invalidDocument("Wikitext document source is not a string.");
+    invalidDocument("Wikitext snapshot source is not a string.");
+  }
+  if (!candidate.graph || typeof candidate.graph !== "object") {
+    invalidDocument("Wikitext snapshot is missing its source graph.");
+  }
+  if (typeof candidate.activeSourceId !== "string") {
+    invalidDocument("Wikitext snapshot is missing its active source identity.");
   }
   if ((candidate as { hast?: unknown }).hast !== undefined) {
     invalidDocument(
@@ -74,7 +87,7 @@ export function assertPreparableDocument(document: unknown): asserts document is
 }
 
 /** 克隆语义工作树；`structuredClone` 失败时转换成本库错误。 */
-export function cloneWorkingAst(document: WikitextDocument): WikitextRoot {
+export function cloneWorkingAst(document: WikitextParsedSnapshot): WikitextRoot {
   try {
     return cloneSemanticTree(document.ast);
   } catch (error) {
@@ -88,7 +101,7 @@ export function cloneWorkingAst(document: WikitextDocument): WikitextRoot {
 
 /** 把语义工作树转换为 HAST 并记录授权图片；不运行任何插件。 */
 export function convertWorkingAst(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   ast: WikitextRoot,
   settings: ResolvedPrepareSettings,
   diagnostics: WikitextDiagnostic[],
@@ -114,7 +127,7 @@ export interface FinishPreparedHastOptions {
   /** 目录模式；默认没有显式 marker，也没有自动目录需求。 */
   readonly toc?: WikitextTocMode;
   /** 原始快照；用于给补位格降级诊断补充来源与位置。 */
-  readonly document?: WikitextDocument;
+  readonly document?: WikitextParsedSnapshot;
 }
 
 /**
@@ -154,7 +167,7 @@ export function finishPreparedHast(
 
 /** 装配渲染快照；不重新清洗、不重新解析，也不运行 resolver。 */
 export function createRenderDocument(
-  document: WikitextDocument,
+  document: WikitextParsedSnapshot,
   ast: WikitextRoot,
   finalized: FinalizeResult,
   settings: ResolvedPrepareSettings,
@@ -162,8 +175,12 @@ export function createRenderDocument(
   diagnostics: WikitextDiagnostic[],
   /** 覆盖设置中的标题策略；raw finalize 使用。 */
   headingIdStrategy: WikitextHeadingIdStrategy = settings.headingIdStrategy,
-): WikitextRenderDocument {
+): WikitextRenderSnapshot {
   return {
+    kind: "render",
+    id: document.id,
+    activeSourceId: document.activeSourceId,
+    graph: document.graph,
     source: document.source,
     ast,
     hast: finalized.hast,
@@ -184,4 +201,30 @@ export function createRenderDocument(
     },
     diagnostics: [...document.diagnostics, ...diagnostics],
   };
+}
+
+/** unified 在同步路径遇到异步插件时抛出的固定消息；只按原文匹配。 */
+export const ASYNC_IN_SYNC_MESSAGE = "`runSync` finished async. Use `run` instead";
+
+/**
+ * 把阶段错误包装为准备错误；已经是准备错误时原样抛出。
+ * @param stage 阶段名，写入消息与错误字段。
+ * @param error 原始错误。
+ * @param prefix 消息前缀；unified 处理器使用自己的措辞。
+ */
+export function wrapPrepareError(
+  stage: string,
+  error: unknown,
+  prefix = "Preparation failed during",
+): never {
+  if (error instanceof WikitextPrepareError) {
+    throw error;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  const asyncInSync = error instanceof Error && message === ASYNC_IN_SYNC_MESSAGE;
+  throw new WikitextPrepareError(
+    asyncInSync ? "ASYNC_PLUGIN_IN_SYNC_PATH" : "PREPARE_FAILED",
+    `${prefix} ${stage}: ${message}`,
+    { stage: "prepare", ...(error instanceof Error ? { cause: error } : {}) },
+  );
 }

@@ -12,38 +12,37 @@ The library splits rendering into stages that can be deployed separately. Unders
 ```text
 source
   │
-  ├─ (optional) /expand ─▶ expanded source
+  ├─ /parse ─────────────────────▶ WikitextParsedSnapshot (parse snapshot)
+  │
+  └─ (optional) /expand ─────────▶ WikitextCompilation.snapshot (expanded and parsed)
   │
   ▼
-/parse ─▶ WikitextDocument (parse snapshot)
-  │
-  ▼
-/hast prepare ─▶ WikitextRenderDocument (render snapshot)
+/hast prepare ─▶ WikitextRenderSnapshot (render snapshot)
   │
   ▼
 /view ─▶ React
 ```
 
-| Stage       | Entry                                                      | Input                         | Output                   | Required         |
-| ----------- | ---------------------------------------------------------- | ----------------------------- | ------------------------ | ---------------- |
-| Expansion   | `/expand`                                                  | Source and host template data | Expanded parse document  | Optional         |
-| Parsing     | `/parse` (`/ast` provides the factory for custom adapters) | Source                        | `WikitextDocument`       | Yes              |
-| Preparation | `/hast`                                                    | Parse snapshot                | `WikitextRenderDocument` | Before rendering |
-| Rendering   | `/view`, root entry                                        | Render snapshot               | React elements           | To render        |
+| Stage       | Entry                                                      | Input                                   | Output                                            | Required         |
+| ----------- | ---------------------------------------------------------- | --------------------------------------- | ------------------------------------------------- | ---------------- |
+| Expansion   | `/expand`                                                  | Source, page name and template provider | Compilation whose `snapshot` is a parsed snapshot | Optional         |
+| Parsing     | `/parse` (`/ast` provides the factory for custom adapters) | Source                                  | `WikitextParsedSnapshot`                          | Yes              |
+| Preparation | `/hast`                                                    | Parse snapshot                          | `WikitextRenderSnapshot`                          | Before rendering |
+| Rendering   | `/view`, root entry                                        | Render snapshot                         | React elements                                    | To render        |
 
-The result of `/expand` is already a parse document. Do not parse it again; pass it to `prepareWikitext`.
+`compilation.snapshot` is already a parsed snapshot. Do not parse it again; pass it to `prepareWikitext`. `/parse` is not called separately when `/expand` is used: the compiler's final parse is the snapshot.
 
 ## Two snapshots
 
-### Parse snapshot `WikitextDocument`
+### Parse snapshot `WikitextParsedSnapshot`
 
 Field definitions are in [Parsing `/parse`](../api/parse.mdx).
 
 - `ast` is the normalized semantic tree; preparation never mutates it.
-- `syntax` exists only with `retainSyntax: true` and is a debugging view of upstream tokens; semantic node `position`, `origin.range`, and query helpers do not depend on it.
+- `syntax` exists only with `retainSyntax: true` and is a debugging view of upstream tokens; semantic node `origin`, source positions, and query helpers do not depend on it.
 - The same source with a different site config or `pageName` can produce a different AST.
 
-### Render snapshot `WikitextRenderDocument`
+### Render snapshot `WikitextRenderSnapshot`
 
 Field definitions are in [Preparation `/hast`](../api/prepare.mdx).
 
@@ -52,7 +51,7 @@ Field definitions are in [Preparation `/hast`](../api/prepare.mdx).
 - `meta` records the effective policy, labels, heading strategy, and authorized images.
 - `WikitextView` accepts only a render snapshot, never source text.
 
-Queries must use the right snapshot: do not look up ids from a render snapshot in the original parse snapshot.
+Both snapshots carry the same source graph, so semantic nodes, diagnostics, and HAST attributes share one set of text sources and spans. Queries must still use the right snapshot: do not look up ids from a render snapshot in the original parse snapshot.
 
 ## Why two stages
 
@@ -63,6 +62,8 @@ Preparation works on a cloned tree, so the parse snapshot stays read-only. Snaps
 :::note
 Preparation is not an optional "touch-up" step. It determines the final HAST content and the security boundary; handing unprocessed HAST to the view is unsupported.
 :::
+
+The source graph travels with the snapshot, so locations survive template expansion, CRLF normalization, and plugin rewrites.
 
 ## Semantic normalization
 
@@ -76,22 +77,24 @@ Each output can be traced back to its source, which makes issues easier to debug
 
 ## Entry boundaries
 
-| Entry       | Loads parser | Loads React | Typical use                                   |
-| ----------- | ------------ | ----------- | --------------------------------------------- |
-| Root entry  | Yes          | Yes         | Render source on the client                   |
-| `/view`     | No           | Yes         | Render a prepared snapshot                    |
-| `/parse`    | Yes          | No          | Server, worker, cache                         |
-| `/expand`   | Yes          | No          | Expand templates before parse                 |
-| `/hast`     | No           | No          | Prepare, serialize, restore                   |
-| `/ast`      | No           | No          | AST queries and data pipelines                |
-| `/unified`  | No           | No          | Fixed-order processor with an injected parser |
-| `/configs`  | No           | No          | Site config constants and override builder    |
-| `/devtools` | No           | Yes         | Debug parse results and render snapshots      |
+| Entry       | Loads parser     | Loads React | Typical use                                   |
+| ----------- | ---------------- | ----------- | --------------------------------------------- |
+| Root entry  | Yes              | Yes         | Render source on the client                   |
+| `/view`     | No               | Yes         | Render a prepared snapshot                    |
+| `/parse`    | Yes              | No          | Server, worker, cache                         |
+| `/expand`   | No (host parser) | No          | Expand templates before parse                 |
+| `/preview`  | No               | Yes         | Debounce, request versions and stale results  |
+| `/worker`   | Yes              | No          | Compile and prepare inside a worker           |
+| `/hast`     | No               | No          | Prepare, serialize, restore                   |
+| `/ast`      | No               | No          | AST queries and data pipelines                |
+| `/unified`  | No               | No          | Fixed-order processor with an injected parser |
+| `/configs`  | No               | No          | Site config constants and override builder    |
+| `/devtools` | No               | Yes         | Debug parse results and render snapshots      |
 
 [Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, see the export notes on each entry page.
 
 :::warning
-React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse` and `/hast`.
+React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, `/preview`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse`, `/expand`, `/worker`, and `/hast`.
 :::
 
 ## Glossary
@@ -99,11 +102,12 @@ React entries use hooks such as `useId` and `useMemo`, so they only run in Clien
 | Term            | Meaning                                                                                              |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | wikitext        | MediaWiki-style page source                                                                          |
-| Parse snapshot  | The semantic result of source plus site config (`WikitextDocument`)                                  |
-| Render snapshot | The result after plugins, HAST conversion, sanitization, and finalization (`WikitextRenderDocument`) |
+| Parse snapshot  | The semantic result of source plus site config (`WikitextParsedSnapshot`)                            |
+| Render snapshot | The result after plugins, HAST conversion, sanitization, and finalization (`WikitextRenderSnapshot`) |
+| Source graph    | Text sources, piece relations, and invocation records carried inside a snapshot                      |
 | Resolver        | Host callbacks such as `resolveLink` and `resolveImage`                                              |
-| Template table  | The `/expand` `templates` input that maps titles to template source                                  |
-| Fetch callback  | The `/expand` `resolveTemplate` callback used when the table misses                                  |
+| Template table  | The `/expand` template provider implementation that maps titles to source                            |
+| Remote provider | A custom `provider.open()` snapshot that fetches templates in batches                                |
 | Handler         | A `prepareOptions.handlers` function converting a custom semantic node to HAST                       |
 | Policy          | URL, tag, and class rules in `prepareOptions.policy`                                                 |
 | Labels          | `prepareOptions.labels`, every user-visible placeholder and hint                                     |

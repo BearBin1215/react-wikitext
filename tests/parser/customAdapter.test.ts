@@ -162,7 +162,7 @@ describe("custom adapter integration", () => {
         "paragraph",
       ]);
       const prepared = hast.prepareWikitext(document);
-      const html = renderToStaticMarkup(createElement(view.WikitextView, { document: prepared }));
+      const html = renderToStaticMarkup(createElement(view.WikitextView, { snapshot: prepared }));
       expect(html).toContain("<h2");
       expect(html).toContain("Demo");
       expect(html).toContain('class="wikitext-link"');

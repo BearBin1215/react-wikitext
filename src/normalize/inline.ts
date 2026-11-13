@@ -76,24 +76,36 @@ export function piecesFromNodes(
   );
 }
 
-export function mergeOrigins(nodes: readonly WikitextNode[]): WikitextOrigin | undefined {
+/**
+ * 生成父节点的包络来源：取同一文本源内子节点的最小起点与最大终点。
+ *
+ * 它是“用于块级选中与定位的包含范围”，不保证中间没有间隙；不同文本源的子节点
+ * 不参与合并，避免伪造跨源范围。逐字映射请用来源图的片段关系。
+ */
+export function enclosingOrigin(nodes: readonly WikitextNode[]): WikitextOrigin | undefined {
+  let sourceId: string | undefined;
   let start = Number.POSITIVE_INFINITY;
   let end = Number.NEGATIVE_INFINITY;
   for (const node of nodes) {
     if (!node.origin) {
       continue;
     }
-    start = Math.min(start, node.origin.range[0]);
-    end = Math.max(end, node.origin.range[1]);
+    if (sourceId === undefined) {
+      sourceId = node.origin.sourceId;
+    } else if (sourceId !== node.origin.sourceId) {
+      continue;
+    }
+    start = Math.min(start, node.origin.start);
+    end = Math.max(end, node.origin.end);
   }
-  return start <= end ? { range: [start, end] } : undefined;
+  return sourceId !== undefined && start <= end ? { sourceId, start, end } : undefined;
 }
 
 function generatedLocation(
   context: NormalizeContext,
   children: readonly WikitextNode[],
-): { position?: WikitextNode["position"]; origin?: WikitextOrigin } {
-  const origin = mergeOrigins(children);
+): { origin?: WikitextOrigin } {
+  const origin = enclosingOrigin(children);
   return origin ? nodeLocation(context, { origin }) : {};
 }
 
@@ -104,7 +116,12 @@ function makeText(
   range?: { readonly start: number; readonly end: number },
 ): WikitextNode {
   if (range) {
-    const origin: WikitextOrigin = { syntaxId: syntax.id, range: [range.start, range.end] };
+    const origin: WikitextOrigin = {
+      sourceId: context.sourceId,
+      start: range.start,
+      end: range.end,
+      syntaxId: syntax.id,
+    };
     return {
       type: "text",
       id: "",

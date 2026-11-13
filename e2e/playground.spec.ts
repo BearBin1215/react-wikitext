@@ -188,7 +188,7 @@ test("expands mock templates, reports records, and falls back on demand", async 
   await expect(diagnostics).toContainText("展开记录");
   await expect(diagnostics).toContainText("TEMPLATE_NOT_FOUND");
   await expect(diagnostics).toContainText("TEMPLATE_LOOP");
-  await expect(diagnostics).toContainText("展开诊断（原始坐标）");
+  await expect(diagnostics).toContainText("展开诊断（真实来源）");
 
   await page.getByLabel("模拟最终解析失败").check();
   await expect(app(page)).toHaveAttribute("data-expansion", "fallback");

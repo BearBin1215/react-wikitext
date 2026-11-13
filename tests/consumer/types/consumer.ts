@@ -20,7 +20,7 @@ import {
   type WikitextLinkKind,
   type WikitextPoint,
   type WikitextPosition,
-  type WikitextRange,
+  type WikitextSourceSpan,
   type WikitextParseOptions,
   type WikitextParser,
   type WikitextPrepareOptions,
@@ -75,7 +75,7 @@ export type RootTypeClosure = {
   linkKind: WikitextLinkKind;
   point: WikitextPoint;
   position: WikitextPosition;
-  range: WikitextRange;
+  range: WikitextSourceSpan;
   resolvedPolicy: WikitextResolvedPolicy;
   table: WikitextTable;
 };
@@ -96,7 +96,7 @@ import {
   WikitextPrepareError,
   prepareWikitext,
   prepareWikitextAsync,
-  serializeWikitextRenderDocument,
+  serializeWikitextRenderSnapshot,
   type WikitextImageResolver,
   type WikitextLinkResolver,
   type WikitextPluginList,
@@ -104,16 +104,18 @@ import {
 import {
   WikitextError as ExpandWikitextError,
   WikitextExpandError,
-  expandWikitext,
+  createTemplateTableProvider,
+  createWikitextCompiler,
+  type WikitextCompilation,
+  type WikitextCompiler,
+  type WikitextCompilerStats,
+  type WikitextCompileCallOptions,
   type WikitextExpandErrorCode,
-  type WikitextExpandOptions,
-  type WikitextExpandedDocument,
-  type WikitextExpansionDiagnostic,
-  type WikitextExpansionInfo,
-  type WikitextExpansionRecord,
-  type WikitextExpansionStatus,
+  type WikitextInput,
+  type WikitextTemplateProvider,
   type WikitextTemplateRequest,
-  type WikitextTemplateResolver,
+  type WikitextTemplateSnapshot,
+  type WikitextTemplateSource,
   type WikitextTemplateTable,
 } from "react-wikitext/expand";
 import { createWikiparser, parseWikitext, type WikitextParserLimits } from "react-wikitext/parse";
@@ -146,55 +148,73 @@ const document = parser.parse("== Head ==\n[[A|B]] {{T|x=1}}", {
   retainSyntax: true,
 });
 
-const resolveTemplate: WikitextTemplateResolver = ({ title }: WikitextTemplateRequest) =>
-  title === "Template:T" ? "{{{x}}}" : null;
-const expandOptions: WikitextExpandOptions = {
-  parser,
-  pageName: "Consumer",
-  parseOptions: { retainSyntax: true },
-  resolveTemplate,
-  maxDepth: 40,
-  maxInvocations: 100,
-  maxExpandedLength: 10_000,
-  strict: false,
-};
-void expandWikitext("{{T|x=1}}", expandOptions).then((expanded: WikitextExpandedDocument) => {
-  const info: WikitextExpansionInfo = expanded.expansion;
-  const record: WikitextExpansionRecord | undefined = info.records[0];
-  const diagnostic: WikitextExpansionDiagnostic | undefined = info.diagnostics[0];
-  const status: WikitextExpansionStatus = info.status;
-  void record?.expandedRange;
-  void diagnostic?.origin;
-  void status;
-  void expanded.original.source;
-  return undefined;
-});
-
 const templateRecord: Record<string, string> = { "Template:T": "{{{x}}}" };
 const templateMap: ReadonlyMap<string, string> = new Map<string, string>([
   ["Template:T", "{{{x}}}"],
 ]);
 const templateTable: WikitextTemplateTable = templateRecord;
 const templateTableFromMap: WikitextTemplateTable = templateMap;
-const recordOptions: WikitextExpandOptions = { parser, templates: templateRecord };
-const mapOptions: WikitextExpandOptions = { templates: templateMap };
-const resolverOnlyOptions: WikitextExpandOptions = { resolveTemplate };
-const mixedOptions: WikitextExpandOptions = {
-  parser,
-  pageName: "Consumer",
-  templates: templateMap,
-  resolveTemplate,
-  strict: true,
-};
 void templateTable;
 void templateTableFromMap;
-void expandWikitext("{{T}}");
-void expandWikitext("{{T}}", undefined);
-void expandWikitext("{{#if:1|a|b}}");
-void expandWikitext("{{T}}", recordOptions);
-void expandWikitext("{{T}}", mapOptions);
-void expandWikitext("{{T}}", resolverOnlyOptions);
-void expandWikitext("{{T}}", mixedOptions);
+
+const provider: WikitextTemplateProvider = createTemplateTableProvider({
+  key: "consumer:offline",
+  revision: "templates-v1",
+  templates: templateMap,
+});
+const compiler: WikitextCompiler = createWikitextCompiler({
+  parser,
+  provider,
+  cache: { maxEntries: 100, maxBytes: 1_000_000 },
+  fetch: { concurrency: 2, batchSize: 10 },
+});
+const input: WikitextInput = { key: "page:consumer", revision: "edit-1", text: "{{T|x=1}}" };
+const callOptions: WikitextCompileCallOptions = {
+  pageName: "Consumer",
+  retainSyntax: true,
+  failureMode: "preserve",
+  parseOptions: { retainSyntax: true },
+  budget: { maxDepth: 40, maxInvocations: 100, maxExpandedLength: 10_000 },
+};
+void compiler.compile(input, callOptions).then((compilation: WikitextCompilation) => {
+  const invocation = compilation.snapshot.graph.invocations[0];
+  const diagnostic = compilation.snapshot.diagnostics[0];
+  void invocation?.outputs;
+  void diagnostic?.location;
+  void compilation.status;
+  void compilation.inputSourceId;
+  void compilation.attemptedSourceId;
+  void compilation.snapshot.activeSourceId;
+  void compilation.dependencies;
+  return undefined;
+});
+const compilerStats: WikitextCompilerStats = compiler.getStats();
+void compilerStats.programCompilations;
+void compiler.invalidate();
+void compiler.clearCache();
+void compiler.dispose();
+
+const remoteSnapshot: WikitextTemplateSnapshot = {
+  key: "consumer:remote",
+  revision: "r1",
+  get(title: string, request: WikitextTemplateRequest): WikitextTemplateSource | null {
+    void request.location;
+    return title === "Template:T" ? { title, source: "{{{x}}}" } : null;
+  },
+  getMany(titles: readonly string[]) {
+    return new Map(titles.map((title) => [title, null]));
+  },
+  release() {},
+};
+const remoteProvider: WikitextTemplateProvider = {
+  key: "consumer:remote",
+  open() {
+    return remoteSnapshot;
+  },
+};
+void remoteProvider;
+void createWikitextCompiler({ parser, provider: remoteProvider });
+
 void WikitextExpandError;
 const expandErrorCode: WikitextExpandErrorCode = "TEMPLATE_NOT_FOUND";
 void expandErrorCode;
@@ -282,7 +302,7 @@ const prepared = prepareWikitext(document, {
 const pluginList: WikitextPluginList = [];
 void prepareWikitextAsync(document, { wikitextPlugins: pluginList });
 void prepared.headings;
-void serializeWikitextRenderDocument(prepared);
+void serializeWikitextRenderSnapshot(prepared);
 
 const rootDiagnostics: readonly WikitextDiagnostic[] = document.diagnostics;
 void rootDiagnostics;
@@ -302,7 +322,7 @@ const components: WikitextHtmlComponents = {
 };
 
 const viewProps: WikitextViewProps = {
-  document: prepared,
+  snapshot: prepared,
   components,
   semanticComponents,
   idPrefix: "host-",

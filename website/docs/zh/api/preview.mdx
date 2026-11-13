@@ -1,0 +1,87 @@
+---
+title: 实时预览 /preview
+description: useWikitextPreview、executor 协议与 Worker transport。
+---
+
+# 实时预览 `/preview`
+
+```ts
+import { useWikitextPreview, createWikitextWorkerExecutor } from "react-wikitext/preview";
+```
+
+`/preview` 提供统一的实时预览调度接口，同时支持主线程与宿主创建的 Worker。它不加载默认 parser，工作通过显式 executor 发起。
+
+## 用法
+
+```tsx
+const preview = useWikitextPreview({
+  input: { key: pageKey, revision: editorRevision, text: source },
+  executor,
+  debounceMs: 250,
+  initialSnapshot,
+});
+
+return preview.snapshot ? (
+  <WikitextView snapshot={preview.snapshot} sourceAttributes="block" />
+) : (
+  <LoadingPreview />
+);
+```
+
+`executor` 接收输入与可取消信号，返回渲染快照：
+
+```ts
+type WikitextPreviewExecutor = (request: WikitextPreviewRequest) => Promise<WikitextRenderSnapshot>;
+
+interface WikitextPreviewRequest {
+  readonly requestId: string;
+  readonly input: { key: string; revision: string; text: string };
+  readonly options?: WikitextPreviewCompileOptions;
+  readonly signal?: AbortSignal;
+}
+```
+
+主线程执行器直接复用编译器：
+
+```ts
+const executor: WikitextPreviewExecutor = async (request) => {
+  const compilation = await compiler.compile(
+    { key: request.input.key, revision: request.input.revision, text: request.input.text },
+    { signal: request.signal, ...request.options },
+  );
+  return prepareWikitext(compilation.snapshot, prepareOptions);
+};
+```
+
+## 返回值
+
+```ts
+interface WikitextPreviewResult {
+  readonly snapshot?: WikitextRenderSnapshot;
+  readonly status: "idle" | "scheduled" | "running" | "ready" | "error";
+  readonly inputRevision: string;
+  readonly displayedRevision?: string;
+  readonly error?: Error;
+  readonly run: () => void;
+  readonly cancel: () => void;
+}
+```
+
+## 调度规则
+
+- 首次输入立即执行；同一输入 key 的后续编辑防抖。
+- key 变化取消旧执行并隔离旧页面结果；executor、有效选项或来源版本变化也触发新请求。
+- effect cleanup、unmount、Strict Mode 重放与乱序返回都不会提交过期结果。
+- 调度期间可以保留旧快照，但旧快照的身份与版本不变；用户点击旧结果时返回旧版本定位，宿主不能把它当作当前输入的范围。
+- 渲染期不调用 executor、不创建 compiler、不启动 provider 请求；SSR 的 `initialSnapshot` 由宿主提前编译并与客户端一致。
+
+## Worker transport
+
+```ts
+const transport = createWikitextWorkerExecutor(worker);
+const preview = useWikitextPreview({ input, executor: transport.executor });
+// 卸载时
+transport.dispose();
+```
+
+函数、compiler、provider 与 `AbortSignal` 不通过 `postMessage` 序列化；transport 只连接宿主创建的 Worker，不加载 parser。协议细节见 [`/worker`](./worker.mdx)。

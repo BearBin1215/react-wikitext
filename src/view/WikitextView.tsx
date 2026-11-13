@@ -13,7 +13,7 @@ import {
 import { renderHastNodes } from "./render";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import type { WikitextViewProps } from "./types";
-import { assertRenderDocument } from "./validate";
+import { assertRenderSnapshot } from "./validate";
 
 /** 实例前缀只允许出现在 DOM id 与片段中的安全字符；空串或全非法字符回退到实例 id。 */
 function resolveInstancePrefix(
@@ -87,9 +87,10 @@ function blockInfo(
  * 属性说明见 {@link WikitextViewProps}。
  */
 export function WikitextView({
-  document,
+  snapshot,
   components,
   semanticComponents,
+  sourceAttributes = "none",
   lang,
   dir,
   idPrefix,
@@ -97,13 +98,13 @@ export function WikitextView({
   containerProps,
   onRenderError,
 }: WikitextViewProps): ReactElement {
-  assertRenderDocument(document);
+  assertRenderSnapshot(snapshot);
   const reactId = useId();
-  const strategy = document.meta.headingIdStrategy;
+  const strategy = snapshot.meta.headingIdStrategy;
   const resolvedPrefix = resolveInstancePrefix(strategy, idPrefix, reactId);
 
-  const semanticIndex = useMemo(() => createSemanticIndex(document), [document]);
-  const hastIndex = useMemo(() => createHastIndex(document.hast), [document]);
+  const semanticIndex = useMemo(() => createSemanticIndex(snapshot), [snapshot]);
+  const hastIndex = useMemo(() => createHastIndex(snapshot.hast), [snapshot]);
   const mapId = useMemo(
     () => (id: string) => (resolvedPrefix ? `${resolvedPrefix}${id}` : id),
     [resolvedPrefix],
@@ -117,31 +118,33 @@ export function WikitextView({
   const bridgeComponents = useMemo(
     () =>
       createBridgeComponents(
-        bridgeTagNames(document.meta.policy.extraTags, components as Record<string, unknown>),
+        bridgeTagNames(snapshot.meta.policy.extraTags, components as Record<string, unknown>),
       ),
-    [document, components],
+    [snapshot, components],
   );
 
   const context = useMemo<WikitextViewContextValue>(
     () => ({
-      document,
+      snapshot,
       semanticIndex,
       hastIndex,
       components: components ?? {},
       semanticComponents: semanticComponents ?? {},
       bridgeComponents,
+      sourceAttributes,
       idPrefix: resolvedPrefix,
       mapId,
       mapHref,
       ...(onRenderError === undefined ? {} : { onRenderError }),
     }),
     [
-      document,
+      snapshot,
       semanticIndex,
       hastIndex,
       components,
       semanticComponents,
       bridgeComponents,
+      sourceAttributes,
       resolvedPrefix,
       mapId,
       mapHref,
@@ -158,18 +161,18 @@ export function WikitextView({
 
   const blocks = useMemo(
     () =>
-      document.hast.children.map((block, index) => ({
+      snapshot.hast.children.map((block, index) => ({
         key: hastNodeId(block) ?? `block-${index}`,
         node: blockInfo(block, semanticIndex, index),
         element: renderHastNodes([block], bridgeComponents),
       })),
-    [document, semanticIndex, bridgeComponents],
+    [snapshot, semanticIndex, bridgeComponents],
   );
 
   // 组件身份变化也要重建错误边界；否则同一快照下更换组件不会清除错误。
   const resetKey = useMemo(
-    () => ({ document, components, semanticComponents }),
-    [document, components, semanticComponents],
+    () => ({ snapshot, components, semanticComponents }),
+    [snapshot, components, semanticComponents],
   );
 
   return (
@@ -179,13 +182,19 @@ export function WikitextView({
         className={rootClassName}
         {...(lang ? { lang } : {})}
         {...(dir ? { dir } : {})}
+        {...(sourceAttributes === "none"
+          ? {}
+          : {
+              "data-wikitext-snapshot": snapshot.id,
+              "data-wikitext-view": "",
+            })}
       >
         {blocks.map((block) => (
           <RenderErrorBoundary
             key={block.key}
             node={block.node}
-            source={getSourceText(document, block.node)}
-            label={document.meta.labels.renderFailed}
+            source={getSourceText(snapshot, block.node)}
+            label={snapshot.meta.labels.renderFailed}
             resetKey={resetKey}
             {...(onRenderError ? { onRenderError } : {})}
           >

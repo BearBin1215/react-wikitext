@@ -4,7 +4,8 @@ import {
   type WikitextParseOptions,
   type WikitextParser,
   type WikitextParserAdapter,
-} from "../ast/parser";
+} from "../parser";
+import { hashText } from "../ast/sourceGraph/graph";
 import { normalizeConfig } from "../configs/config";
 import type { ParserConfig } from "../configs/types";
 import { buildSyntaxTree } from "./buildSyntax";
@@ -93,7 +94,12 @@ function createWikiparserAdapter(config?: ParserConfig): WikitextParserAdapter {
  */
 export function createWikiparser(options: CreateWikiparserOptions = {}): WikitextParser {
   const adapter = createWikiparserAdapter(options.config);
-  return createWikitextParser(adapter, { defaults: options.defaults });
+  // 配置快照进入解析器身份：不同站点配置不能共用语法缓存。
+  const configKey = hashText(JSON.stringify(normalizeConfig(options.config)));
+  return createWikitextParser(adapter, {
+    defaults: options.defaults,
+    key: `${adapter.name}@${adapter.version}:${configKey}`,
+  });
 }
 
 let defaultParser: WikitextParser | undefined;

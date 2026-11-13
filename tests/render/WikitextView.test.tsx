@@ -23,7 +23,7 @@ describe("WikitextView text and structure", () => {
   });
 
   it("generates an isolated prefix when idPrefix is omitted", () => {
-    const html = renderToStaticMarkup(<WikitextView document={prepare("== A ==")} />);
+    const html = renderToStaticMarkup(<WikitextView snapshot={prepare("== A ==")} />);
     expect(html).toMatch(/id="wikitext-[A-Za-z0-9_-]+-A"/u);
   });
 
@@ -41,7 +41,7 @@ describe("WikitextView text and structure", () => {
   });
 
   it("rejects a parse snapshot at runtime", () => {
-    expect(() => renderToStaticMarkup(<WikitextView document={parse("text") as never} />)).toThrow(
+    expect(() => renderToStaticMarkup(<WikitextView snapshot={parse("text") as never} />)).toThrow(
       /parse snapshot/u,
     );
   });
@@ -299,7 +299,7 @@ describe("WikitextView fallbacks", () => {
   it("keeps mediawiki anchors without an instance prefix", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("== A ==", { headingIdStrategy: "mediawiki" })}
+        snapshot={prepare("== A ==", { headingIdStrategy: "mediawiki" })}
         idPrefix="host-"
       />,
     );

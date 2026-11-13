@@ -275,26 +275,120 @@ export function titleParts(input: string, count: number, first: number): string 
   return parts.slice(start, end).join("/");
 }
 
-/** `#sub`：按 UTF-16 下标截取；长度省略时取到结尾。 */
-export function substring(input: string, start: number, length?: number): string {
-  const from = start < 0 ? Math.max(0, input.length + start) : start;
-  return length === undefined ? input.slice(from) : input.slice(from, from + length);
+/**
+ * 按 Unicode 码点计数。
+ *
+ * 源码 offset 与编辑器定位仍然按 UTF-16 表示；`#len` 等站点函数使用码点，
+ * 两者不能混为一谈。
+ * @param input 待计数文本。
+ */
+export function codePointLength(input: string): number {
+  let length = 0;
+  for (const _character of input) {
+    void _character;
+    length++;
+  }
+  return length;
 }
 
-/** `#padleft` / `#padright`：用指定填充字符补到目标长度。 */
+/**
+ * `#sub`：按 Unicode 码点截取。
+ *
+ * - 省略长度或显式长度 `0` 时取到结尾；
+ * - 负长度从结果末尾缩短；
+ * - 负起点从末尾计数，越界按站点实现钳制。
+ * @param input 原始文本。
+ * @param start 起点，负数从末尾计数。
+ * @param length 长度；`undefined` 或 `0` 表示取到结尾。
+ */
+export function substring(input: string, start: number, length?: number): string {
+  const characters = Array.from(input);
+  const total = characters.length;
+  const from = start < 0 ? Math.max(0, total + start) : start;
+  if (from >= total) {
+    return "";
+  }
+  if (length === undefined || length === 0) {
+    return characters.slice(from).join("");
+  }
+  if (length < 0) {
+    const end = Math.max(from, total + length);
+    return characters.slice(from, end).join("");
+  }
+  return characters.slice(from, from + length).join("");
+}
+
+/** `#padleft` / `#padright`：用指定填充字符按码点补到目标长度。 */
 export function pad(
   input: string,
   length: number,
   padding: string,
   side: "left" | "right",
 ): string {
-  if (input.length >= length || !padding) {
+  const characters = Array.from(input);
+  const paddingCharacters = Array.from(padding);
+  if (characters.length >= length || paddingCharacters.length === 0) {
     return input;
   }
-  const paddingValue = padding
-    .repeat(Math.ceil((length - input.length) / padding.length))
-    .slice(0, length - input.length);
+  const missing = length - characters.length;
+  const filler: string[] = [];
+  for (let index = 0; index < missing; index++) {
+    filler.push(paddingCharacters[index % paddingCharacters.length]!);
+  }
+  const paddingValue = filler.join("");
   return side === "left" ? `${paddingValue}${input}` : `${input}${paddingValue}`;
+}
+
+/**
+ * `#replace`：按完整字符序列替换。
+ *
+ * 空查找串按 MediaWiki 规则等价于单个空格；`limit` 为负数表示不限制次数。
+ * @param input 原始文本。
+ * @param search 查找串。
+ * @param replacement 替换串。
+ * @param limit 最多替换次数；负数表示不限制。
+ */
+export function replaceText(
+  input: string,
+  search: string,
+  replacement: string,
+  limit = -1,
+): string {
+  const needle = search === "" ? " " : search;
+  if (limit < 0) {
+    return input.split(needle).join(replacement);
+  }
+  if (limit === 0) {
+    return input;
+  }
+  let result = "";
+  let cursor = 0;
+  let replaced = 0;
+  for (;;) {
+    const found = input.indexOf(needle, cursor);
+    if (found < 0 || replaced >= limit) {
+      return result + input.slice(cursor);
+    }
+    result += input.slice(cursor, found) + replacement;
+    cursor = found + needle.length;
+    replaced++;
+  }
+}
+
+/**
+ * 站点风格的错误输出。
+ *
+ * `#iferror` 按错误标记判断可见输出，因此错误必须表现为带 `error` 类的元素，
+ * 而不是仅存在于库诊断中。
+ * @param message 错误说明。
+ */
+export function errorOutput(message: string): string {
+  const escaped = message
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;")
+    .replace(/"/gu, "&quot;");
+  return `<strong class="error">${escaped}</strong>`;
 }
 
 /** `#urlencode`：使用与浏览器一致的标准百分号编码。 */

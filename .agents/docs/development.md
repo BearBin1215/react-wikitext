@@ -84,6 +84,8 @@ playground 的约束：
 ### 4.3 性能报告
 
 - `pnpm bench` 生成 `test-results/bench/report.json` 与 `summary.md`，随后校验报告。运行错误、缺少必测阶段或空报告直接失败。
+- 必测阶段：`parse`、`prepare`（含 `prepare-clone` / `prepare-plugin` / `prepare-convert` / `prepare-rehype` / `prepare-assemble`）、`serialize`、`restore`、`render`、`expand`（含 `normalize` / `page-syntax` / `template` / `evaluate` / `fetch` / `assemble` / `final-syntax` / `build`）与模板表 `copy`。
+- 阶段计时来自 `src/instrumentation.ts` 的 `WikitextStageSink`，默认关闭；基准通过编译与准备的 `profile` 选项按调用传入采样器，不存在模块级状态。
 - 耗时变化只进入摘要，不设固定门槛。共享 CI 只适合同环境相对比较；更换机器或依赖后应重新建立基线。
 - 性能目标与规模策略见[总体架构](./architecture.md#8-性能与规模)。
 

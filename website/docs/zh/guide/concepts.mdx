@@ -12,38 +12,37 @@ description: 处理管线、两种快照、入口加载边界与语义归一化�
 ```text
 source
   │
-  ├─（可选）/expand ─▶ 展开后的 source
+  ├─ /parse ───────────────▶ WikitextParsedSnapshot（解析快照）
+  │
+  └─（可选）/expand ───────▶ WikitextCompilation.snapshot（展开并重新解析）
   │
   ▼
-/parse ─▶ WikitextDocument（解析快照）
-  │
-  ▼
-/hast prepare ─▶ WikitextRenderDocument（渲染快照）
+/hast prepare ─▶ WikitextRenderSnapshot（渲染快照）
   │
   ▼
 /view ─▶ React
 ```
 
-| 阶段 | 入口                                               | 输入           | 输出                     | 是否必需   |
-| ---- | -------------------------------------------------- | -------------- | ------------------------ | ---------- |
-| 展开 | `/expand`                                          | 源码与模板来源 | 展开后的解析文档         | 可选       |
-| 解析 | `/parse`（`/ast` 提供自定义 adapter 的解析器工厂） | 源码           | `WikitextDocument`       | 必需       |
-| 准备 | `/hast`                                            | 解析快照       | `WikitextRenderDocument` | 渲染前必需 |
-| 渲染 | `/view`、根入口                                    | 渲染快照       | React 元素               | 渲染时必需 |
+| 阶段 | 入口                                               | 输入                        | 输出                            | 是否必需   |
+| ---- | -------------------------------------------------- | --------------------------- | ------------------------------- | ---------- |
+| 展开 | `/expand`                                          | 源码、页面名与模板 provider | 编译结果，`snapshot` 为解析快照 | 可选       |
+| 解析 | `/parse`（`/ast` 提供自定义 adapter 的解析器工厂） | 源码                        | `WikitextParsedSnapshot`        | 必需       |
+| 准备 | `/hast`                                            | 解析快照                    | `WikitextRenderSnapshot`        | 渲染前必需 |
+| 渲染 | `/view`、根入口                                    | 渲染快照                    | React 元素                      | 渲染时必需 |
 
-`/expand` 的结果已经是解析文档，不需要再手动解析一次；直接交给 `prepareWikitext`。
+`compilation.snapshot` 已经是解析快照，不需要再解析一次；直接交给 `prepareWikitext`。使用 `/expand` 时不再单独调用 `/parse`，编译器内部的解析结果就是最终快照。
 
 ## 两种快照
 
-### 解析快照 `WikitextDocument`
+### 解析快照 `WikitextParsedSnapshot`
 
 字段定义见[解析 `/parse`](../api/parse.mdx)。
 
 - `ast` 是归一化后的语义树，准备阶段不会修改它。
-- `syntax` 只在 `retainSyntax: true` 时存在，是上游 token 的调试视图；语义节点的 `position`、`origin.range` 与查询函数都不依赖它。
+- `syntax` 只在 `retainSyntax: true` 时存在，是上游 token 的调试视图；语义节点的 `origin`、源码定位与查询函数都不依赖它。
 - 同一份源码配合不同的站点配置或 `pageName`，可能得到不同的 AST。
 
-### 渲染快照 `WikitextRenderDocument`
+### 渲染快照 `WikitextRenderSnapshot`
 
 字段定义见[准备 `/hast`](../api/prepare.mdx)。
 
@@ -58,7 +57,7 @@ source
 
 解析成本高，而准备选项经常变化。缓存解析快照，就可以用不同的解析回调、图片、文案或插件重复准备，而不必重新解析。服务端准备、客户端渲染也是同一套快照：客户端不加载解析器，也不重跑插件。
 
-准备阶段在克隆的工作树上执行，原始快照保持只读。快照是普通数据，可以放进缓存、跨 Worker 传递或经网络传输；恢复函数会重新校验结构与预算。
+准备阶段在克隆的工作树上执行，原始快照保持只读。快照是普通数据，可以放进缓存、跨 Worker 传递或经网络传输；恢复函数会重新校验结构与预算。两份快照都带同一份来源图，语义节点、诊断与 HAST 属性共用一套文本源与 span，跨模板展开、CRLF 归一化与插件改写仍能定位到实际源码。
 
 :::note 说明
 准备阶段不可跳过。它决定 HAST 的最终内容与安全边界；跳过准备、直接把 HAST 交给视图不在支持范围内。
@@ -76,22 +75,24 @@ source
 
 ## 入口与加载边界
 
-| 入口        | 加载解析器 | 加载 React | 典型用途                       |
-| ----------- | ---------- | ---------- | ------------------------------ |
-| 根入口      | 是         | 是         | 客户端直接渲染源码             |
-| `/view`     | 否         | 是         | 客户端只渲染准备好的快照       |
-| `/parse`    | 是         | 否         | 服务端、Worker、缓存           |
-| `/expand`   | 是         | 否         | 解析前展开模板                 |
-| `/hast`     | 否         | 否         | 准备、序列化、恢复             |
-| `/ast`      | 否         | 否         | 纯数据处理与 AST 查询          |
-| `/unified`  | 否         | 否         | 显式注入解析器的固定顺序处理器 |
-| `/configs`  | 否         | 否         | 站点配置常量与覆盖构造器       |
-| `/devtools` | 否         | 是         | 调试解析结果与渲染快照         |
+| 入口        | 加载解析器     | 加载 React | 典型用途                       |
+| ----------- | -------------- | ---------- | ------------------------------ |
+| 根入口      | 是             | 是         | 客户端直接渲染源码             |
+| `/view`     | 否             | 是         | 客户端只渲染准备好的快照       |
+| `/parse`    | 是             | 否         | 服务端、Worker、缓存           |
+| `/expand`   | 否（宿主注入） | 否         | 解析前展开模板                 |
+| `/preview`  | 否             | 是         | 编辑器防抖、请求版本与旧结果   |
+| `/worker`   | 是             | 否         | Worker 内执行编译与准备        |
+| `/hast`     | 否             | 否         | 准备、序列化、恢复             |
+| `/ast`      | 否             | 否         | 纯数据处理与 AST 查询          |
+| `/unified`  | 否             | 否         | 显式注入解析器的固定顺序处理器 |
+| `/configs`  | 否             | 否         | 站点配置常量与覆盖构造器       |
+| `/devtools` | 否             | 是         | 调试解析结果与渲染快照         |
 
 [入口总览](../api/index.mdx) 按子路径说明职责与加载边界；逐个符号的清单见各入口的导出说明。
 
 :::warning 警告
-React 入口使用 `useId` / `useMemo` 等 Hook，因此只能在客户端组件中运行。根入口、`/view` 与 `/devtools` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用。服务端只应调用 `/parse`、`/hast` 等无 React 入口。
+React 入口使用 `useId` / `useMemo` 等 Hook，因此只能在客户端组件中运行。根入口、`/view`、`/preview` 与 `/devtools` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用。服务端只应调用 `/parse`、`/expand`、`/worker`、`/hast` 等无 React 入口。
 :::
 
 ## 术语
@@ -99,11 +100,12 @@ React 入口使用 `useId` / `useMemo` 等 Hook，因此只能在客户端组件
 | 术语     | 含义                                                                                                            |
 | -------- | --------------------------------------------------------------------------------------------------------------- |
 | wikitext | MediaWiki 风格的页面源码                                                                                        |
-| 解析快照 | 某份源码加上站点配置后的语义结果，对应 `WikitextDocument`                                                       |
-| 渲染快照 | 完成插件、HAST 转换、清洗与整理后的结果，对应 `WikitextRenderDocument`                                          |
+| 解析快照 | 某份源码加上站点配置后的语义结果，对应 `WikitextParsedSnapshot`                                                 |
+| 渲染快照 | 完成插件、HAST 转换、清洗与整理后的结果，对应 `WikitextRenderSnapshot`                                          |
+| 来源图   | 快照内登记全部文本源、片段关系与调用记录的结构，供映射与定位查询                                                |
 | 解析回调 | 宿主提供的 `resolveLink`、`resolveImage` 等回调，用于把 wiki 地址换成站点地址；不要与 wikitext 的解析器函数混淆 |
-| 模板表   | `/expand` 的 `templates`，按标题直接提供模板源码                                                                |
-| 获取回调 | `/expand` 的 `resolveTemplate`，模板表未命中时获取模板源码                                                      |
+| 模板表   | `/expand` 的模板 provider 实现，按标题直接提供模板源码                                                          |
+| 远程提供 | 自定义 `provider.open()` 返回的快照，按需批量获取模板源码                                                       |
 | 转换函数 | `prepareOptions.handlers` 中把自定义语义节点转换为 HAST 的函数                                                  |
 | 策略     | `prepareOptions.policy` 中的 URL、标签与类名规则                                                                |
 | 文案     | `prepareOptions.labels`，所有用户可见占位与提示                                                                 |

@@ -19,8 +19,8 @@ import {
   getTemplateParameters,
   getFileParameters,
   normalizeSource,
-  serializeWikitextDocument,
-  restoreWikitextDocument,
+  serializeWikitextParsedSnapshot,
+  restoreWikitextParsedSnapshot,
   type KnownWikitextDiagnosticCode,
   type WikitextNodeBase,
 } from "react-wikitext/ast";
@@ -34,15 +34,13 @@ import {
 interface WikitextNodeBase<TType extends string> {
   readonly type: TType;
   readonly id: string;
-  readonly position?: WikitextPosition;
   readonly origin?: WikitextOrigin;
   readonly data?: Readonly<Record<string, unknown>>;
 }
 ```
 
 - `id` is unique within a snapshot and is not promised to be stable across edits.
-- `position` is 1-based line/column + 0-based offset; generated nodes omit it.
-- `origin` points at the original syntax node and range.
+- `origin` points at its text source and `[start, end)` (optionally `syntaxId`); use `getSourcePosition` for line/column. Generated nodes omit it.
 - `data` holds extension data.
 - `WikitextNodeBase` is a public type; custom nodes can extend it and add their key to `WikitextNodeMap`, and `handlers` plus query helpers will infer the concrete node type.
 
@@ -111,23 +109,25 @@ interface WikitextSyntaxNode {
 }
 ```
 
-The syntax tree is a debugging view of upstream tokens: semantic node `position`, `origin.range`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand` always builds the syntax tree internally, so there the option only controls whether it is published. To visualize the semantic tree or source syntax tree, use `AstTree` from [`/devtools`](./devtools.mdx).
+The syntax tree is a debugging view of upstream tokens: semantic node `origin`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand` builds syntax internally through `parser.compile`; `retainSyntax` only controls whether it is published. To visualize the semantic tree or source syntax tree, use `AstTree` from [`/devtools`](./devtools.mdx).
 
 ## Queries
 
 ```ts
-interface SourceDocumentLike {
+interface SourceSnapshotLike {
   readonly source: string;
   readonly ast: WikitextRoot;
+  readonly graph: WikitextSourceGraph;
+  readonly activeSourceId: WikitextSourceId;
 }
 ```
 
 | Function                                       | Behavior                                                                                                         |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `flattenNodes(root)`                           | Depth-first list of all semantic nodes                                                                           |
-| `findNodeById(document, id)`                   | Find by id; returns `undefined` when absent                                                                      |
-| `findNodeAtOffset(document, offset, options?)` | Deepest node containing the offset; ranges are `[start, end)`; `offset === source.length` falls back to the root |
-| `getSourceText(document, node)`                | LF source slice for the node                                                                                     |
+| `findNodeById(root, id)`                       | Find by id; returns `undefined` when absent                                                                      |
+| `findNodeAtOffset(snapshot, offset, options?)` | Deepest node containing the offset; ranges are `[start, end)`; `offset === source.length` falls back to the root |
+| `getSourceText(snapshot, node)`                | Source slice from the node's `origin`                                                                            |
 | `toPlainText(node)`                            | Converted semantic text; does not decode entities again                                                          |
 | `isNodeType(node, type)`                       | Type narrowing in generic contexts                                                                               |
 
@@ -136,6 +136,7 @@ interface SourceDocumentLike {
 - To index by id, build a `Map` from `flattenNodes`.
 - Preparation reassigns node ids. Arrays or id indexes from `flattenNodes` held by plugins before that are not updated automatically, so build them again.
 - Query transformed nodes with the render snapshot; do not use its ids against the original parse snapshot.
+- To find nodes by source range use `findRenderedNodes`, and to map a node range to another text source use `mapSourceSpan` (see [`/expand`](./expand.mdx#source-graph-and-lookup)).
 
 ## Structured helpers
 
@@ -176,16 +177,16 @@ const normalized = normalizeSource(raw, maxSourceLength);
 Parse snapshot:
 
 ```ts
-const payload = serializeWikitextDocument(document);
-const restored = restoreWikitextDocument(payload);
+const payload = serializeWikitextParsedSnapshot(document);
+const restored = restoreWikitextParsedSnapshot(payload);
 ```
 
 Render snapshot:
 
 ```ts
 import {
-  serializeWikitextRenderDocument,
-  restoreWikitextRenderDocument,
+  serializeWikitextRenderSnapshot,
+  restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
 
@@ -198,8 +199,8 @@ Restore functions validate schema versions, the source string, the root, meta (i
 
 | Constant                | Current value | Applies to         |
 | ----------------------- | ------------- | ------------------ |
-| `AST_SCHEMA_VERSION`    | `2`           | Semantic AST       |
-| `SYNTAX_SCHEMA_VERSION` | `1`           | Source syntax tree |
-| `RENDER_SCHEMA_VERSION` | `3`           | Render snapshot    |
+| `AST_SCHEMA_VERSION`    | `3`           | Semantic AST       |
+| `SYNTAX_SCHEMA_VERSION` | `2`           | Source syntax tree |
+| `RENDER_SCHEMA_VERSION` | `4`           | Render snapshot    |
 
 A version change means the snapshot shape is incompatible. Include it in cache keys when caching or transferring snapshots across processes.

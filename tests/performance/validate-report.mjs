@@ -35,10 +35,32 @@ if (!report.git.commit) {
 }
 
 const required = {
-  "article-20k": ["parse", "prepare", "render"],
+  "article-20k": [
+    "parse",
+    "prepare",
+    "prepare-clone",
+    "prepare-plugin",
+    "prepare-convert",
+    "prepare-rehype",
+    "prepare-assemble",
+    "serialize",
+    "restore",
+    "render",
+  ],
   "dense-lists": ["parse"],
   "tables-references": ["prepare"],
-  "expand-repeated": ["expand"],
+  "provider-table-1k": ["copy"],
+  "expand-repeated": [
+    "expand",
+    "expand:normalize",
+    "expand:page-syntax",
+    "expand:template",
+    "expand:evaluate",
+    "expand:fetch",
+    "expand:assemble",
+    "expand:final-syntax",
+    "expand:build",
+  ],
   "expand-nested": ["expand"],
   "expand-degraded": ["expand"],
 };

@@ -1,6 +1,6 @@
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
-import type { WikitextRenderDocument } from "react-wikitext/hast";
-import { DEFAULT_MAX_SOURCE_LENGTH, type WikitextDocument } from "react-wikitext/parse";
+import type { WikitextExpansionInfo } from "@pg/parse/protocol";
+import type { WikitextRenderSnapshot } from "react-wikitext/hast";
+import { DEFAULT_MAX_SOURCE_LENGTH, type WikitextParsedSnapshot } from "react-wikitext/parse";
 import {
   DEFAULT_HEADING_PREFIX,
   DEFAULT_MAX_NODES,
@@ -15,8 +15,8 @@ import { formatDuration, formatExecution, type StatusFacts } from "./facts";
 
 interface DiagnosticsPanelProps {
   facts: StatusFacts;
-  doc?: WikitextDocument;
-  prepared?: WikitextRenderDocument;
+  doc?: WikitextParsedSnapshot;
+  prepared?: WikitextRenderSnapshot;
   error?: ParseErrorInfo;
   prepareError?: ParseErrorInfo;
   source: SceneDefinition;
@@ -142,14 +142,14 @@ export function DiagnosticsPanel({
             )}
           </section>
           <section>
-            <h3>展开诊断（原始坐标）</h3>
+            <h3>展开诊断（真实来源）</h3>
             {expansion.diagnostics.length === 0 ? (
               <p className="pg-note">没有展开阶段的诊断。</p>
             ) : (
               <ul className="pg-diagnostics__warnings">
                 {expansion.diagnostics.map((diagnostic) => (
                   <li
-                    key={`${diagnostic.code}:${diagnostic.origin?.range[0] ?? ""}:${diagnostic.message}`}
+                    key={`${diagnostic.code}:${diagnostic.location?.start ?? ""}:${diagnostic.message}`}
                   >
                     <code>{diagnostic.severity}</code> <code>{diagnostic.code}</code>{" "}
                     {diagnostic.templateTitle ? <span>{diagnostic.templateTitle}</span> : null}

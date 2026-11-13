@@ -36,7 +36,7 @@ It uses two `useMemo` caches: parsing depends on `[parser, source, parseOptions]
 :::warning
 The root entry only uses the synchronous prepare path. Async plugins in `wikitextPlugins` / `rehypePlugins` make `Wikitext` throw `ASYNC_PLUGIN_IN_SYNC_PATH`. Use the explicit pipeline for async plugins.
 
-Placeholders, blocks, and degradations do not make rendering fail; they are recorded as diagnostics on the snapshot. Pass `onPrepared` and read `document.diagnostics` to observe them; `onError` only handles parse or prepare failures.
+Placeholders, blocks, and degradations do not make rendering fail; they are recorded as diagnostics on the snapshot. Pass `onPrepared` and read `diagnostics` from the received snapshot; `onError` only handles parse or prepare failures.
 :::
 
 ## Explicit pipeline
@@ -50,11 +50,11 @@ import "react-wikitext/styles.css";
 const parser = createWikiparser();
 
 export function renderArticle(source: string) {
-  const document = parser.parse(source, { pageName: "Example" });
-  const prepared = prepareWikitext(document, {
+  const parsed = parser.parse(source, { pageName: "Example" });
+  const prepared = prepareWikitext(parsed, {
     headingIdStrategy: "instance",
   });
-  return <WikitextView document={prepared} lang="en" />;
+  return <WikitextView snapshot={prepared} lang="en" />;
 }
 ```
 
@@ -77,13 +77,13 @@ export const parser = createWikiparser({
 Preparation reruns plugins, HAST conversion, and sanitization. When only presentation components change, reuse the existing render snapshot:
 
 ```tsx
-import type { WikitextRenderDocument } from "react-wikitext/hast";
+import type { WikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
-function Article({ prepared }: { prepared: WikitextRenderDocument }) {
+function Article({ prepared }: { prepared: WikitextRenderSnapshot }) {
   return (
     <WikitextView
-      document={prepared}
+      snapshot={prepared}
       semanticComponents={{
         template: ({ displayName }) => <span className="template-chip">{displayName}</span>,
       }}

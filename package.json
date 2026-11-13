@@ -105,6 +105,16 @@
         "default": "./dist/parse.cjs"
       }
     },
+    "./preview": {
+      "import": {
+        "types": "./dist/preview.d.ts",
+        "default": "./dist/preview.js"
+      },
+      "require": {
+        "types": "./dist/preview.d.cts",
+        "default": "./dist/preview.cjs"
+      }
+    },
     "./unified": {
       "import": {
         "types": "./dist/unified.d.ts",
@@ -123,6 +133,16 @@
       "require": {
         "types": "./dist/view.d.cts",
         "default": "./dist/view.cjs"
+      }
+    },
+    "./worker": {
+      "import": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.js"
+      },
+      "require": {
+        "types": "./dist/worker.d.cts",
+        "default": "./dist/worker.cjs"
       }
     },
     "./package.json": "./package.json",
@@ -151,7 +171,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs && node tests/consumer/isolate-devtools.cjs",
+    "test:dist": "pnpm build && node tests/consumer/check-cjs-externals.mjs && node tests/consumer/dist.test.mjs && node tests/consumer/dist.test.cjs && node tests/consumer/isolate-view.cjs && node tests/consumer/isolate-parse.cjs && node tests/consumer/isolate-expand.cjs && node tests/consumer/isolate-preview.cjs && node tests/consumer/isolate-worker.cjs && node tests/consumer/isolate-ast.cjs && node tests/consumer/isolate-hast.cjs && node tests/consumer/isolate-unified.cjs && node tests/consumer/isolate-devtools.cjs",
     "test:types:consumer": "tsc -p tests/consumer/types/tsconfig.node16.json && tsc -p tests/consumer/types/tsconfig.bundler.json",
     "test:vite": "vite build --config tests/consumer/vite/vite.config.mjs && node tests/consumer/vite/check.mjs",
     "test:webpack": "webpack --config tests/consumer/webpack/webpack.config.mjs && node tests/consumer/webpack/check.mjs",

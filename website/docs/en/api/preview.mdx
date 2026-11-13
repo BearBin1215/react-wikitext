@@ -1,0 +1,85 @@
+---
+title: Realtime preview /preview
+description: useWikitextPreview, the executor contract and the Worker transport.
+---
+
+# Realtime preview `/preview`
+
+```ts
+import { useWikitextPreview, createWikitextWorkerExecutor } from "react-wikitext/preview";
+```
+
+`/preview` provides a unified realtime scheduling interface for the main thread and host-created Workers. It never loads the default parser; all work is started explicitly through an executor.
+
+## Usage
+
+```tsx
+const preview = useWikitextPreview({
+  input: { key: pageKey, revision: editorRevision, text: source },
+  executor,
+  debounceMs: 250,
+  initialSnapshot,
+});
+
+return preview.snapshot ? (
+  <WikitextView snapshot={preview.snapshot} sourceAttributes="block" />
+) : (
+  <LoadingPreview />
+);
+```
+
+```ts
+type WikitextPreviewExecutor = (request: WikitextPreviewRequest) => Promise<WikitextRenderSnapshot>;
+
+interface WikitextPreviewRequest {
+  readonly requestId: string;
+  readonly input: { key: string; revision: string; text: string };
+  readonly options?: WikitextPreviewCompileOptions;
+  readonly signal?: AbortSignal;
+}
+```
+
+A main-thread executor reuses the compiler:
+
+```ts
+const executor: WikitextPreviewExecutor = async (request) => {
+  const compilation = await compiler.compile(
+    { key: request.input.key, revision: request.input.revision, text: request.input.text },
+    { signal: request.signal, ...request.options },
+  );
+  return prepareWikitext(compilation.snapshot, prepareOptions);
+};
+```
+
+## Result
+
+```ts
+interface WikitextPreviewResult {
+  readonly snapshot?: WikitextRenderSnapshot;
+  readonly status: "idle" | "scheduled" | "running" | "ready" | "error";
+  readonly inputRevision: string;
+  readonly displayedRevision?: string;
+  readonly error?: Error;
+  readonly run: () => void;
+  readonly cancel: () => void;
+}
+```
+
+## Scheduling rules
+
+- The first input runs immediately; later edits of the same input key are debounced.
+- A key change cancels the old run and isolates old page results; executor, effective options and source revision changes also start a new request.
+- Effect cleanup, unmount, Strict Mode replays and out-of-order results never commit stale snapshots.
+- A previous snapshot may stay visible while scheduling, but its identity and revision do not change. Clicking it locates the old revision; hosts must not treat it as a range in the current input.
+- Render never calls the executor, creates a compiler or starts provider requests. For SSR, the host compiles `initialSnapshot` ahead of time and keeps it consistent with the client.
+
+## Worker transport
+
+```ts
+const transport = createWikitextWorkerExecutor(worker);
+const preview = useWikitextPreview({ input, executor: transport.executor });
+// on unmount
+transport.dispose();
+```
+
+Functions, compilers, providers and `AbortSignal` are never sent through `postMessage`; the transport only connects a host-created Worker and never loads a parser. See [`/worker`](./worker.mdx) for the protocol.

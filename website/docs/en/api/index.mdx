@@ -18,7 +18,9 @@ See [How it works](../guide/concepts.mdx) for the stages, the optional expansion
 | `react-wikitext`              | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
 | `react-wikitext/ast`          | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
 | `react-wikitext/parse`        | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
-| `react-wikitext/expand`       | `expandWikitext`, expansion types and errors                                                                                           | Yes                          | No          |
+| `react-wikitext/expand`       | `createWikitextCompiler`, template providers, compilation types and errors                                                             | No (parser injected)         | No          |
+| `react-wikitext/preview`      | `useWikitextPreview`, executor protocol, worker transport                                                                              | No                           | Yes         |
+| `react-wikitext/worker`       | `createWikitextWorkerHandler`, `attachWikitextWorker`, message protocol                                                                | No (parser injected)         | No          |
 | `react-wikitext/hast`         | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
 | `react-wikitext/unified`      | `createWikitextProcessor`, a unified integration with a finalize stage owned by the library                                            | No (parser must be injected) | No          |
 | `react-wikitext/view`         | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
@@ -28,12 +30,12 @@ See [How it works](../guide/concepts.mdx) for the stages, the optional expansion
 | `react-wikitext/tokens.css`   | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
 | `react-wikitext/devtools.css` | Debug component styles; includes theme variables                                                                                       | —                            | —           |
 
-The root entry does not export anything from the parse, expand, hast, unified, or devtools subpaths. `/ast`, `/hast`, `/unified`, and `/configs` do not load the default parser; `/parse` and `/expand` do; `/view` loads only React and an already prepared document.
+The root entry does not export anything from the parse, expand, hast, unified, or devtools subpaths. Only the root entry and `/parse` load the default parser; `/expand`, `/worker`, and `/unified` accept a host-injected `parser`; `/ast`, `/hast`, and `/configs` never touch a parser. `/view` loads only React and an already prepared snapshot, and `/preview` loads only React and the executor protocol.
 
 ## Parse and render snapshots
 
-- Parse snapshot `WikitextDocument`: produced by `/parse`; field definitions are in [Parsing `/parse`](./parse.mdx).
-- Render snapshot `WikitextRenderDocument`: produced by `/hast` preparation; field definitions are in [Preparation `/hast`](./prepare.mdx).
+- Parse snapshot `WikitextParsedSnapshot`: produced by `/parse`; field definitions are in [Parsing `/parse`](./parse.mdx).
+- Render snapshot `WikitextRenderSnapshot`: produced by `/hast` preparation; field definitions are in [Preparation `/hast`](./prepare.mdx).
 
 The `ast` in a parse snapshot is the original normalized result and is never mutated by preparation. The `ast` in a render snapshot is the working tree after plugins, with node ids reassigned. Its `hast` is sanitized and finalized, including the TOC, reference section, and category footer; `WikitextView` accepts only a render snapshot.
 

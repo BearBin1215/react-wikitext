@@ -9,8 +9,8 @@ import {
   type WikitextPrepareOptions,
   prepareWikitext,
   prepareWikitextAsync,
-  restoreWikitextRenderDocument,
-  serializeWikitextRenderDocument,
+  restoreWikitextRenderSnapshot,
+  serializeWikitextRenderSnapshot,
 } from "@/hast";
 import { WikitextError } from "@/ast/errors";
 import { WikitextView } from "@/view";
@@ -19,7 +19,7 @@ import { parse } from "../helpers/parse";
 
 function renderRestoreError(value: unknown): WikitextError {
   try {
-    restoreWikitextRenderDocument(value);
+    restoreWikitextRenderSnapshot(value);
   } catch (error) {
     expect(error).toBeInstanceOf(WikitextError);
     return error as WikitextError;
@@ -82,7 +82,7 @@ const addCallout = () => (tree: WikitextRoot) => {
 function renderPrepared(options: WikitextPrepareOptions): string {
   return renderToStaticMarkup(
     <WikitextView
-      document={prepareWikitext(parse("x"), { rehypePlugins: [insertMarkup], ...options })}
+      snapshot={prepareWikitext(parse("x"), { rehypePlugins: [insertMarkup], ...options })}
       idPrefix=""
     />,
   );
@@ -137,7 +137,7 @@ describe("prepare pipeline", () => {
       wikitextPlugins: [
         () => (tree: WikitextRoot) => {
           flattenNodes(tree);
-          findNodeById({ source: document.source, ast: tree }, "0.0");
+          findNodeById(tree, "0.0");
           const first = tree.children[0];
           if (first) {
             (tree as unknown as { children: WikitextNode[] }).children.unshift(
@@ -152,9 +152,9 @@ describe("prepare pipeline", () => {
     walkWiki(prepared.ast, () => traversed++);
     expect(flat).toHaveLength(traversed);
     for (const node of flat) {
-      expect(findNodeById(prepared, node.id)).toBe(node);
+      expect(findNodeById(prepared.ast, node.id)).toBe(node);
     }
-    expect(findNodeById(prepared, "0.0")?.id).toBe("0.0");
+    expect(findNodeById(prepared.ast, "0.0")?.id).toBe("0.0");
   });
 
   it("rejects async plugins on the sync path and supports the async path", async () => {
@@ -197,7 +197,7 @@ describe("prepare pipeline", () => {
         },
       ],
     });
-    const html = renderToStaticMarkup(<WikitextView document={prepared} idPrefix="" />);
+    const html = renderToStaticMarkup(<WikitextView snapshot={prepared} idPrefix="" />);
     expect(html).toContain('class="hljs-keyword"');
     expect(html).not.toContain("onclick");
     expect(html).toContain("color:red");
@@ -209,7 +209,7 @@ describe("prepare pipeline", () => {
     const labelOnly = prepareWikitext(parse("[[A|label]]"), {
       resolveLink: () => ({ label: "custom" }),
     });
-    const labelHtml = renderToStaticMarkup(<WikitextView document={labelOnly} idPrefix="" />);
+    const labelHtml = renderToStaticMarkup(<WikitextView snapshot={labelOnly} idPrefix="" />);
     expect(labelHtml).not.toContain("<a ");
     expect(labelHtml).toContain("custom");
 
@@ -217,22 +217,22 @@ describe("prepare pipeline", () => {
       resolveImage: () => ({ src: "/img/x.png" }),
     });
     expect(
-      renderToStaticMarkup(<WikitextView document={defaultImages} idPrefix="" />),
+      renderToStaticMarkup(<WikitextView snapshot={defaultImages} idPrefix="" />),
     ).not.toContain("<img");
 
     const relativeImages = prepareWikitext(parse("[[File:X.png]]"), {
       resolveImage: () => ({ src: "/img/x.png" }),
       policy: { allowRelativeImages: true },
     });
-    expect(renderToStaticMarkup(<WikitextView document={relativeImages} idPrefix="" />)).toContain(
+    expect(renderToStaticMarkup(<WikitextView snapshot={relativeImages} idPrefix="" />)).toContain(
       'src="/img/x.png"',
     );
   });
 
   it("maps instance ids independently for multiple views", () => {
     const prepared = prepareWikitext(parse("== A =="));
-    const first = renderToStaticMarkup(<WikitextView document={prepared} idPrefix="one-" />);
-    const second = renderToStaticMarkup(<WikitextView document={prepared} idPrefix="two-" />);
+    const first = renderToStaticMarkup(<WikitextView snapshot={prepared} idPrefix="one-" />);
+    const second = renderToStaticMarkup(<WikitextView snapshot={prepared} idPrefix="two-" />);
     expect(first).toContain('id="one-A"');
     expect(second).toContain('id="two-A"');
     expect(second).not.toContain('id="one-A"');
@@ -240,17 +240,17 @@ describe("prepare pipeline", () => {
 
   it("restores a serialized render document", () => {
     const prepared = prepareWikitext(parse("== A ==\n[[B|label]]"));
-    const json = JSON.parse(JSON.stringify(serializeWikitextRenderDocument(prepared)));
-    const restored = restoreWikitextRenderDocument(json);
+    const json = JSON.parse(JSON.stringify(serializeWikitextRenderSnapshot(prepared)));
+    const restored = restoreWikitextRenderSnapshot(json);
     expect(restored.headings).toEqual(prepared.headings);
-    expect(renderToStaticMarkup(<WikitextView document={restored} idPrefix="" />)).toBe(
-      renderToStaticMarkup(<WikitextView document={prepared} idPrefix="" />),
+    expect(renderToStaticMarkup(<WikitextView snapshot={restored} idPrefix="" />)).toBe(
+      renderToStaticMarkup(<WikitextView snapshot={prepared} idPrefix="" />),
     );
   });
 
   it("rejects serialized render documents without effective limits", () => {
     const serialized = JSON.parse(
-      JSON.stringify(serializeWikitextRenderDocument(prepareWikitext(parse("text")))),
+      JSON.stringify(serializeWikitextRenderSnapshot(prepareWikitext(parse("text")))),
     );
     const meta = { ...serialized.meta };
     delete meta.limits;
@@ -275,7 +275,7 @@ describe("prepare pipeline", () => {
 
   it("re-sanitizes a tampered serialized render document", () => {
     const serialized = JSON.parse(
-      JSON.stringify(serializeWikitextRenderDocument(prepareWikitext(parse("text")))),
+      JSON.stringify(serializeWikitextRenderSnapshot(prepareWikitext(parse("text")))),
     );
     serialized.hast.children[0].properties = {
       className: ["wikitext-paragraph"],
@@ -302,7 +302,7 @@ describe("prepare pipeline", () => {
       },
     );
 
-    const restored = restoreWikitextRenderDocument(serialized);
+    const restored = restoreWikitextRenderSnapshot(serialized);
     const json = JSON.stringify(restored.hast);
     expect(json).not.toContain("onclick");
     expect(json).not.toContain("alert(1)");
@@ -314,7 +314,7 @@ describe("prepare pipeline", () => {
   });
 
   it("rejects serialized render documents with over-budget trees", () => {
-    const serialized = serializeWikitextRenderDocument(prepareWikitext(parse("text")));
+    const serialized = serializeWikitextRenderSnapshot(prepareWikitext(parse("text")));
 
     let deep: RootContent = { type: "text", value: "x" };
     for (let index = 0; index < 1_100; index++) {
@@ -342,13 +342,13 @@ describe("prepare pipeline", () => {
 
   it("drops plugin images unless allowPluginImages is set", () => {
     const strict = renderToStaticMarkup(
-      <WikitextView document={preparePluginImage(false)} idPrefix="" />,
+      <WikitextView snapshot={preparePluginImage(false)} idPrefix="" />,
     );
     expect(strict).not.toContain("<img");
     expect(strict).toContain("Plugin");
 
     const relaxed = renderToStaticMarkup(
-      <WikitextView document={preparePluginImage(true)} idPrefix="" />,
+      <WikitextView snapshot={preparePluginImage(true)} idPrefix="" />,
     );
     expect(relaxed).toContain('src="https://example.com/plugin.png"');
     expect(relaxed).toContain('loading="lazy"');
@@ -359,7 +359,7 @@ describe("prepare pipeline", () => {
     const config = configWithHtmlTags(["img"]);
     const strict = renderToStaticMarkup(
       <WikitextView
-        document={prepareWikitext(parse(sourceImage, { config }), {
+        snapshot={prepareWikitext(parse(sourceImage, { config }), {
           policy: { allowPluginImages: true },
         })}
         idPrefix=""
@@ -368,7 +368,7 @@ describe("prepare pipeline", () => {
     expect(strict).not.toContain("source.png");
     const relaxed = renderToStaticMarkup(
       <WikitextView
-        document={prepareWikitext(parse(sourceImage, { config }), {
+        snapshot={prepareWikitext(parse(sourceImage, { config }), {
           policy: { allowSourceImages: true },
           resolveImage: () => ({ src: "https://example.com/resolver.png" }),
         })}
@@ -382,7 +382,7 @@ describe("prepare pipeline", () => {
   it("honors allowRelativeLinks for resolver results", () => {
     const strict = renderToStaticMarkup(
       <WikitextView
-        document={prepareWikitext(parse("[[A|label]]"), {
+        snapshot={prepareWikitext(parse("[[A|label]]"), {
           resolveLink: resolveRelativeLink,
           policy: { allowRelativeLinks: false },
         })}
@@ -394,7 +394,7 @@ describe("prepare pipeline", () => {
 
     const relaxed = renderToStaticMarkup(
       <WikitextView
-        document={prepareWikitext(parse("[[A|label]]"), { resolveLink: resolveRelativeLink })}
+        snapshot={prepareWikitext(parse("[[A|label]]"), { resolveLink: resolveRelativeLink })}
         idPrefix=""
       />,
     );
@@ -429,7 +429,7 @@ describe("prepare pipeline", () => {
     expect(unhandled.diagnostics).toContainEqual(
       expect.objectContaining({ code: "UNKNOWN_NODE", stage: "hast" }),
     );
-    expect(renderToStaticMarkup(<WikitextView document={unhandled} idPrefix="" />)).toContain(
+    expect(renderToStaticMarkup(<WikitextView snapshot={unhandled} idPrefix="" />)).toContain(
       "Unsupported node: callout",
     );
 
@@ -444,7 +444,7 @@ describe("prepare pipeline", () => {
         }),
       },
     });
-    expect(renderToStaticMarkup(<WikitextView document={handled} idPrefix="" />)).toContain(
+    expect(renderToStaticMarkup(<WikitextView snapshot={handled} idPrefix="" />)).toContain(
       "handled",
     );
     expect(handled.diagnostics.some((diagnostic) => diagnostic.code === "UNKNOWN_NODE")).toBe(

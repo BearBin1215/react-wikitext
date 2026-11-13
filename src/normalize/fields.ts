@@ -6,7 +6,7 @@ import type {
 } from "../ast/model";
 import { decodeRawText, decodeText } from "./text";
 import { FILE_KEY_VALUE_KEYS } from "../ast/file-options";
-import type { NormalizeContext } from "./context";
+import { nodeLocation, type NormalizeContext } from "./context";
 
 export function syntaxAttributes(node: WikitextSyntaxNode): readonly WikitextAttribute[] {
   return node.attributes.map(({ name, value }) => ({ name, value }));
@@ -135,9 +135,7 @@ export function parseFileData(context: NormalizeContext, file: WikitextSyntaxNod
       name: parameter.name,
       value: parameter.value,
       explicit: parameter.explicit,
-      ...(parameter.syntax
-        ? { origin: { syntaxId: parameter.syntax.id, range: parameter.syntax.range } }
-        : {}),
+      ...(parameter.syntax ? nodeLocation(context, { syntax: parameter.syntax }) : {}),
     }));
 
   const name = (typeof file.props.name === "string" ? file.props.name : "").replace(

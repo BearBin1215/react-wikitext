@@ -1,8 +1,8 @@
 import { useEffect, useMemo, type ReactElement, type ReactNode } from "react";
 import { WikitextError, WikitextParseError, WikitextPrepareError } from "./ast/errors";
 import { resolveWikitextLabels } from "./ast/labels";
-import type { WikitextRenderDocument, WikitextDocument } from "./ast/model";
-import type { WikitextParseOptions, WikitextParser } from "./ast/parser";
+import type { WikitextRenderSnapshot, WikitextParsedSnapshot } from "./ast/model";
+import type { WikitextParseOptions, WikitextParser } from "./parser";
 import { prepareWikitext } from "./hast/prepare";
 import type { WikitextPrepareOptions } from "./hast/types";
 import { parseWikitext } from "./parse/adapter";
@@ -18,7 +18,7 @@ export interface WikitextErrorInfo {
 }
 
 /** `<Wikitext>` 的属性。 */
-export interface WikitextProps extends Omit<WikitextViewProps, "document"> {
+export interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
   /** 待渲染的 wikitext 源码。 */
   readonly source: string;
   /** 高级用法：复用已创建的 parser；缺省时使用默认配置。 */
@@ -33,7 +33,7 @@ export interface WikitextProps extends Omit<WikitextViewProps, "document"> {
    * 占位、拦截与降级都以诊断形式记录在快照上，页面本身仍然渲染成功；
    * 需要观测这些情况时使用本回调，而不是 `onError`。
    */
-  readonly onPrepared?: (document: WikitextRenderDocument) => void;
+  readonly onPrepared?: (document: WikitextRenderSnapshot) => void;
   /** 解析或准备失败时回调；错误不会继续抛给 React。 */
   readonly onError?: (error: WikitextError, info: WikitextErrorInfo) => void;
   /**
@@ -44,12 +44,12 @@ export interface WikitextProps extends Omit<WikitextViewProps, "document"> {
 }
 
 interface ParseOutcome {
-  readonly document?: WikitextDocument;
+  readonly document?: WikitextParsedSnapshot;
   readonly error?: WikitextError;
 }
 
 interface PrepareOutcome {
-  readonly prepared?: WikitextRenderDocument;
+  readonly prepared?: WikitextRenderSnapshot;
   readonly error?: WikitextError;
   readonly stage?: WikitextFailureStage;
 }
@@ -132,5 +132,5 @@ export function Wikitext({
   }
 
   // 其余属性原样透传，新增视图属性不会被这里丢掉。
-  return <WikitextView document={outcome.prepared!} {...viewProps} />;
+  return <WikitextView snapshot={outcome.prepared!} {...viewProps} />;
 }

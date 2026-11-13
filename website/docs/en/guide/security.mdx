@@ -67,7 +67,7 @@ wikitextPlugins
 
 ### Expansion is still untrusted
 
-- `expandWikitext` only processes template source supplied by the host and never executes HTML or scripts inside it.
+- The `/expand` compiler only processes template source supplied by the host provider and never executes HTML or scripts inside it.
 - Lua is not built in, and `#invoke` is not executed.
 - Expanded output and template source go through the normal semantic normalization, HAST conversion, and final sanitization.
 
@@ -93,7 +93,7 @@ Resolver URLs are protocol-checked, but whether they point to the right page or 
 
 ### Serialized snapshots
 
-`serializeWikitextRenderDocument` produces plain data. `restoreWikitextRenderDocument` validates the schema, structure, and budget and re-sanitizes, but you should still restore only snapshots from a trusted server or trusted cache. Never pass arbitrary third-party HAST to `WikitextView`.
+`serializeWikitextRenderSnapshot` produces plain data. `restoreWikitextRenderSnapshot` validates the schema, structure, and budget and re-sanitizes, but you should still restore only snapshots from a trusted server or trusted cache. Never pass arbitrary third-party HAST to `WikitextView`.
 
 ### Policy changes
 

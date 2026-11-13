@@ -81,11 +81,11 @@ parser.resolveOptions(options?): WikitextResolvedParseOptions
 ## 返回的文档
 
 ```ts
-interface WikitextDocument {
+interface WikitextParsedSnapshot {
   source: string;
   ast: WikitextRoot;
   syntax?: WikitextSyntaxRoot;
-  meta: WikitextDocumentMeta;
+  meta: WikitextParsedMeta;
   diagnostics: WikitextDiagnostic[];
 }
 ```

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   findNodeAtOffset,
-  type WikitextDocument,
+  type WikitextParsedSnapshot,
   type WikitextNode,
   type WikitextRange,
 } from "react-wikitext/ast";
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
+import type { WikitextExpansionInfo } from "@pg/parse/protocol";
 import {
   findAstTreeNode,
   getNodeRange,
@@ -35,7 +35,7 @@ export interface PlaygroundSession {
   readonly state: ReturnType<typeof createInitialState>;
   readonly scene: ReturnType<typeof sceneOf>;
   readonly parseSource: string;
-  readonly doc?: WikitextDocument;
+  readonly doc?: WikitextParsedSnapshot;
   readonly expansion?: WikitextExpansionInfo;
   readonly parseError?: ParseErrorInfo;
   readonly parsing: boolean;
@@ -136,7 +136,7 @@ export function usePlaygroundSession(): PlaygroundSession {
   const dirty = state.source !== baseSource;
 
   // 文档更新后按 range 恢复选区；切换输入源时丢弃上一份快照。
-  const previous = useRef<{ key: string; doc?: WikitextDocument }>({ key: state.sourceId });
+  const previous = useRef<{ key: string; doc?: WikitextParsedSnapshot }>({ key: state.sourceId });
   useEffect(() => {
     const prev = previous.current;
     if (!doc) {

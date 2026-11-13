@@ -67,7 +67,7 @@ export function getBrowserParser(): UpstreamParser {
 - 不可用时抛 `WikitextParseError("PARSER_UNAVAILABLE")`，错误信息包含 bundle 命名空间键数量，便于定位打包器移除 IIFE。
 - `wikiparser-node` 是运行时依赖；库构建把包及其深层导入保持 external，由 consumer 打包器负责加载。CJS 产物不会内联 IIFE。
 - 不要改用副作用导入、`void` 读取、`?url` + `<script>` 或 `?raw` + `eval`；这些方案会引入 CSP、Worker 与打包器差异。
-- 只有 `src/parse/loadParser.ts` 加载 parser；`/ast`、`/hast`、`/unified`、`/view`、`/configs` 都不加载它。
+- 只有 `src/parse/loadParser.ts` 加载默认 parser；`/ast`、`/hast`、`/unified`、`/view`、`/configs` 都不加载它。自定义 adapter 工厂位于 `src/parser/`，`/ast` 与 `/parse` 都从它导出，该模块本身不加载默认 parser。
 
 ## 3. 默认适配器与配置快照
 
@@ -215,7 +215,7 @@ closed, closing, selfClosing, subtype, extension
 
 ### 4.5 文本与实体
 
-- `getSourceText(document, node)` 返回 `source.slice(range[0], range[1])`；source 为归一化 LF。
+- `getSourceText(snapshot, node)` 返回 `origin` 所属文本源（`sourceId`）的切片；页面节点的来源是归一化 LF，模板节点指向模板原文或有效正文。
 - text token 的 `data` 保留原始实体；语义归一化时用 `entities` 的 `decodeHTML` 解码一次。后续阶段不再解码。
 - 不在文本组件里把 `\n` 转 `<br>`；单换行折叠为空格，空行切段。
 - nowiki/pre 中的实体同样解码，但不再解析其中的 wiki 标记。
@@ -223,12 +223,12 @@ closed, closing, selfClosing, subtype, extension
 
 ## 5. `retainSyntax`
 
-- 默认关闭；`WikitextDocument.syntax` 不出现，`meta.syntaxSchemaVersion` 不出现。
+- 默认关闭；`WikitextParsedSnapshot.syntax` 不出现，`meta.syntaxSchemaVersion` 不出现。
 - 开启时保留完整源码语法树，供 playground 语法树、节点属性查看和 oracle 使用。
-- 即使不保留语法树，语义节点仍通过 `origin.range` 与 `origin.syntaxId`（可选）保存来源；`position`、`getSourceText` 与 `findNodeAtOffset` 都不读取语法树，因此该选项不能用来获得源码坐标。
+- 即使不保留语法树，语义节点仍通过 `origin`（`sourceId` + span，可选 `syntaxId`）保存来源；`getSourcePosition`、`getSourceText` 与 `locateRenderedNode` 都不读取语法树，因此该选项不能用来获得源码坐标。
 - playground 始终开启 `retainSyntax`，因为语法树面板可随时切换；普通渲染路径不需要。
 - 语法树不写入语义虚拟节点；段落、列表项、表格行等结构只存在于语义 AST。
-- `/expand` 内部强制构建语法树以读取模板、参数与函数结构，但返回的 `original` / `document` 仍按调用方的 `parseOptions.retainSyntax` 决定是否公开语法树。
+- `/expand` 内部通过 parser 的 `compile` 构建语法以读取模板、参数与函数结构，最终快照仍按调用方的 `retainSyntax` 决定是否公开语法树。
 
 ## 6. 预算
 

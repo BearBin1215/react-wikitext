@@ -8,6 +8,8 @@
   { "type": "file", "name": "ast", "label": "AST /ast" },
   { "type": "file", "name": "prepare", "label": "准备 /hast" },
   { "type": "file", "name": "expand", "label": "展开 /expand" },
+  { "type": "file", "name": "preview", "label": "实时预览 /preview" },
+  { "type": "file", "name": "worker", "label": "Worker /worker" },
   { "type": "section-header", "label": "扩展入口" },
   { "type": "file", "name": "unified", "label": "unified" },
   { "type": "file", "name": "configs", "label": "configs" },

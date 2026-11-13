@@ -3,8 +3,8 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import {
   prepareWikitext,
-  restoreWikitextRenderDocument,
-  serializeWikitextRenderDocument,
+  restoreWikitextRenderSnapshot,
+  serializeWikitextRenderSnapshot,
 } from "@/hast";
 import { WikitextFragment, WikitextView } from "@/view";
 import { ZH_CONFIG } from "../helpers/configs";
@@ -170,8 +170,8 @@ describe("references", () => {
     const prepared = prepareWikitext(parse("<ref>x</ref>", { config: ZH_CONFIG }), {
       headingIdStrategy: "mediawiki",
     });
-    const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
-    const html = renderToStaticMarkup(<WikitextView document={restored} />);
+    const restored = restoreWikitextRenderSnapshot(serializeWikitextRenderSnapshot(prepared));
+    const html = renderToStaticMarkup(<WikitextView snapshot={restored} />);
     expect(html).toContain('href="#cite_note-1"');
     expect(html).toContain('id="cite_note-1"');
   });
@@ -182,7 +182,7 @@ describe("references", () => {
     });
     const html = renderToStaticMarkup(
       <WikitextView
-        document={document}
+        snapshot={document}
         idPrefix=""
         semanticComponents={{
           reference: ({ node }) => (

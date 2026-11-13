@@ -1,7 +1,8 @@
 import type { ElementContent, Root } from "hast";
+import type { WikitextStageSink } from "../instrumentation";
 import type { WikitextLabels } from "../ast/labels";
 import type {
-  WikitextDocument,
+  WikitextParsedSnapshot,
   WikitextFile,
   WikitextFileParameter,
   WikitextHeadingIdStrategy,
@@ -67,7 +68,7 @@ export type WikitextHastHandlers = {
 /** 传给 link/image resolver 的上下文。 */
 export interface WikitextResolverContext<Node extends WikitextNode> {
   /** 原始解析快照。查询时必须查该快照的 ast，而不是工作树。 */
-  readonly document: WikitextDocument;
+  readonly document: WikitextParsedSnapshot;
   /** 本次转换后的工作树。 */
   readonly ast: WikitextRoot;
   /** 正在处理的语义节点。 */
@@ -186,7 +187,7 @@ export const DEFAULT_PREPARE_POLICY: WikitextResolvedPolicy = Object.freeze({
 /** 传给 handler 的只读转换上下文。 */
 export interface WikitextToHastContext {
   /** 原始解析快照。 */
-  readonly document: WikitextDocument;
+  readonly document: WikitextParsedSnapshot;
   /** 本次转换的工作树。 */
   readonly ast: WikitextRoot;
   /** 渲染文案。 */
@@ -259,6 +260,8 @@ export type WikitextPluginList = readonly unknown[];
 
 /** 准备阶段接受的插件列表。 */
 export interface WikitextPrepareOptions {
+  /** 可选的阶段计时接收器；省略时不计量。 */
+  readonly profile?: WikitextStageSink;
   /** 处理语义树（wiki AST）的 unified 插件。 */
   readonly wikitextPlugins?: WikitextPluginList;
   /** 处理 HAST 的 rehype 插件。 */

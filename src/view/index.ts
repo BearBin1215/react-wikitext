@@ -7,6 +7,7 @@ export {
   type WikitextInstanceIds,
   type WikitextViewContextValue,
 } from "./context";
+export { sourceAttributes } from "./sourceAttributes";
 export type { WikitextLabels } from "../ast/labels";
 export type {
   WikitextExtensionComponentProps,
@@ -18,6 +19,8 @@ export type {
   WikitextReferenceComponentProps,
   WikitextSemanticComponentProps,
   WikitextSemanticComponents,
+  WikitextSourceAttributes,
+  WikitextSourceAttributesMode,
   WikitextTemplateComponentProps,
   WikitextUnknownComponentProps,
   WikitextViewProps,

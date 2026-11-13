@@ -44,7 +44,7 @@ describe("templates and parser functions", () => {
   it("uses semantic component overrides for templates and files", () => {
     const template = renderToStaticMarkup(
       <WikitextView
-        document={prepare("{{Tpl}}")}
+        snapshot={prepare("{{Tpl}}")}
         semanticComponents={{
           template: () => <span data-custom="template">custom template</span>,
         }}
@@ -54,7 +54,7 @@ describe("templates and parser functions", () => {
     expect(template).not.toContain("Template not expanded");
     const file = renderToStaticMarkup(
       <WikitextView
-        document={prepare("[[File:X.png]]")}
+        snapshot={prepare("[[File:X.png]]")}
         semanticComponents={{
           file: () => <span data-custom="file">custom file</span>,
         }}
@@ -247,7 +247,7 @@ describe("files", () => {
   it("supports an img component slot", () => {
     const html = renderToStaticMarkup(
       <WikitextView
-        document={prepare("[[File:X.png]]", {
+        snapshot={prepare("[[File:X.png]]", {
           resolveImage: () => ({ src: "https://example.com/x.png", alt: "custom alt" }),
         })}
         components={{

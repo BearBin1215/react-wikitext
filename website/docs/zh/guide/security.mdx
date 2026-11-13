@@ -67,7 +67,7 @@ wikitextPlugins
 
 ### 模板展开仍按不可信内容处理
 
-- `expandWikitext` 只处理宿主提供的模板源码，不执行其中的 HTML 或脚本。
+- `/expand` 编译器只处理宿主 provider 提供的模板源码，不执行其中的 HTML 或脚本。
 - 不内置 Lua，不执行 `#invoke`。
 - 展开结果和模板源码都会经过正常的语义归一化、HAST 转换与最终清洗。
 
@@ -93,7 +93,7 @@ wikitextPlugins
 
 ### 序列化快照
 
-`serializeWikitextRenderDocument` 生成普通数据；`restoreWikitextRenderDocument` 会校验结构版本、数据结构和节点预算，并重新清洗。仍应只恢复来自可信服务端或可信缓存的快照。不要把任意第三方 HAST 直接交给 `WikitextView`。
+`serializeWikitextRenderSnapshot` 生成普通数据；`restoreWikitextRenderSnapshot` 会校验结构版本、数据结构和节点预算，并重新清洗。仍应只恢复来自可信服务端或可信缓存的快照。不要把任意第三方 HAST 直接交给 `WikitextView`。
 
 ### 策略调整
 

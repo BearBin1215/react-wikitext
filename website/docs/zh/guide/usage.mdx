@@ -36,7 +36,7 @@ export function Article({ source }: { source: string }) {
 :::warning 警告
 根入口只走同步准备。`wikitextPlugins` / `rehypePlugins` 中出现异步插件时，`Wikitext` 会抛出 `ASYNC_PLUGIN_IN_SYNC_PATH`。需要异步插件时改用显式管线。
 
-占位、拦截与降级不会让渲染失败：它们以诊断形式写入快照。需要观测这些情况时传 `onPrepared`，读取 `document.diagnostics`；`onError` 只处理解析或准备失败。
+占位、拦截与降级不会让渲染失败：它们以诊断形式写入快照。需要观测这些情况时传 `onPrepared`，读取收到快照的 `diagnostics`；`onError` 只处理解析或准备失败。
 :::
 
 ## 显式管线
@@ -50,11 +50,11 @@ import "react-wikitext/styles.css";
 const parser = createWikiparser();
 
 export function renderArticle(source: string) {
-  const document = parser.parse(source, { pageName: "Example" });
-  const prepared = prepareWikitext(document, {
+  const parsed = parser.parse(source, { pageName: "Example" });
+  const prepared = prepareWikitext(parsed, {
     headingIdStrategy: "instance",
   });
-  return <WikitextView document={prepared} lang="zh-CN" />;
+  return <WikitextView snapshot={prepared} lang="zh-CN" />;
 }
 ```
 
@@ -77,13 +77,13 @@ export const parser = createWikiparser({
 准备阶段会重跑插件、HAST 转换与清洗。同一份源码只改了展示组件时，不需要重新准备：
 
 ```tsx
-import type { WikitextRenderDocument } from "react-wikitext/hast";
+import type { WikitextRenderSnapshot } from "react-wikitext/hast";
 import { WikitextView } from "react-wikitext/view";
 
-function Article({ prepared }: { prepared: WikitextRenderDocument }) {
+function Article({ prepared }: { prepared: WikitextRenderSnapshot }) {
   return (
     <WikitextView
-      document={prepared}
+      snapshot={prepared}
       semanticComponents={{
         template: ({ displayName }) => <span className="template-chip">{displayName}</span>,
       }}

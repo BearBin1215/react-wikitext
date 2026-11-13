@@ -3,18 +3,22 @@ import type {
   WikitextParentNode,
   WikitextRange,
   WikitextRoot,
+  WikitextSnapshotBase,
   WikitextSyntaxNode,
   WikitextSyntaxRoot,
 } from "../ast/model";
-import { flattenNodes, getSourceText } from "../ast/query";
+import { flattenNodes } from "../ast/query";
+import { getSpanText } from "../ast/sourceGraph/query";
 
 function isWikitextParentNode(node: WikitextNode): node is WikitextParentNode {
   return Array.isArray((node as { readonly children?: unknown }).children);
 }
 
-/** 调试组件可以读取的文档形状；解析快照与渲染快照都满足。 */
-export interface AstTreeDocument {
-  readonly source: string;
+/** 调试组件可以读取的快照形状；解析快照与渲染快照都满足。 */
+export interface AstTreeDocument extends Pick<
+  WikitextSnapshotBase,
+  "graph" | "activeSourceId" | "source"
+> {
   readonly ast: WikitextRoot;
   /** 只有 `retainSyntax: true` 的解析快照会保留源码语法树。 */
   readonly syntax?: WikitextSyntaxRoot;
@@ -119,17 +123,25 @@ export function buildTreeIndex(root: AstTreeNode | undefined): TreeIndex {
   return index;
 }
 
-/** 节点对应的源码区间；生成节点没有区间。 */
+/**
+ * 节点在活动源码中的区间；生成节点没有区间。
+ *
+ * 语法节点使用 parser 偏移；语义节点使用 origin 的偏移，二者都针对活动文本源。
+ */
 export function nodeRange(node: AstTreeNode): WikitextRange | undefined {
-  return isSyntaxNode(node) ? node.range : node.origin?.range;
+  return isSyntaxNode(node)
+    ? node.range
+    : node.origin
+      ? [node.origin.start, node.origin.end]
+      : undefined;
 }
 
-/** 节点对应的源码文本；语法节点直接切片，语义节点优先使用 origin。 */
+/** 节点对应的源码文本；语法节点直接切片，语义节点按来源图读取。 */
 export function nodeSource(document: AstTreeDocument, node: AstTreeNode): string {
   if (isSyntaxNode(node)) {
     return document.source.slice(node.range[0], node.range[1]);
   }
-  return getSourceText(document, node);
+  return node.origin ? getSpanText(document.graph, node.origin) : "";
 }
 
 /** 从节点一路向上收集祖先 id，用于展开外部选中项的路径。 */

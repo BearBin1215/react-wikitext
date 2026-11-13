@@ -7,6 +7,8 @@ interface BuildSemanticOptions {
   readonly maxDepth?: number;
   /** 归一化阶段收集诊断的可写数组。 */
   readonly diagnostics?: WikitextDiagnostic[];
+  /** 语义 origin 引用的文本源。 */
+  readonly sourceId?: string;
 }
 
 /** 将普通源码语法树归一化为强类型 wiki 语义 AST。 */
@@ -19,6 +21,7 @@ export function buildSemanticTree(
   context = createNormalizeContext(source, {
     ...(options.maxDepth === undefined ? {} : { maxDepth: options.maxDepth }),
     ...(options.diagnostics === undefined ? {} : { diagnostics: options.diagnostics }),
+    ...(options.sourceId === undefined ? {} : { sourceId: options.sourceId }),
     buildBlocks: (nodes, limit, depth) => normalizeBlocks(context, nodes, limit, depth),
   });
   const children = normalizeBlocks(context, syntax.children);

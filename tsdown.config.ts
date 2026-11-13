@@ -50,6 +50,8 @@ const subpaths = [
   "hast",
   "unified",
   "view",
+  "preview",
+  "worker",
   "configs",
   "devtools",
 ] as const;
@@ -87,6 +89,8 @@ export default defineConfig({
     hast: "src/hast/index.ts",
     unified: "src/unified/index.ts",
     view: "src/view/index.ts",
+    preview: "src/preview/index.ts",
+    worker: "src/worker/index.ts",
     configs: "src/configs/index.ts",
     devtools: "src/devtools/index.ts",
   },
@@ -103,7 +107,9 @@ export default defineConfig({
   },
   // 根入口、/view 与 /devtools 会调用 React hooks；在入口产物顶部声明 client 组件边界。
   banner: ({ fileName }) =>
-    /^(?:index|view|devtools)\.(?:js|cjs)$/u.test(fileName) ? '"use client";' : undefined,
+    /^(?:index|view|preview|worker|devtools)\.(?:js|cjs)$/u.test(fileName)
+      ? '"use client";'
+      : undefined,
   sourcemap: true,
   exports: {
     customExports(pkg) {

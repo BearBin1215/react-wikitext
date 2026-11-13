@@ -276,7 +276,7 @@ export function App() {
                         <p>{prepareError.message}</p>
                       </div>
                     ) : prepared ? (
-                      <WikitextView document={prepared} {...viewProps} />
+                      <WikitextView snapshot={prepared} {...viewProps} />
                     ) : parseError ? (
                       <div className="pg-preview-error" role="alert">
                         <strong>{parseError.code ?? parseError.name}</strong>

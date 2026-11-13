@@ -1,6 +1,6 @@
-import { flattenNodes, type WikitextDocument, type WikitextNode } from "react-wikitext/ast";
-import type { WikitextRenderDocument } from "react-wikitext/hast";
-import type { WikitextExpansionInfo } from "react-wikitext/expand";
+import { flattenNodes, type WikitextParsedSnapshot, type WikitextNode } from "react-wikitext/ast";
+import type { WikitextRenderSnapshot } from "react-wikitext/hast";
+import type { WikitextExpansionInfo } from "@pg/parse/protocol";
 import { DEFAULT_MAX_SOURCE_LENGTH } from "react-wikitext/parse";
 import { SCENE_GROUP_LABELS, SOURCE_GROUPS, type SceneDefinition } from "@pg/catalog";
 import { buildParseOptions } from "@pg/parse/runParse";
@@ -14,8 +14,8 @@ export interface ReproInput {
   readonly text: string;
   readonly parseText: string;
   readonly options: PlaygroundOptions;
-  readonly document?: WikitextDocument;
-  readonly prepared?: WikitextRenderDocument;
+  readonly document?: WikitextParsedSnapshot;
+  readonly prepared?: WikitextRenderSnapshot;
   readonly error?: ParseErrorInfo;
   readonly prepareError?: ParseErrorInfo;
   readonly expansion?: WikitextExpansionInfo;
@@ -39,7 +39,8 @@ function prepareOptionsJson(input: ReproInput): Record<string, unknown> {
 
 export function buildReproMarkdown(input: ReproInput): string {
   const { document, prepared, error, prepareError, selectedNode, facts } = input;
-  const selectedRange = selectedNode?.origin?.range;
+  const origin = selectedNode?.origin;
+  const selectedRange = origin ? ([origin.start, origin.end] as const) : undefined;
   const diagnostics = prepared?.diagnostics ?? document?.diagnostics ?? [];
   const lines = [
     "## 复现信息",
@@ -144,7 +145,7 @@ export function buildReproTest(input: ReproInput): string {
 
   const expansionNote = input.expansion
     ? [
-        `  // 展开阶段状态：${input.expansion.status}；需要完整复现请用 expandWikitext 与 playground 的示例模板表。`,
+        `  // 展开阶段状态：${input.expansion.status}；需要完整复现请用 createWikitextCompiler 与验收台的示例模板表。`,
       ]
     : [];
 
@@ -180,7 +181,7 @@ export function buildReproTest(input: ReproInput): string {
               ...prepareOptionLines.map((line) => `      ${line}`),
               "    });",
               "    expect(prepared.hast.children.length).toBeGreaterThan(0);",
-              "    // TODO: 断言具体节点、origin range 或渲染结果。",
+              "    // TODO: 断言具体节点、origin span 或渲染结果。",
             ]),
         "  });",
       ];

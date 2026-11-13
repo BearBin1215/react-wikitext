@@ -14,8 +14,8 @@ import {
   sanitizeHref,
   sanitizeImageUrl,
   sanitizedAttributesToProps,
-  serializeWikitextRenderDocument,
-  restoreWikitextRenderDocument,
+  serializeWikitextRenderSnapshot,
+  restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
 
@@ -51,7 +51,7 @@ const prepared = await prepareWikitextAsync(document, {
 2. 校验工作树的结构、节点数与深度，并重新分配节点 id。
 3. 调用 `resolveLink`、`resolveImage` 与 `handlers`，把语义树转换为 HAST。
 4. 运行 `rehypePlugins`。
-5. 执行最终清洗与整理，写入目录、引用区、分类底栏与图片授权，生成 `WikitextRenderDocument`。
+5. 执行最终清洗与整理，写入目录、引用区、分类底栏与图片授权，生成 `WikitextRenderSnapshot`。
 
 原始解析快照不会被修改。
 
@@ -68,6 +68,7 @@ interface WikitextPrepareOptions {
   headingIdStrategy?: WikitextHeadingIdStrategy;
   toc?: false | WikitextTocOptions;
   handlers?: WikitextHastHandlers;
+  profile?: WikitextStageSink;
 }
 
 interface WikitextTocOptions {
@@ -87,6 +88,7 @@ interface WikitextTocOptions {
 | `headingIdStrategy` | `instance`（默认）/ `mediawiki` / `none` |
 | `toc`               | 目录阈值、列数，或 `false` 关闭目录      |
 | `handlers`          | 自定义语义节点的 HAST 转换器             |
+| `profile`           | 阶段计时接收器 `WikitextStageSink`；省略时不计量 |
 
 插件列表是结构化数组，元素可以是插件函数或 `[plugin, options]` 元组，按顺序执行。插件签名沿用 unified 的 `(tree, file)`，`file` 是 VFile。
 
@@ -205,7 +207,7 @@ interface WikitextPreparePolicy {
 ## 渲染快照
 
 ```ts
-interface WikitextRenderDocument {
+interface WikitextRenderSnapshot {
   source: string;
   ast: WikitextRoot;
   hast: import("hast").Root;
@@ -256,8 +258,8 @@ sanitizedAttributesToProps(attributes, tag?): Properties
 ## 序列化
 
 ```ts
-const payload = serializeWikitextRenderDocument(prepared);
-const restored = restoreWikitextRenderDocument(payload);
+const payload = serializeWikitextRenderSnapshot(prepared);
+const restored = restoreWikitextRenderSnapshot(payload);
 ```
 
 恢复函数校验 AST 与渲染快照的结构版本、根节点、HAST 结构与固定节点预算，并重新执行最终清洗与整理。仍不能把任意第三方 HAST 直接交给视图。

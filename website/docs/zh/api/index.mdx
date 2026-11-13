@@ -18,7 +18,9 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 | `react-wikitext`              | `Wikitext`、`WikitextView`、`WikitextFragment`、Context Hook、组件类型与精选语义类型                | 是                 | 是         |
 | `react-wikitext/ast`          | 语义模型、查询、辅助函数、纯解析器工厂、源码归一化、序列化                                          | 否                 | 否         |
 | `react-wikitext/parse`        | 默认解析器、`parseWikitext`、解析选项、解析错误                                                     | 是                 | 否         |
-| `react-wikitext/expand`       | `expandWikitext`、模板展开类型与错误                                                                | 是                 | 否         |
+| `react-wikitext/expand`       | `createWikitextCompiler`、provider、编译类型与错误                                                  | 否（宿主注入）     | 否         |
+| `react-wikitext/preview`      | `useWikitextPreview`、executor 协议、worker transport                                               | 否                 | 是         |
+| `react-wikitext/worker`       | `createWikitextWorkerHandler`、`attachWikitextWorker`、消息协议                                     | 否（宿主注入）     | 否         |
 | `react-wikitext/hast`         | `prepareWikitext`、`prepareWikitextAsync`、解析回调、策略、文案、标题策略、URL 工具、渲染快照序列化 | 否                 | 否         |
 | `react-wikitext/unified`      | `createWikitextProcessor`、进程内固定 finalize 的 unified 集成                                      | 否（需注入解析器） | 否         |
 | `react-wikitext/view`         | `WikitextView`、`WikitextFragment`、Context Hook、组件类型                                          | 否                 | 是         |
@@ -28,12 +30,12 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 | `react-wikitext/tokens.css`   | 主题变量；只覆盖变量时单独导入，避免重复样式                                                        | —                  | —          |
 | `react-wikitext/devtools.css` | 调试组件样式，自带主题变量                                                                          | —                  | —          |
 
-根入口不导出 parse、expand、hast、unified 与 devtools 的功能。`/ast`、`/hast`、`/unified`、`/configs` 不加载默认解析器；`/parse` 与 `/expand` 会加载；`/view` 只加载 React 与已准备好的文档。
+根入口不导出 parse、expand、hast、unified 与 devtools 的功能。只有根入口与 `/parse` 自行加载默认解析器；`/expand`、`/worker`、`/unified` 接受宿主注入的 `parser`；`/ast`、`/hast`、`/configs` 不接触解析器。`/view` 只加载 React 与已准备好的快照，`/preview` 只加载 React 与 executor 协议。
 
 ## 解析快照与渲染快照
 
-- 解析快照 `WikitextDocument`：由 `/parse` 产生，字段定义见[解析 `/parse`](./parse.mdx)。
-- 渲染快照 `WikitextRenderDocument`：由 `/hast` 准备产生，字段定义见[准备 `/hast`](./prepare.mdx)。
+- 解析快照 `WikitextParsedSnapshot`：由 `/parse` 产生，字段定义见[解析 `/parse`](./parse.mdx)。
+- 渲染快照 `WikitextRenderSnapshot`：由 `/hast` 准备产生，字段定义见[准备 `/hast`](./prepare.mdx)。
 
 解析快照里的 `ast` 是原始归一化结果，准备阶段不会修改它；渲染快照里的 `ast` 是插件处理后的工作树，节点 id 已重新分配。渲染快照的 `hast` 已完成清洗与最终整理，包含目录、引用区与分类底栏；`WikitextView` 只接受渲染快照。
 
@@ -67,6 +69,8 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 | `/ast`          | [AST](./ast.mdx)           |
 | `/hast`         | [准备](./prepare.mdx)      |
 | `/expand`       | [展开](./expand.mdx)       |
+| `/preview`      | [实时预览](./preview.mdx)  |
+| `/worker`       | [Worker](./worker.mdx)     |
 | `/unified`      | [unified](./unified.mdx)   |
 | `/configs`      | [configs](./configs.mdx)   |
 | `/devtools`     | [调试组件](./devtools.mdx) |

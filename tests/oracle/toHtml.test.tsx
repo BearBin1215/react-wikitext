@@ -25,7 +25,7 @@ function textContent(html: string): string {
 function browserHtml(source: string): string {
   const rendered = renderToStaticMarkup(
     <WikitextView
-      document={prepare(source, {
+      snapshot={prepare(source, {
         resolveLink: (request) => ({ href: `/wiki/${request.target}` }),
       })}
       idPrefix=""

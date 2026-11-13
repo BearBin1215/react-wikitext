@@ -6,7 +6,7 @@ import { WikitextView } from "@/view";
 import { parse } from "../helpers/parse";
 
 const render = (source: string, options: WikitextPrepareOptions): string =>
-  renderToStaticMarkup(<WikitextView document={prepareWikitext(parse(source), options)} />);
+  renderToStaticMarkup(<WikitextView snapshot={prepareWikitext(parse(source), options)} />);
 
 describe("HAST handlers", () => {
   it("falls back to the built-in conversion when a handler returns undefined", () => {

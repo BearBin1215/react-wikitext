@@ -1,14 +1,18 @@
 import { createContext, useContext, useMemo } from "react";
 import type { ElementContent, Root, RootContent } from "hast";
 import type { Components } from "hast-util-to-jsx-runtime";
-import { isWikitextParentNode, type WikitextNode, type WikitextRenderDocument } from "../ast/model";
+import { isWikitextParentNode, type WikitextNode, type WikitextRenderSnapshot } from "../ast/model";
 import { hastNodeId } from "../shared/hast";
-import type { WikitextHtmlComponents, WikitextSemanticComponents } from "./types";
+import type {
+  WikitextHtmlComponents,
+  WikitextSemanticComponents,
+  WikitextSourceAttributesMode,
+} from "./types";
 
 /** 视图上下文值；由 `<WikitextView>` 创建，`useWikitextContext` 读取。 */
 export interface WikitextViewContextValue {
-  /** 当前渲染的文档。 */
-  readonly document: WikitextRenderDocument;
+  /** 当前渲染的快照。 */
+  readonly snapshot: WikitextRenderSnapshot;
   /** 语义节点 id 到节点的索引。 */
   readonly semanticIndex: ReadonlyMap<string, WikitextNode>;
   /** 语义节点 id 到 HAST 节点的索引。 */
@@ -19,6 +23,8 @@ export interface WikitextViewContextValue {
   readonly semanticComponents: WikitextSemanticComponents;
   /** 本次渲染使用的标签桥接表；`WikitextFragment` 复用同一份。 */
   readonly bridgeComponents: Partial<Components>;
+  /** 源码定位属性模式。 */
+  readonly sourceAttributes: WikitextSourceAttributesMode;
   /** 当前实例的标题 id 前缀。 */
   readonly idPrefix: string;
   /** 把逻辑 id 映射为当前实例的 DOM id。 */
@@ -41,9 +47,9 @@ export function useWikitextContext(): WikitextViewContextValue {
   return context;
 }
 
-/** 读取当前文档的渲染文案。 */
+/** 读取当前快照的渲染文案。 */
 export function useWikitextLabels() {
-  return useWikitextContext().document.meta.labels;
+  return useWikitextContext().snapshot.meta.labels;
 }
 
 /** 把逻辑 id 与地址映射为当前实例的值。 */
@@ -65,9 +71,9 @@ export function useWikitextIds(): WikitextInstanceIds {
 
 /**
  * 建立语义节点 id 到节点的索引。
- * @param document 渲染快照。
+ * @param snapshot 渲染快照。
  */
-export function createSemanticIndex(document: WikitextRenderDocument): Map<string, WikitextNode> {
+export function createSemanticIndex(snapshot: WikitextRenderSnapshot): Map<string, WikitextNode> {
   const index = new Map<string, WikitextNode>();
   const visit = (node: WikitextNode): void => {
     index.set(node.id, node);
@@ -77,7 +83,7 @@ export function createSemanticIndex(document: WikitextRenderDocument): Map<strin
       }
     }
   };
-  visit(document.ast);
+  visit(snapshot.ast);
   return index;
 }
 

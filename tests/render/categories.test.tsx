@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { restoreWikitextRenderDocument, serializeWikitextRenderDocument } from "@/hast";
+import { restoreWikitextRenderSnapshot, serializeWikitextRenderSnapshot } from "@/hast";
 import { WikitextView } from "@/view";
 import { prepare, renderView } from "../helpers/parse";
 
@@ -61,8 +61,8 @@ describe("category footer", () => {
 
   it("keeps the footer after serializing and restoring the render document", () => {
     const prepared = prepare("[[Category:Alpha]]", { headingIdStrategy: "mediawiki" });
-    const restored = restoreWikitextRenderDocument(serializeWikitextRenderDocument(prepared));
-    const html = renderToStaticMarkup(<WikitextView document={restored} idPrefix="" />);
+    const restored = restoreWikitextRenderSnapshot(serializeWikitextRenderSnapshot(prepared));
+    const html = renderToStaticMarkup(<WikitextView snapshot={restored} idPrefix="" />);
     expect(categoryFooter(html)).toContain('title="Category:Alpha"');
     expect(categoryFooter(html)).toContain('id="catlinks"');
     expect(categoryFooter(html)).toContain('id="mw-normal-catlinks"');

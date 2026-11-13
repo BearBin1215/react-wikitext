@@ -18,7 +18,7 @@ describe("sample corpus rendering", () => {
         config: ZH_CONFIG,
         pageName: page.title,
       });
-      const html = renderToStaticMarkup(<WikitextView document={prepareWikitext(doc)} />);
+      const html = renderToStaticMarkup(<WikitextView snapshot={prepareWikitext(doc)} />);
       const dom = new JSDOM(html);
       const document = dom.window.document;
       expect(document.querySelector("script"), page.title).toBeNull();

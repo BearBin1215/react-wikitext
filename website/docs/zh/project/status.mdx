@@ -45,9 +45,9 @@ Node 下限来自依赖链路：`wikiparser-node` 声明 `^20.19.0 || ^22.13.0 |
 
 | 常量                    | 当前值 | 适用       |
 | ----------------------- | ------ | ---------- |
-| `AST_SCHEMA_VERSION`    | `2`    | 语义 AST   |
-| `SYNTAX_SCHEMA_VERSION` | `1`    | 源码语法树 |
-| `RENDER_SCHEMA_VERSION` | `3`    | 渲染快照   |
+| `AST_SCHEMA_VERSION`    | `3`    | 语义 AST   |
+| `SYNTAX_SCHEMA_VERSION` | `2`    | 源码语法树 |
+| `RENDER_SCHEMA_VERSION` | `4`    | 渲染快照   |
 
 版本变化意味着快照结构不兼容。缓存与跨进程传输时应把版本写入键；恢复函数会拒绝不匹配的数据。
 

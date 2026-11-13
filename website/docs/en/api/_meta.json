@@ -8,6 +8,8 @@
   { "type": "file", "name": "ast", "label": "AST /ast" },
   { "type": "file", "name": "prepare", "label": "Preparation /hast" },
   { "type": "file", "name": "expand", "label": "Expansion /expand" },
+  { "type": "file", "name": "preview", "label": "Realtime preview /preview" },
+  { "type": "file", "name": "worker", "label": "Worker /worker" },
   { "type": "section-header", "label": "Extended entries" },
   { "type": "file", "name": "unified", "label": "unified" },
   { "type": "file", "name": "configs", "label": "configs" },

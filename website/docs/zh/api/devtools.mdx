@@ -58,7 +58,7 @@ interface AstTreeDocument {
 }
 ```
 
-解析快照 `WikitextDocument` 与渲染快照 `WikitextRenderDocument` 都满足这个结构。语义树读取 `ast`；源码语法树读取 `syntax`，只有解析时设置 `retainSyntax: true` 才会保留。渲染快照由 `/hast` 的 [`prepareWikitext`](./prepare.mdx) 产生，`ast` 是插件处理后的工作树，没有 `syntax`，因此只能查看语义树。
+解析快照 `WikitextParsedSnapshot` 与渲染快照 `WikitextRenderSnapshot` 都满足这个结构。语义树读取 `ast`；源码语法树读取 `syntax`，只有解析时设置 `retainSyntax: true` 才会保留。渲染快照由 `/hast` 的 [`prepareWikitext`](./prepare.mdx) 产生，`ast` 是插件处理后的工作树，没有 `syntax`，因此只能查看语义树。
 
 节点 id 在一份快照内唯一，不承诺跨解析稳定。默认解析器为语义树与源码语法树都生成路径式 id，同一个 id 在两棵树中可能指向不同节点，不要跨树复用选中或展开状态。
 

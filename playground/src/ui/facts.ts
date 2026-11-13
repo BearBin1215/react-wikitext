@@ -1,5 +1,5 @@
-import { flattenNodes, type WikitextDocument } from "react-wikitext/ast";
-import type { WikitextRenderDocument } from "react-wikitext/hast";
+import { flattenNodes, type WikitextParsedSnapshot } from "react-wikitext/ast";
+import type { WikitextRenderSnapshot } from "react-wikitext/hast";
 import type { ParserConfigKey } from "@pg/parse/configs";
 import type { ParseStats } from "@pg/parse/protocol";
 
@@ -19,8 +19,8 @@ export interface StatusFacts {
 export interface StatusFactsInput {
   mode: "source" | "dist";
   executedInWorker: boolean;
-  doc?: WikitextDocument;
-  prepared?: WikitextRenderDocument;
+  doc?: WikitextParsedSnapshot;
+  prepared?: WikitextRenderSnapshot;
   stats?: ParseStats;
   configKey: ParserConfigKey;
   sourceLength: number;

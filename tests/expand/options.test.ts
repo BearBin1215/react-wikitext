@@ -1,28 +1,39 @@
 import { runInNewContext } from "node:vm";
 import { describe, expect, it, vi } from "vitest";
 import {
-  expandWikitext,
   WikitextExpandError,
-  type WikitextExpandOptions,
+  createTemplateTableProvider,
   type WikitextTemplateRequest,
+  type WikitextTemplateSnapshot,
 } from "@/expand";
-import { resolveExpandOptions } from "@/expand/options";
 import type { WikitextParser } from "@/parse";
-import { parserThrowingOn } from "../helpers/expand";
+import { expandWikitext, parserThrowingOn, type WikitextExpandOptions } from "../helpers/expand";
 
-const request = (title: string) => ({ title, invocation: [0, 0] as const });
+const request: WikitextTemplateRequest = {
+  title: "Template:Own",
+  location: { sourceId: "input:test@1", start: 0, end: 0 },
+};
+
+function snapshotOf(table: unknown): WikitextTemplateSnapshot {
+  const provider = createTemplateTableProvider({
+    key: "test",
+    revision: "v1",
+    templates: table as never,
+  });
+  return provider.open({ key: "page", revision: "1" }) as WikitextTemplateSnapshot;
+}
 
 const asTable = (value: unknown) => value as WikitextExpandOptions["templates"];
 
-function expectInvalidOptions(run: () => unknown): void {
+function expectInvalid(message: string, code: string, run: () => unknown): void {
   try {
     run();
   } catch (error) {
     expect(error).toBeInstanceOf(WikitextExpandError);
-    expect(error).toMatchObject({ code: "INVALID_EXPAND_OPTIONS" });
+    expect(error).toMatchObject({ code });
     return;
   }
-  throw new Error("Expected INVALID_EXPAND_OPTIONS.");
+  throw new Error(message);
 }
 
 describe("template sources", () => {
@@ -30,7 +41,7 @@ describe("template sources", () => {
     const fromRecord = await expandWikitext("{{Box}}/{{Missing}}", {
       templates: { "Template:Box": "box" },
     });
-    expect(fromRecord.document.source).toBe("box/{{Missing}}");
+    expect(fromRecord.snapshot.source).toBe("box/{{Missing}}");
     expect(fromRecord.expansion.status).toBe("partial");
     expect(fromRecord.expansion.diagnostics[0]).toMatchObject({
       code: "TEMPLATE_NOT_FOUND",
@@ -40,11 +51,11 @@ describe("template sources", () => {
     const fromMap = await expandWikitext("{{Box}}", {
       templates: new Map([["Template:Box", "map"]]),
     });
-    expect(fromMap.document.source).toBe("map");
+    expect(fromMap.snapshot.source).toBe("map");
     expect(fromMap.expansion.status).toBe("complete");
 
     const empty = await expandWikitext("{{Box}}", { templates: {} });
-    expect(empty.document.source).toBe("{{Box}}");
+    expect(empty.snapshot.source).toBe("{{Box}}");
     expect(empty.expansion.status).toBe("partial");
   });
 
@@ -52,7 +63,7 @@ describe("template sources", () => {
     const result = await expandWikitext("{{Box}}", {
       templates: { Box: "short", "template:box": "lower" },
     });
-    expect(result.document.source).toBe("{{Box}}");
+    expect(result.snapshot.source).toBe("{{Box}}");
     expect(result.expansion.diagnostics[0]).toMatchObject({
       code: "TEMPLATE_NOT_FOUND",
       templateTitle: "Template:Box",
@@ -65,7 +76,7 @@ describe("template sources", () => {
       templates: { "Template:Box": "local", "Template:Empty": "" },
       resolveTemplate,
     });
-    expect(result.document.source).toBe("localremote");
+    expect(result.snapshot.source).toBe("localremote");
     expect(resolveTemplate).toHaveBeenCalledTimes(1);
     expect(resolveTemplate.mock.calls[0]?.[0]).toMatchObject({ title: "Template:Other" });
   });
@@ -77,7 +88,7 @@ describe("template sources", () => {
       resolveTemplate,
       parser: parserThrowingOn("BROKEN"),
     });
-    expect(result.document.source).toBe("{{Box}}");
+    expect(result.snapshot.source).toBe("{{Box}}");
     expect(result.expansion.diagnostics[0]?.code).toBe("TEMPLATE_PARSE_FAILED");
     expect(resolveTemplate).not.toHaveBeenCalled();
 
@@ -94,7 +105,7 @@ describe("template sources", () => {
   it("uses the callback when the table is empty", async () => {
     const resolveTemplate = vi.fn((_request: WikitextTemplateRequest) => "remote");
     const result = await expandWikitext("{{Box}}", { templates: {}, resolveTemplate });
-    expect(result.document.source).toBe("remote");
+    expect(result.snapshot.source).toBe("remote");
     expect(resolveTemplate).toHaveBeenCalledTimes(1);
   });
 
@@ -115,10 +126,10 @@ describe("template sources", () => {
     templates["Template:B"] = "late";
     release?.();
     const result = await pending;
-    expect(result.document.source).toBe("firstremote");
+    expect(result.snapshot.source).toBe("firstremote");
 
     const next = await expandWikitext("{{A}}{{B}}", { templates });
-    expect(next.document.source).toBe("secondlate");
+    expect(next.snapshot.source).toBe("secondlate");
   });
 
   it("resolves nested templates across mixed sources and caches by title", async () => {
@@ -129,7 +140,7 @@ describe("template sources", () => {
       templates: { "Template:Outer": "[{{Middle}}]", "Template:Inner": "inner" },
       resolveTemplate,
     });
-    expect(result.document.source).toBe("[inner][inner]");
+    expect(result.snapshot.source).toBe("[inner][inner]");
     expect(result.expansion.status).toBe("complete");
     expect(resolveTemplate).toHaveBeenCalledTimes(1);
 
@@ -162,26 +173,25 @@ describe("template table normalization", () => {
     const table = Object.create({ "Template:Inherited": "inherited" }) as Record<string, string>;
     table["Template:Own"] = "own";
     Object.defineProperty(table, "Template:Hidden", { value: "hidden", enumerable: false });
-    const { resolveTemplate } = resolveExpandOptions({ templates: table });
-    expect(resolveTemplate(request("Template:Own"))).toBe("own");
-    expect(resolveTemplate(request("Template:Inherited"))).toBeNull();
-    expect(resolveTemplate(request("Template:Hidden"))).toBeNull();
+    const snapshot = snapshotOf(table);
+    expect(snapshot.get("Template:Own", request)).toMatchObject({ source: "own" });
+    expect(snapshot.get("Template:Inherited", request)).toBeNull();
+    expect(snapshot.get("Template:Hidden", request)).toBeNull();
   });
 
   it("keeps prototype-ish keys as plain data", () => {
     const table = { ["__proto__"]: "proto", toString: "stringified" } as Record<string, string>;
-    const { resolveTemplate } = resolveExpandOptions({ templates: table });
-    expect(resolveTemplate(request("__proto__"))).toBe("proto");
-    expect(resolveTemplate(request("toString"))).toBe("stringified");
-    expect(resolveTemplate(request("constructor"))).toBeNull();
+    const snapshot = snapshotOf(table);
+    expect(snapshot.get("__proto__", request)).toMatchObject({ source: "proto" });
+    expect(snapshot.get("toString", request)).toMatchObject({ source: "stringified" });
+    expect(snapshot.get("constructor", request)).toBeNull();
   });
 
   it("accepts objects without a prototype", () => {
     const table = Object.assign(Object.create(null) as Record<string, string>, {
       "Template:Box": "bare",
     });
-    const { resolveTemplate } = resolveExpandOptions({ templates: table });
-    expect(resolveTemplate(request("Template:Box"))).toBe("bare");
+    expect(snapshotOf(table).get("Template:Box", request)).toMatchObject({ source: "bare" });
   });
 
   it("iterates maps through entries", () => {
@@ -189,21 +199,17 @@ describe("template table normalization", () => {
       ["Template:A", "a"],
       ["Template:B", ""],
     ]);
-    const { resolveTemplate } = resolveExpandOptions({ templates: table });
-    expect(resolveTemplate(request("Template:A"))).toBe("a");
-    expect(resolveTemplate(request("Template:B"))).toBe("");
-    expect(resolveTemplate(request("Template:C"))).toBeNull();
+    const snapshot = snapshotOf(table);
+    expect(snapshot.get("Template:A", request)).toMatchObject({ source: "a" });
+    expect(snapshot.get("Template:B", request)).toMatchObject({ source: "" });
+    expect(snapshot.get("Template:C", request)).toBeNull();
   });
 
   it("accepts records and maps from another realm", () => {
     const record = runInNewContext('({ "Template:Box": "record" })') as Record<string, string>;
     const map = runInNewContext('new Map([["Template:Box", "map"]])') as Map<string, string>;
-    expect(
-      resolveExpandOptions({ templates: record }).resolveTemplate(request("Template:Box")),
-    ).toBe("record");
-    expect(resolveExpandOptions({ templates: map }).resolveTemplate(request("Template:Box"))).toBe(
-      "map",
-    );
+    expect(snapshotOf(record).get("Template:Box", request)).toMatchObject({ source: "record" });
+    expect(snapshotOf(map).get("Template:Box", request)).toMatchObject({ source: "map" });
   });
 
   it("rejects exotic containers and iterables without pairs", () => {
@@ -219,7 +225,9 @@ describe("template table normalization", () => {
     ];
     expect(exotic).toHaveLength(4);
     for (const table of exotic) {
-      expectInvalidOptions(() => resolveExpandOptions({ templates: asTable(table) }));
+      expectInvalid("Expected INVALID_PROVIDER.", "INVALID_PROVIDER", () =>
+        snapshotOf(asTable(table)),
+      );
     }
   });
 });
@@ -239,13 +247,15 @@ describe("option validation", () => {
       { parser, templates: asTable(new Map([["Template:A", 1]])) },
       { parser, resolveTemplate: 1 as never },
     ];
-    await Promise.all(
-      invalid.map((options) =>
-        expect(
-          expandWikitext("x", options as unknown as WikitextExpandOptions),
-        ).rejects.toMatchObject({ code: "INVALID_EXPAND_OPTIONS" }),
-      ),
-    );
+    for (const options of invalid) {
+      // 选项本身非法与模板表非法分别使用 INVALID_EXPAND_OPTIONS / INVALID_PROVIDER。
+      await expect(
+        expandWikitext("x", options as unknown as WikitextExpandOptions),
+      ).rejects.toMatchObject({
+        name: "WikitextExpandError",
+        code: expect.stringMatching(/^INVALID_(?:EXPAND_OPTIONS|PROVIDER)$/u),
+      });
+    }
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -254,18 +264,18 @@ describe("option validation", () => {
       expansion: { status: "complete" },
     });
     const undefinedOptions = await expandWikitext("text", undefined);
-    expect(undefinedOptions.document.source).toBe("text");
+    expect(undefinedOptions.snapshot.source).toBe("text");
     const noSources = await expandWikitext("{{Box}}", {
       templates: undefined,
       resolveTemplate: undefined,
     });
-    expect(noSources.document.source).toBe("{{Box}}");
+    expect(noSources.snapshot.source).toBe("{{Box}}");
     expect(noSources.expansion.status).toBe("partial");
   });
 
   it("expands pure functions without any template source", async () => {
     const result = await expandWikitext("{{#if:1|ok|no}}");
-    expect(result.document.source).toBe("ok");
+    expect(result.snapshot.source).toBe("ok");
     expect(result.expansion.status).toBe("complete");
   });
 

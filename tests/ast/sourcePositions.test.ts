@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { flattenNodes, getSourceText, type WikitextNode } from "@/ast";
 import { parse } from "../helpers/parse";
 
+function spanOf(node: WikitextNode | undefined): readonly [number, number] | undefined {
+  return node?.origin ? [node.origin.start, node.origin.end] : undefined;
+}
+
 function texts(source: string): WikitextNode[] {
   const document = parse(source);
   return flattenNodes(document.ast).filter((node) => node.type === "text");
@@ -16,7 +20,7 @@ describe("semantic source positions", () => {
       throw new Error("expected a text node");
     }
     expect(text.value).toBe("Head");
-    expect(text.origin?.range).toEqual([4, 8]);
+    expect(spanOf(text)).toEqual([4, 8]);
     expect(getSourceText(document, text)).toBe("Head");
   });
 
@@ -27,7 +31,7 @@ describe("semantic source positions", () => {
       throw new Error("expected a text node");
     }
     expect(text.value).toBe("hello");
-    expect(text.origin?.range).toEqual([2, 7]);
+    expect(spanOf(text)).toEqual([2, 7]);
     expect(getSourceText(document, text)).toBe("hello");
   });
 
@@ -40,9 +44,8 @@ describe("semantic source positions", () => {
       throw new Error("expected three text nodes");
     }
     expect(join.origin).toBeUndefined();
-    expect(join.position).toBeUndefined();
     expect(join.value).toBe(" ");
-    expect(tail.origin?.range).toEqual([6, 7]);
+    expect(spanOf(tail)).toEqual([6, 7]);
     expect(getSourceText(document, tail)).toBe("b");
   });
 
@@ -51,20 +54,20 @@ describe("semantic source positions", () => {
     const document = parse(source);
     const nodes = texts(source);
     expect(nodes.map((node) => (node.type === "text" ? node.value : ""))).toEqual(["A", " tail"]);
-    expect(nodes[0]?.origin?.range).toEqual([2, 3]);
-    expect(nodes[1]?.origin?.range).toEqual([5, 10]);
+    expect(spanOf(nodes[0])).toEqual([2, 3]);
+    expect(spanOf(nodes[1])).toEqual([5, 10]);
     expect(getSourceText(document, nodes[1]!)).toBe(" tail");
   });
 
   it("keeps emphasis and table cell ranges exact", () => {
     const emphasisDoc = parse("''a''");
     const emphasisText = texts("''a''")[0];
-    expect(emphasisText?.origin?.range).toEqual([2, 3]);
+    expect(spanOf(emphasisText)).toEqual([2, 3]);
     expect(getSourceText(emphasisDoc, emphasisText!)).toBe("a");
 
     const tableDoc = parse("{|\n| a\n|}");
     const cellText = texts("{|\n| a\n|}")[0];
-    expect(cellText?.origin?.range).toEqual([5, 6]);
+    expect(spanOf(cellText)).toEqual([5, 6]);
     expect(getSourceText(tableDoc, cellText!)).toBe("a");
   });
 });

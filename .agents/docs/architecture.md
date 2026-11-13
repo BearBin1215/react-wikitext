@@ -12,8 +12,8 @@
 
 库负责：
 
-- 把源码解析为不可变、可序列化的 `WikitextDocument`，包含语义 AST 和可选的源码语法树。
-- 把解析结果准备为 `WikitextRenderDocument`，包含插件处理后的语义树、HAST、逻辑标题锚点、policy 与 labels。
+- 把源码解析为不可变、可序列化的 `WikitextParsedSnapshot`，包含语义 AST 和可选的源码语法树。
+- 把解析结果准备为 `WikitextRenderSnapshot`，包含插件处理后的语义树、HAST、逻辑标题锚点、policy 与 labels。
 - 把准备结果渲染为 React 元素，或提供给其他 HAST consumer。
 - 通过子路径隔离 parser、React 与 HAST/unified 工具。
 
@@ -33,7 +33,7 @@ playground 负责：
 - 单元格内嵌套 wikitext 表格，以及行首空格 preformatted 的完整语义。
 - 自定义展开函数 hook、嵌套来源映射、展开组合快照序列化与独立构建期展开后端。
 
-模板与部分解析器函数可以在渲染前展开，但展开只使用宿主注入的源码，属于[可选前置阶段](#32-可选展开前置阶段)，不改变默认处理链。未完成能力统一登记在[路线图](./roadmap.md)。
+模板与部分解析器函数可以在渲染前展开，但展开只使用宿主注入的源码，属于[可选前置阶段](#32-可选展开与编译器)，不改变默认处理链。未完成能力统一登记在[路线图](./roadmap.md)。
 
 ## 2. 系统上下文
 
@@ -62,31 +62,37 @@ Worker 只属于 playground 调度层；库的解析与准备 API 保持同步�
 
 | 阶段 | 入口 | 输入 → 输出 | 负责 | 不负责 |
 | --- | --- | --- | --- | --- |
-| 可选展开 | `/expand` | 源码 → `WikitextExpandedDocument` | 按调用结构展开模板与受支持的解析器函数，再重新解析 | 求值 Lua、站点状态函数、远程抓取 |
-| 解析 | `/parse` | 源码 → `WikitextDocument` | LF 归一化、预算、语法树校验、语义归一化、诊断 | 显示结构、HTML 清洗 |
-| 准备 | `/hast`、`/unified` | `WikitextDocument` → `WikitextRenderDocument` | 插件、resolver、HAST 转换、清洗、最终整理 | 解析源码、React 渲染 |
-| 视图 | `/view`、根入口 | `WikitextRenderDocument` → React | 组件映射、实例 id、错误隔离 | 解析、运行插件或 resolver |
-| 调试 | `/devtools` | `WikitextDocument` 或 `WikitextRenderDocument` → React 调试面板 | AST 树、节点详情与选择恢复 | 解析、准备、正式渲染 |
+| 可选展开 | `/expand` | 输入 → `WikitextCompilation` | 按调用结构展开模板与受支持的解析器函数，产出带来源图的解析快照 | 求值 Lua、站点状态函数、远程抓取 |
+| 实时预览 | `/preview` | 输入 + executor → 渲染快照 | 防抖、请求版本、旧结果展示、取消 | 解析、编译、渲染期启动工作 |
+| Worker | `/worker` | 编译请求 → 序列化渲染快照 | 复用编译器执行 compile 与 prepare | 创建 Worker、鉴权、同步硬中断 |
+| 解析 | `/parse` | 源码 → `WikitextParsedSnapshot` | LF 归一化、预算、语法树校验、语义归一化、诊断 | 显示结构、HTML 清洗 |
+| 准备 | `/hast`、`/unified` | `WikitextParsedSnapshot` → `WikitextRenderSnapshot` | 插件、resolver、HAST 转换、清洗、最终整理 | 解析源码、React 渲染 |
+| 视图 | `/view`、根入口 | `WikitextRenderSnapshot` → React | 组件映射、实例 id、错误隔离 | 解析、运行插件或 resolver |
+| 调试 | `/devtools` | `WikitextParsedSnapshot` 或 `WikitextRenderSnapshot` → React 调试面板 | AST 树、节点详情与选择恢复 | 解析、准备、正式渲染 |
 
 固定处理链为 parser → 可选的源码语法树 → 强类型 wiki 语义 AST → HAST → React。结构归一化在语义阶段完成；HAST 只表达 HTML 结构；React 只做组件映射与实例化。
 
-### 3.2 可选展开前置阶段
+### 3.2 可选展开与编译器
 
-`expandWikitext(source, options)` 位于固定处理链之前，独立于 `/parse`、`/hast` 与 `/view`：
+`/expand` 位于固定处理链之前，独立于 `/parse`、`/hast` 与 `/view`：
 
 ```text
-原始源码
-  └─ 解析原始源码 ─────────────▶ original
-  └─ 模板表 / resolver 获取模板源码 + include 过滤 + 语法树求值
-  └─ 拼接展开源码 ─────────────▶ 重新解析
-  └─ expansion（records / diagnostics）──▶ document
+页面原文 + 版本
+  └─ CRLF 归一化（登记变换片段）─────────▶ 归一化文本源
+  └─ 页面语法编译（只编译调用结构）
+  └─ 按需任务图求值 ── demand ──▶ provider 批量获取
+  └─ 模板预处理（include 过滤 + 语法程序缓存）
+  └─ 装配展开源码（片段关系 + 调用出现位置）──▶ 来源图
+  └─ 最终语法编译与语义构建 ─────────────▶ WikitextParsedSnapshot
 ```
 
-- 展开在内部保留的源码语法树上按调用结构和参数作用域求值，不使用语义 AST 作为输入；最终结果重新解析，因此展开产生的表格、标题、链接等仍由后续语义阶段形成。
-- 模板源码由宿主的 `templates` 模板表或 `resolveTemplate` 回调提供，模板表优先；每次展开在解析源码前复制模板表，库不发起网络请求，也不内建 Lua、站点扩展或依赖站点状态的函数。返回的模板源码按不可信 wikitext 处理，最终仍经过同一清洗流程。
-- 默认对可恢复失败保留对应调用并记录 `expand` 阶段诊断；最终源码解析失败退回原始快照，`strict` 模式改为整次抛错。
-- `expansion.diagnostics` 以原始源码为坐标；`document.diagnostics` 合并最终解析诊断与映射到展开源码的展开诊断。嵌套调用只定位到所属顶层记录，不提供模板内部的精确来源映射。
-- 支持范围、预算与错误语义见[文档站 expand 页面](../../website/docs/zh/api/expand.mdx)。
+- 展开在源码语法树上按不可变 frame、参数 thunk 与确定顺序的需求轮次求值；不使用语义 AST 作为输入。最终结果重新解析，因此展开产生的表格、标题、链接等仍由后续语义阶段形成。
+- 每次编译通过 `provider.open` 固定一个模板来源快照；模板表 helper 在构造时复制并校验。库不发起网络请求，也不内建 Lua、站点扩展或依赖站点状态的函数。返回的模板源码按不可信 wikitext 处理，最终仍经过同一清洗流程。
+- 默认对可恢复失败保留对应调用并记录 `expand` 阶段诊断；最终源码解析失败退回原始 LF 快照并保留 `attemptedSourceId`，`failureMode: "throw"` 改为整次抛错。原始解析失败、硬资源上限、取消与不兼容 parser 始终失败。
+- 诊断使用带来源的主 `location`：模板体失败指向模板有效正文，页面调用位置作为相关来源；调用记录、片段关系与语义节点 origin 共用同一来源图。嵌套调用各自登记作用域、父调用与全部输出出现位置。
+- 求值分轮进行：纯计算先推进，未编译模板记录需求并推迟本轮；调度器按 provider 快照去重、按 `getMany` 或 `get` 批量获取，再按固定任务地址提交并重新求值。输出、调用状态与诊断不依赖网络返回顺序。
+- 缓存分三层：模板获取结果按 provider 版本与标题；模板语法程序按 parser 身份、预算、页面上下文与归一化内容；页面语法编译按输入内容与预算。容量同时受条目与字节约束。
+- 支持范围、预算、缓存与错误语义见[文档站 expand 页面](../../website/docs/zh/api/expand.mdx)。
 
 ### 3.3 解析与语义归一化
 
@@ -101,7 +107,7 @@ Worker 只属于 playground 调度层；库的解析与准备 API 保持同步�
 - 模板参数、文件参数、链接目标、扩展标签内容结构化读取，后续阶段不再用 `source.slice()` 推断字段。
 - 语义节点保存 `origin`；生成节点不伪造位置。
 
-源码语法树属于解析器适配层，`retainSyntax` 默认关闭，只有 playground、oracle 与显式调试需要时才进入公共快照；语义节点的 `position`、`origin.range` 与查询函数不依赖它，`/expand` 内部始终构建语法树，该选项在那里只控制是否公开。
+源码语法树属于解析器适配层，`retainSyntax` 默认关闭，只有 playground、oracle 与显式调试需要时才进入公共快照；语义节点的 `origin` 与查询函数不依赖它，`/expand` 通过 `parser.compile` 构建语法，`retainSyntax` 在那里只控制是否公开。
 
 ### 3.4 准备、HAST 与最终整理
 
@@ -124,24 +130,30 @@ HAST 使用标准 `element`、`text`、`root` 节点。语义关联记录在可�
 
 ### 3.5 React
 
-`WikitextView` 只消费 `WikitextRenderDocument`：渲染期间不解析、不运行插件或 resolver。`WikitextFragment` 在同一 Context 内渲染准备结果中的节点；跨文档节点会抛错。HTML 标签与 wiki 语义组件分层覆盖；实例 id 只在视图层映射。
+`WikitextView` 只消费 `WikitextRenderSnapshot`：渲染期间不解析、不运行插件或 resolver。`WikitextFragment` 在同一 Context 内渲染准备结果中的节点；跨文档节点会抛错。HTML 标签与 wiki 语义组件分层覆盖；实例 id 只在视图层映射。
 
 ## 4. 模块划分与依赖
 
 ```text
 src/
-  ast/          model、labels、errors、limits、source、query、helpers、position、file-options、
-                serialize、ids、parser（纯编排）；无 React、DOM
+  ast/          model、labels、errors、limits、position、query、helpers、file-options、
+                serialize、ids、sourceGraph/（源目录、片段关系、调用记录、映射、定位与
+                序列化）；无 React、DOM，也不加载默认 parser
   normalize/    build、blocks、block-policy、inline、lists、tables、html、html-block、text、
                 fields、context（含单一源码行索引与块级深度预算）；
                 只依赖 ast 的普通数据与查询
+  parser/       解析编排与自定义 adapter 工厂（组合 normalize/build，纯数据）；
+                不加载默认 parser
   parse/        loadParser（IIFE）、默认 adapter、buildSyntax、ranges、attributes、index；
-                仅此层加载 parser
-  expand/       可选展开：types、options、include、syntax、evaluator、index；
-                依赖 parse 与 ast，不依赖 React、HAST、view
+                仅此层加载默认 parser
+  expand/       编译器：compiler、provider、cache、scheduler、evaluate、functions、include、
+                syntax、types、index；依赖 parse 与 ast，不依赖 React、HAST、view
   hast/         types、toHast、prepare、stages、settings、workingAst、budget、finalize、toc、
                 references、rel、sanitize、tableLayout、serialize、vfile、index；
                 无 React、parser、normalize
+  preview/      useWikitextPreview、executor 协议与 worker transport；
+                只依赖 React 与 hast 的恢复函数
+  worker/       消息协议、handler 与 attach；依赖 expand、hast，不依赖 React
   unified/      createWikitextProcessor 与 VFile data 读取 helper；
                 无 React、parser
   view/         WikitextView、WikitextFragment、context、bridge、render、错误边界、类型
@@ -152,6 +164,7 @@ src/
   styles/       view.css、devtools.css、tokens.css；页面渲染与调试组件样式、主题 token；
                 源码使用原生嵌套，构建时展开
   types/        上游深层导入与 VFile 的 ambient 声明
+  instrumentation.ts  阶段计时 sink 类型；通过 `profile` 选项按实例传入，默认关闭
   Wikitext.tsx  根入口的源码组件；依赖 parse、hast、view
   index.ts      根入口：view + Wikitext + 精选语义类型
 ```
@@ -172,8 +185,8 @@ playground/src/
 
 依赖方向：
 
-- `ast/model` 及其纯数据/工具模块是基础层；`ast/parser` 是唯一组合 `normalize/build` 的模块。`normalize` 只依赖 ast 的普通数据与查询，不依赖 React、DOM 或 parser。
-- `parse` 可以依赖 `ast` 与 `configs`；只有 `parse/loadParser.ts` 加载 IIFE。
+- `ast/model` 及其纯数据/工具模块是基础层；`parser/` 是唯一组合 `normalize/build` 的模块，`/ast` 与 `/parse` 都从它导出工厂。`normalize` 只依赖 ast 的普通数据与查询，不依赖 React、DOM 或 parser。
+- `parser` 只依赖 `ast` 与 `normalize`；`parse` 可以依赖 `ast`、`configs` 与 `parser`；只有 `parse/loadParser.ts` 加载 IIFE。
 - `expand` 依赖 `ast` 与 `parse`，可以加载 parser；不依赖 React、`hast`、`unified` 或 `view`。
 - `hast` 依赖 `ast`、`shared` 与打包的 unified/hast 工具；不依赖 parser、`normalize`、React 或 `/ast` 桶。
 - `unified` 依赖 `hast` 的共享阶段模块与 `ast`，不隐式创建默认 parser。
@@ -191,21 +204,23 @@ playground/src/
 
 完整类型以[文档站 ast 页面](../../website/docs/zh/api/ast.mdx)为准，这里只说明职责。
 
-- 解析快照 `WikitextDocument`：LF 归一化源码、语义 AST、可选源码语法树、meta 与诊断。它是原始事实，准备阶段不会修改。
-- 渲染快照 `WikitextRenderDocument`：原始源码、插件处理后的语义工作树、最终 HAST、逻辑标题锚点、meta（含已解析 policy、labels 与 `authorizedImages`）与合并诊断。
-- 展开快照 `WikitextExpandedDocument`：`original` 是未展开快照，`document` 是展开源码重新解析后的快照，`expansion` 保存顶层调用记录、诊断与完成状态。
+- 解析快照 `WikitextParsedSnapshot`：`kind: "parsed"`、快照 id、活动 source id、来源图、活动源码、语义 AST、可选源码语法树、meta 与诊断。它是原始事实，准备阶段不会修改。
+- 渲染快照 `WikitextRenderSnapshot`：`kind: "render"`，继承同一来源图与活动源码，另含插件处理后的语义工作树、最终 HAST、逻辑标题锚点、meta（含已解析 policy、labels 与 `authorizedImages`）与合并诊断。
+- 编译结果 `WikitextCompilation`：状态、输入/实际输出/失败尝试的 source id、解析快照、依赖清单与统计；诊断与来源图只保存在其 `snapshot`。
 - 序列化只输出普通对象；恢复函数校验 schema、`meta` 形状与固定 HAST 预算，渲染快照恢复后重新执行清洗与最终整理。快照内的 `policy`、`labels` 与 `authorizedImages` 属于可信边界：重新清洗只用于重建派生结构，不能把第三方 HAST 变成可信内容。序列化不是安全证明，只应接收本库产生的可信数据。
 
 源码映射与标识：
 
-- 所有 offset 是 UTF-16、`[start, end)`；line/column 按 unist 规则从 1 开始。
-- 语义节点与源码语法节点在存在对应源码时带 `position`，生成节点省略；诊断也可带 `position`。HAST 节点没有 `position`，只通过 `data.wikitext.origin` 关联语义来源。
-- `origin.range` 表示语义节点对应的源码区间，`origin.syntaxId` 可选；一个语义节点可来自多个 token，一个 token 也可产生多个段落或文本片段。
+- 所有 span 是带 `sourceId` 的 UTF-16 `[start, end)`；line/column 由 `getSourcePosition` 从所属文本源按需计算，节点与诊断不另存一份 position。
+- 语义节点带 `origin`（`sourceId` + `start`/`end`，可选 `syntaxId`），生成节点省略；HAST 节点通过 `data.wikitext.origin` 关联语义来源。
+- 来源图登记输入原文、LF 文本、模板原文、有效正文与展开结果，以及片段关系与调用记录；关系通过 id 引用，索引与查询方法不进入序列化数据。
+- 片段关系区分 `copy`、`normalize`、`delete`、`generated`、`invocation` 与 `value`；`precision` 为 `exact` 或 `enclosing-invocation`，多阶段组合不提升精度。
+- `mapSourceSpan` 返回多段匹配、未映射子范围与覆盖率；`locateRenderedNode` / `findRenderedNodes` 与 `getSourcePosition` 共享同一来源图实现。
 - `id` 是快照内唯一的路径式标识，不承诺跨编辑稳定。准备阶段插件复制/插入节点后会重新分配 id，并使该工作树的节点列表与 id 索引缓存失效；插件已持有的旧数组或 Map 不会实时更新。
-- `getSourceText(document, node)` 读取原始源码；`toPlainText(node)` 读取转换后的语义内容。
-- HAST 的 `data.wikitext.id` 指向渲染快照中的语义节点；需要源码定位的元素同时输出 `data-node-id`。视图用该 id 建立语义索引与 HAST 索引，源码 HTML 无法注入这些保留属性。
+- `getSourceText(snapshot, node)` 读取来源源码；`toPlainText(node)` 读取转换后的语义内容。
+- HAST 的 `data.wikitext.id` 指向渲染快照中的语义节点；`sourceAttributes` 启用时额外输出 `data-wikitext-{snapshot,node,source,start,end}`。视图用该 id 建立语义索引与 HAST 索引，源码 HTML 无法注入这些保留属性。
 - 标题逻辑锚点在准备阶段生成；`headingIdStrategy` 为 `instance` 时视图追加实例前缀，`mediawiki` 保留裸锚点，`none` 不写 id。
-- 展开记录同时保存原始调用范围与展开结果范围；嵌套调用复用所属顶层记录。
+- 调用记录保存自身文本源、作用域身份、父调用、状态与全部输出出现位置；同一模板的范围可以对应多个展开位置。
 
 ## 6. 诊断与错误
 
@@ -222,8 +237,8 @@ playground/src/
 | `finalize` | 未授权图片移除（`UNAUTHORIZED_IMAGE`） |
 
 - 诊断码的固定词表是 `KnownWikitextDiagnosticCode`；`WikitextDiagnosticCode` 还允许插件传入自定义字符串。
-- 解析阶段的降级诊断写入 `WikitextDocument.diagnostics`，准备阶段合并进渲染快照诊断。
-- 展开诊断以原始源码为坐标，并把映射到展开源码的副本合并进 `document.diagnostics`。
+- 解析阶段的降级诊断写入 `WikitextParsedSnapshot.diagnostics`，准备阶段合并进渲染快照诊断。
+- 展开诊断保留带来源的 `location`，并合并进 `snapshot.diagnostics`；调用记录与输出位置在 `snapshot.graph` 上。
 - `/unified` 处理器在进入 HAST 阶段时收集 wiki 消息，在最终阶段只收集此后的 rehype 消息，避免同一消息按错误阶段重复出现。
 - 没有 handler 的语义节点产生 `UNKNOWN_NODE`，并降级为安全卡片。
 
@@ -256,17 +271,17 @@ playground/src/
 
 - 解析预算覆盖源码长度、语法/语义节点数与深度，均可按解析选项覆盖；默认值见[文档站 parse 页面](../../website/docs/zh/api/parse.mdx)。有效语法节点与深度预算会传给默认适配器，用于在构造阶段提前停止；上游 token 解析仍会同步完成，不能保证中途取消。自定义适配器可以忽略该预算，工厂仍会校验返回的语法树。
 - 展开预算覆盖求值深度、调用次数与展开长度；模板源码与 include 过滤后的有效源码都受源码长度上限约束。默认值见[文档站 expand 页面](../../website/docs/zh/api/expand.mdx)。
-- 展开在单次调用内缓存模板源码、未找到结果与有效语法树；循环检测使用当前模板调用栈。
+- 展开缓存分三层：模板获取结果按 provider 版本与标题、模板语法程序按 parser 与页面上下文、页面语法编译按输入内容与预算；容量同时受条目与字节约束。循环检测按词法 frame 路径判断。
 - 准备阶段对插件处理后的工作树再次执行固定的节点数与深度预算，防止插件扩大树规模；最终 HAST 与恢复渲染快照共用同一组固定 HAST 预算，prepare 的合法产物总能被 restore 接受。最终 HAST 节点数超限时，先省略语义 wiki 表格行末的库生成空补位格并记录警告；省略后仍超限、深度超限或无法省略时失败。
 - 归一化只建立一次源码行索引（与位置换算共用行起点），列表按二分定位行与节点窗口；块级深度由 `NormalizeContext.maxDepth` 统一约束，超限抛 `SOURCE_TOO_COMPLEX` 而不是静默截断或抛原生 `RangeError`。
 - 公共快照不保存 `flat`、Map 或父指针；`flattenNodes` 与按 id 索引通过 `WeakMap` 惰性创建，视图的语义/HAST 索引在渲染时按 document 重新建立，跨传输后可重建。
 - 准备阶段克隆语义树，保护原始快照；同一解析快照可用不同 resolver/labels/policy 多次准备。
-- 同步 parser 无法中途取消；Worker、防抖、request id 与过期结果丢弃由调用方/playground 实现。
-- 展开 API 是异步的，支持 `signal`；等待 resolver 时可以取消，同步 parser 执行期间不能保证立即停止。大规模展开仍应由宿主放入 Worker。
-- playground 使用 Web Worker、250 ms 防抖与过期结果丢弃；模板展开复用同一调度。
+- 同步 parser 无法中途取消；`/preview` 提供防抖、请求身份、旧结果保留与过期结果丢弃，Worker 执行器复用宿主创建的 Worker 与同一协议。
+- 编译器 API 是异步的，支持 `signal`；等待 provider 时可以取消，同步 parser 执行期间不能保证立即停止。大规模展开仍应由宿主放入 Worker。
+- playground 保留自有 Worker 调度（解析一次、按选项多次准备），只复用公共编译、快照与图查询。
 - AST 树默认展开两层，子节点仅在展开时渲染；搜索按需遍历。
 - 预览只渲染支持的节点；未知节点降级为轻量源码卡片。
-- 性能数据以 `pnpm bench` 输出为准，不在文档中维护固定数值。
+- 性能数据以 `pnpm bench` 输出为准，不在文档中维护固定数值；编译器与准备管线的阶段计时通过 `profile` 选项按实例采集，默认关闭，不共享模块状态。
 
 ## 9. 运行时与交付边界
 

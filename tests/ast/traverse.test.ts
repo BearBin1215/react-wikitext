@@ -15,7 +15,7 @@ describe("semantic queries", () => {
     const doc = parse("hello [[World|world]]");
     const link = flattenNodes(doc.ast).find((node) => node.type === "link");
     expect(link).toBeDefined();
-    expect(findNodeById(doc, link!.id)).toBe(link);
+    expect(findNodeById(doc.ast, link!.id)).toBe(link);
     expect(getSourceText(doc, link!)).toBe("[[World|world]]");
     expect(toPlainText(link!)).toBe("world");
   });

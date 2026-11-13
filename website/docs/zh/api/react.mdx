@@ -25,12 +25,12 @@ import "react-wikitext/styles.css";
 ### 属性
 
 ```ts
-interface WikitextProps extends Omit<WikitextViewProps, "document"> {
+interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
   source: string;
   parser?: WikitextParser;
   parseOptions?: WikitextParseOptions;
   prepareOptions?: WikitextPrepareOptions;
-  onPrepared?: (document: WikitextRenderDocument) => void;
+  onPrepared?: (document: WikitextRenderSnapshot) => void;
   onError?: (error: WikitextError, info: { stage: "parse" | "prepare" }) => void;
   fallback?:
     | React.ReactNode
@@ -68,23 +68,24 @@ interface WikitextProps extends Omit<WikitextViewProps, "document"> {
 ```tsx
 import { WikitextView } from "react-wikitext/view";
 
-<WikitextView document={prepared} lang="zh-CN" />;
+<WikitextView snapshot={prepared} lang="zh-CN" />;
 ```
 
 `WikitextView` 只接收准备完成的渲染快照。渲染期间不解析源码、不运行插件或解析回调。视图会在渲染前做一次轻量运行时校验：把解析快照直接传进来时会抛 `WikitextError("INVALID_DOCUMENT")`，而不是静默渲染空内容。
 
 ### 属性
 
-| 属性                 | 说明                                            |
-| -------------------- | ----------------------------------------------- |
-| `document`           | `WikitextRenderDocument`                        |
-| `components`         | 按 HAST 标签名覆盖组件                          |
-| `semanticComponents` | 按 wiki 语义类型覆盖组件                        |
-| `lang` / `dir`       | 写入根容器的语言与方向                          |
-| `idPrefix`           | `instance` 策略下的实例前缀；未传时使用 `useId` |
-| `className`          | 与 `wikitext-view` 合并                         |
-| `containerProps`     | 根容器属性；排除 `dangerouslySetInnerHTML`      |
-| `onRenderError`      | 块级渲染失败回调                                |
+| 属性                 | 说明                                                                     |
+| -------------------- | ------------------------------------------------------------------------ |
+| `snapshot`           | 已准备好的 `WikitextRenderSnapshot`；传入解析快照会抛 `INVALID_DOCUMENT` |
+| `components`         | 按 HAST 标签名覆盖组件                                                   |
+| `semanticComponents` | 按 wiki 语义类型覆盖组件                                                 |
+| `lang` / `dir`       | 写入根容器的语言与方向                                                   |
+| `idPrefix`           | `instance` 策略下的实例前缀；未传时使用 `useId`                          |
+| `className`          | 与 `wikitext-view` 合并                                                  |
+| `containerProps`     | 根容器属性；排除 `dangerouslySetInnerHTML`                               |
+| `sourceAttributes`   | `"none"` / `"block"` / `"all"`，输出 `data-wikitext-*` 来源属性          |
+| `onRenderError`      | 块级渲染失败回调                                                         |
 
 - 根节点固定为 `div.wikitext-view`。
 - `idPrefix` 同时影响标题 id、文档内 `#fragment` 链接与表格 `headers`。
@@ -122,7 +123,7 @@ type WikitextHtmlComponents = Partial<
 
 interface WikitextHtmlComponentProps extends React.HTMLAttributes<HTMLElement> {
   node?: import("hast").Element;
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   semantic?: WikitextNode;
   origin?: WikitextOrigin;
   children?: React.ReactNode;
@@ -154,7 +155,7 @@ type WikitextSemanticComponents = {
 
 ```ts
 interface WikitextSemanticComponentProps<Node extends WikitextNode> {
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   node: Node;
   hastNode: import("hast").Element;
   origin?: WikitextOrigin;
@@ -183,7 +184,7 @@ interface WikitextSemanticComponentProps<Node extends WikitextNode> {
 
 ```tsx
 <WikitextView
-  document={prepared}
+  snapshot={prepared}
   semanticComponents={{
     link: ({ href, external, children }) =>
       href ? (
@@ -201,7 +202,7 @@ interface WikitextSemanticComponentProps<Node extends WikitextNode> {
 
 ```ts
 interface WikitextViewContextValue {
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   semanticIndex: ReadonlyMap<string, WikitextNode>;
   hastIndex: ReadonlyMap<string, import("hast").ElementContent>;
   components: WikitextHtmlComponents;

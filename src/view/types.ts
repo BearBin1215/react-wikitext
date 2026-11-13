@@ -9,18 +9,39 @@ import type {
   WikitextOrigin,
   WikitextParserFunction,
   WikitextReference,
-  WikitextRenderDocument,
+  WikitextRenderSnapshot,
   WikitextTable,
   WikitextTemplate,
   WikitextUnknown,
 } from "../ast/model";
 
+/**
+ * 源码定位属性模式。
+ *
+ * `none` 不输出任何来源属性；`block` 覆盖段落、标题、列表项、表格结构、
+ * 引用正文与块级扩展等块级语义节点；`all` 覆盖可关联语义节点的元素。
+ */
+export type WikitextSourceAttributesMode = "none" | "block" | "all";
+
+/** 库生成的源码定位属性；只在启用 `sourceAttributes` 时出现。 */
+export interface WikitextSourceAttributes {
+  /** 当前快照身份。 */
+  readonly "data-wikitext-snapshot"?: string;
+  /** 当前快照中的语义节点 id。 */
+  readonly "data-wikitext-node"?: string;
+  /** 直接活动来源的文本源身份。 */
+  readonly "data-wikitext-source"?: string;
+  readonly "data-wikitext-start"?: string;
+  readonly "data-wikitext-end"?: string;
+}
+
 /** 传给自定义 HTML 组件的属性。 */
-export interface WikitextHtmlComponentProps extends HTMLAttributes<HTMLElement> {
+export interface WikitextHtmlComponentProps
+  extends HTMLAttributes<HTMLElement>, WikitextSourceAttributes {
   /** 当前的 HAST 元素；由桥接层传入。 */
   readonly node?: Element;
-  /** 当前渲染的文档。 */
-  readonly document: WikitextRenderDocument;
+  /** 当前渲染的快照。 */
+  readonly snapshot: WikitextRenderSnapshot;
   /** 当该 HTML 元素承载 wiki 语义节点时提供。 */
   readonly semantic?: WikitextNode;
   /** 该 HTML 元素对应的源码来源。 */
@@ -38,9 +59,11 @@ export type WikitextHtmlComponents = Partial<
 >;
 
 /** 传给语义组件的公共属性。 */
-export interface WikitextSemanticComponentProps<Node extends WikitextNode> {
-  /** 当前渲染的文档。 */
-  readonly document: WikitextRenderDocument;
+export interface WikitextSemanticComponentProps<
+  Node extends WikitextNode,
+> extends WikitextSourceAttributes {
+  /** 当前渲染的快照。 */
+  readonly snapshot: WikitextRenderSnapshot;
   /** 当前语义节点。 */
   readonly node: Node;
   /** 该节点对应的 HAST 元素。 */
@@ -123,11 +146,13 @@ export interface WikitextSemanticComponents {
 /** `<WikitextView>` 的属性。 */
 export interface WikitextViewProps {
   /** 准备阶段生成的渲染快照。 */
-  readonly document: WikitextRenderDocument;
+  readonly snapshot: WikitextRenderSnapshot;
   /** 按标签名覆盖 HTML 元素。 */
   readonly components?: WikitextHtmlComponents;
   /** 按语义节点类型覆盖组件。 */
   readonly semanticComponents?: WikitextSemanticComponents;
+  /** 容器与元素上的源码定位属性模式，默认 `none`。 */
+  readonly sourceAttributes?: WikitextSourceAttributesMode;
   /** 容器的语言。 */
   readonly lang?: string;
   /** 容器的文字方向。 */

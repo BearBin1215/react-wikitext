@@ -31,8 +31,30 @@ export function stripRawExtensions(text: string): string {
   return text.replace(RAW_EXTENSION_PATTERN, "");
 }
 
-export function sourceText(source: string, node: WikitextSyntaxNode | WikitextSyntaxRoot): string {
-  return source.slice(node.range[0], node.range[1]);
+/**
+ * 扫描不参与模板展开的保护区域：注释与原文扩展标签。
+ *
+ * 预处理在语法编译之前运行，因此这里不依赖语法树，但必须与默认适配器的
+ * 扩展标签配置保持一致；结果按起点排序且互不重叠。
+ * @param text LF 归一化后的源码。
+ */
+export function scanProtectedRegions(text: string): Array<readonly [number, number]> {
+  const ranges: Array<readonly [number, number]> = [];
+  const pattern = new RegExp(RAW_EXTENSION_PATTERN.source, RAW_EXTENSION_PATTERN.flags);
+  const comment = /<!--[\s\S]*?-->/gu;
+  const push = (start: number, end: number): void => {
+    if (end > start) {
+      ranges.push([start, end]);
+    }
+  };
+  for (const match of text.matchAll(comment)) {
+    push(match.index, match.index + match[0].length);
+  }
+  for (const match of text.matchAll(pattern)) {
+    push(match.index, match.index + match[0].length);
+  }
+  // oxlint-disable-next-line unicorn/no-array-sort -- 产物 target 为 ES2022。
+  return ranges.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
 }
 
 export function findChild(

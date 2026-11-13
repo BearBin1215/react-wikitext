@@ -6,7 +6,7 @@ description: 用 createWikitextProcessor 把 wikitext 处理接入 unified 生�
 # unified
 
 ```ts
-import { createWikitextProcessor, getWikitextDocument } from "react-wikitext/unified";
+import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikitext/unified";
 ```
 
 `/unified` 不加载默认解析器，也不加载 React。它提供一个固定顺序的处理器，适合需要复用插件组合、逐步注册转换，或把 wikitext 处理嵌入已有 unified 风格的构建流程。
@@ -43,7 +43,7 @@ const prepared = processor.runSync(source);
 const asyncPrepared = await processor.run(source);
 ```
 
-返回值与 `prepareWikitext` 相同，是已完成清洗与最终整理的 `WikitextRenderDocument`。每次 `run` / `runSync` 都创建新的 VFile，运行之间不共享状态。
+返回值与 `prepareWikitext` 相同，是已完成清洗与最终整理的 `WikitextRenderSnapshot`。每次 `run` / `runSync` 都创建新的 VFile，运行之间不共享状态。
 
 ## 选项
 
@@ -90,16 +90,16 @@ await processor.run(source); // 允许插件返回 Promise
 ## 在插件内读取快照
 
 ```ts
-import { getWikitextDocument, getWikitextRenderDocument } from "react-wikitext/unified";
+import { getWikitextParsedSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
 
 processor.useWikitext(() => (tree, file) => {
-  const parsed = getWikitextDocument(file); // 解析快照；插件可以读取，但不能修改
+  const parsed = getWikitextParsedSnapshot(file); // 解析快照；插件可以读取，但不能修改
   void parsed;
 });
 ```
 
-- `getWikitextDocument(file)` 返回本次运行的解析快照。
-- `getWikitextRenderDocument(file)` 返回渲染快照；它在最终阶段才写入，HAST 插件阶段读不到。
+- `getWikitextParsedSnapshot(file)` 返回本次运行的解析快照。
+- `getWikitextRenderSnapshot(file)` 返回渲染快照；它在最终阶段才写入，HAST 插件阶段读不到。
 
 ## 与 prepareWikitext 的关系
 

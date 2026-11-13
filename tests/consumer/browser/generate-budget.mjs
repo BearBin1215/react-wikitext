@@ -35,7 +35,7 @@ if (diagnostics.length !== 45) {
   throw new Error(`Expected 45 filler diagnostics, received ${diagnostics.length}.`);
 }
 
-const html = renderToStaticMarkup(createElement(WikitextView, { document }));
+const html = renderToStaticMarkup(createElement(WikitextView, { snapshot: document }));
 const tokens = readFileSync(resolve("dist/tokens.css"), "utf8");
 const styles = readFileSync(resolve("dist/styles.css"), "utf8").replace(
   /@import\s+["']\.\/tokens\.css["'];?/u,

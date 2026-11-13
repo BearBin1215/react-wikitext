@@ -4,7 +4,7 @@ import {
   Wikitext,
   WikitextError,
   type WikitextErrorInfo,
-  type WikitextRenderDocument,
+  type WikitextRenderSnapshot,
 } from "@/index";
 import { createWikiparser } from "@/parse";
 
@@ -61,7 +61,7 @@ describe("Wikitext source component", () => {
   });
 
   it("exposes diagnostics through onPrepared", () => {
-    const prepared: WikitextRenderDocument[] = [];
+    const prepared: WikitextRenderSnapshot[] = [];
     render(<Wikitext source="[[File:X.png]]" onPrepared={(document) => prepared.push(document)} />);
     expect(prepared).toHaveLength(1);
     expect(

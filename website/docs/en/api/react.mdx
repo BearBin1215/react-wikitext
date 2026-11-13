@@ -25,12 +25,12 @@ The source component parses, prepares, and renders in one step. It only supports
 ### Props
 
 ```ts
-interface WikitextProps extends Omit<WikitextViewProps, "document"> {
+interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
   source: string;
   parser?: WikitextParser;
   parseOptions?: WikitextParseOptions;
   prepareOptions?: WikitextPrepareOptions;
-  onPrepared?: (document: WikitextRenderDocument) => void;
+  onPrepared?: (document: WikitextRenderSnapshot) => void;
   onError?: (error: WikitextError, info: { stage: "parse" | "prepare" }) => void;
   fallback?:
     | React.ReactNode
@@ -68,23 +68,24 @@ interface WikitextProps extends Omit<WikitextViewProps, "document"> {
 ```tsx
 import { WikitextView } from "react-wikitext/view";
 
-<WikitextView document={prepared} lang="en" />;
+<WikitextView snapshot={prepared} lang="en" />;
 ```
 
 `WikitextView` accepts only a prepared render snapshot. It never parses source, runs plugins, or calls resolvers during rendering. The view performs a lightweight runtime check: passing a parse snapshot throws `WikitextError("INVALID_DOCUMENT")` instead of silently rendering nothing.
 
 ### Props
 
-| Prop                 | Description                                                  |
-| -------------------- | ------------------------------------------------------------ |
-| `document`           | `WikitextRenderDocument`                                     |
-| `components`         | Override by HAST tag name                                    |
-| `semanticComponents` | Override by wiki semantic type                               |
-| `lang` / `dir`       | Language and direction on the root container                 |
-| `idPrefix`           | Instance prefix for `instance` strategy; defaults to `useId` |
-| `className`          | Merged with `wikitext-view`                                  |
-| `containerProps`     | Root attributes; `dangerouslySetInnerHTML` is excluded       |
-| `onRenderError`      | Block-level render error callback                            |
+| Prop                 | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `snapshot`           | Prepared `WikitextRenderSnapshot`; a parsed snapshot throws `INVALID_DOCUMENT` |
+| `components`         | Override by HAST tag name                                                      |
+| `semanticComponents` | Override by wiki semantic type                                                 |
+| `lang` / `dir`       | Language and direction on the root container                                   |
+| `idPrefix`           | Instance prefix for `instance` strategy; defaults to `useId`                   |
+| `className`          | Merged with `wikitext-view`                                                    |
+| `containerProps`     | Root attributes; `dangerouslySetInnerHTML` is excluded                         |
+| `sourceAttributes`   | `"none"` / `"block"` / `"all"`; emits `data-wikitext-*` source attributes      |
+| `onRenderError`      | Block-level render error callback                                              |
 
 - The root is always `div.wikitext-view`.
 - `idPrefix` affects heading ids, in-document `#fragment` links, and table `headers`.
@@ -122,7 +123,7 @@ type WikitextHtmlComponents = Partial<
 
 interface WikitextHtmlComponentProps extends React.HTMLAttributes<HTMLElement> {
   node?: import("hast").Element;
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   semantic?: WikitextNode;
   origin?: WikitextOrigin;
   children?: React.ReactNode;
@@ -154,7 +155,7 @@ Every semantic component receives:
 
 ```ts
 interface WikitextSemanticComponentProps<Node extends WikitextNode> {
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   node: Node;
   hastNode: import("hast").Element;
   origin?: WikitextOrigin;
@@ -183,7 +184,7 @@ See [Styling and components](../guide/customization.mdx#semantic-components) and
 
 ```tsx
 <WikitextView
-  document={prepared}
+  snapshot={prepared}
   semanticComponents={{
     link: ({ href, external, children }) =>
       href ? (
@@ -201,7 +202,7 @@ See [Styling and components](../guide/customization.mdx#semantic-components) and
 
 ```ts
 interface WikitextViewContextValue {
-  document: WikitextRenderDocument;
+  snapshot: WikitextRenderSnapshot;
   semanticIndex: ReadonlyMap<string, WikitextNode>;
   hastIndex: ReadonlyMap<string, import("hast").ElementContent>;
   components: WikitextHtmlComponents;

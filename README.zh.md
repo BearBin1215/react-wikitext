@@ -60,7 +60,7 @@ const parsed = parser.parse(source, { pageName: "Example" });
 const prepared = prepareWikitext(parsed);
 
 export function Article() {
-  return <WikitextView document={prepared} lang="zh-CN" />;
+  return <WikitextView snapshot={prepared} lang="zh-CN" />;
 }
 ```
 
@@ -68,18 +68,20 @@ export function Article() {
 
 ## 模板展开
 
-`expandWikitext`（`react-wikitext/expand`）在解析前展开受支持的模板、模板参数与常用解析器函数，模板源码由宿主提供的 `templates` 模板表或 `resolveTemplate` 获取回调提供，模板表优先。不调用它时，模板与解析器函数按占位渲染。见文档[模板展开](https://react-wikitext.pages.dev/zh/guide/templates)。
+`createWikitextCompiler`（`react-wikitext/expand`）在解析前展开受支持的模板、模板参数与常用解析器函数。模板源码由 provider 提供：离线场景用 `createTemplateTableProvider`，远程场景实现自己的 `provider.open()` 批量获取。不调用它时，模板与解析器函数按占位渲染。见文档[模板展开](https://react-wikitext.pages.dev/zh/guide/templates)。
 
 ## 入口
 
 | 子路径                        | 用途                                            |
 | ----------------------------- | ----------------------------------------------- |
 | `react-wikitext`              | 源码组件 `Wikitext` 与视图组件 `WikitextView`   |
-| `react-wikitext/view`         | 只渲染已准备好的文档（不加载解析器）            |
+| `react-wikitext/view`         | 只渲染已准备好的快照（不加载解析器）            |
 | `react-wikitext/parse`        | 解析器与解析选项                                |
 | `react-wikitext/ast`          | 语义模型、查询、序列化与自定义解析器            |
 | `react-wikitext/hast`         | `prepareWikitext`、插件、resolver、策略与文案   |
-| `react-wikitext/expand`       | 模板展开                                        |
+| `react-wikitext/expand`       | 编译器、模板 provider 与展开类型                |
+| `react-wikitext/preview`      | 基于宿主 executor 的防抖预览调度                |
+| `react-wikitext/worker`       | 编译并准备的 worker handler                     |
 | `react-wikitext/unified`      | 固定顺序的 unified 处理器，收尾清洗由库内部追加 |
 | `react-wikitext/configs`      | 站点配置快照与覆盖构造器                        |
 | `react-wikitext/devtools`     | AST 树、节点检查器与选择恢复辅助函数            |

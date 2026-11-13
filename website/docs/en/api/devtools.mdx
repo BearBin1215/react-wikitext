@@ -58,7 +58,7 @@ interface AstTreeDocument {
 }
 ```
 
-Both a parse snapshot (`WikitextDocument`) and a render snapshot (`WikitextRenderDocument`) satisfy this shape. The semantic tree reads `ast`; the source syntax tree reads `syntax`, which is retained only when parsing with `retainSyntax: true`. A render snapshot is produced by [`prepareWikitext`](./prepare.mdx) from `/hast`; its `ast` is the working tree after plugins, and it has no `syntax`, so only the semantic tree is available.
+Both a parse snapshot (`WikitextParsedSnapshot`) and a render snapshot (`WikitextRenderSnapshot`) satisfy this shape. The semantic tree reads `ast`; the source syntax tree reads `syntax`, which is retained only when parsing with `retainSyntax: true`. A render snapshot is produced by [`prepareWikitext`](./prepare.mdx) from `/hast`; its `ast` is the working tree after plugins, and it has no `syntax`, so only the semantic tree is available.
 
 Node ids are unique within one snapshot and are not stable across parses. The default parser assigns path-like ids to both trees, so the same id may identify different nodes in the semantic and syntax trees. Do not reuse selection or expansion state across trees.
 

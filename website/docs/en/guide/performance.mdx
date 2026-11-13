@@ -41,7 +41,7 @@ The working tree and final HAST use fixed budgets. They **cannot** be changed th
 | HAST nodes          | 50,000 |
 | HAST depth          | 1,000  |
 
-These are guardrails, not performance targets. Preparation fails when they are exceeded; any valid snapshot the library produces can be restored by `restoreWikitextRenderDocument`.
+These are guardrails, not performance targets. Preparation fails when they are exceeded; any valid snapshot the library produces can be restored by `restoreWikitextRenderSnapshot`.
 
 ### Template expansion
 
@@ -58,20 +58,20 @@ There is no built-in worker, but snapshots are plain data and can cross threads:
 ```ts
 // worker.ts
 import { parseWikitext } from "react-wikitext/parse";
-import { serializeWikitextDocument } from "react-wikitext/ast";
+import { serializeWikitextParsedSnapshot } from "react-wikitext/ast";
 
 self.onmessage = (event: MessageEvent<string>) => {
   const document = parseWikitext(event.data, { pageName: "Example" });
-  self.postMessage(serializeWikitextDocument(document));
+  self.postMessage(serializeWikitextParsedSnapshot(document));
 };
 ```
 
 ```ts
 // main.ts
-import { restoreWikitextDocument } from "react-wikitext/ast";
+import { restoreWikitextParsedSnapshot } from "react-wikitext/ast";
 import { prepareWikitext } from "react-wikitext/hast";
 
-const document = restoreWikitextDocument(payload);
+const document = restoreWikitextParsedSnapshot(payload);
 const prepared = prepareWikitext(document);
 ```
 
@@ -113,11 +113,11 @@ For display-only clients, load `/view` dynamically so the parser stays out of th
 
 ```tsx
 async function loadViewer() {
-  const [{ WikitextView }, { restoreWikitextRenderDocument }] = await Promise.all([
+  const [{ WikitextView }, { restoreWikitextRenderSnapshot }] = await Promise.all([
     import("react-wikitext/view"),
     import("react-wikitext/hast"),
   ]);
-  return { WikitextView, restoreWikitextRenderDocument };
+  return { WikitextView, restoreWikitextRenderSnapshot };
 }
 ```
 
