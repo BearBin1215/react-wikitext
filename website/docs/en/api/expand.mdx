@@ -84,7 +84,7 @@ interface WikitextCompileCallOptions {
 | `budget.maxInvocations`           | `1000`                  | Evaluated call limit, non-negative safe integer                                          |
 | `budget.maxExpandedLength`        | parse `maxSourceLength` | Expanded source length limit                                                             |
 | `budget.maxTemplates`             | `5000`                  | Templates read per compilation                                                           |
-| `profile`                         | none                    | Stage timing sink (`WikitextStageSink`); omitted means no timing                          |
+| `profile`                         | none                    | Stage timing sink (`WikitextStageSink`); omitted means no timing                         |
 | `cache.maxEntries` / `maxBytes`   | `500` / `16 MiB`        | Entry and byte bounded LRU                                                               |
 | `fetch.concurrency` / `batchSize` | `4` / `50`              | Concurrency cap and `getMany` batch size                                                 |
 

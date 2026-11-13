@@ -77,17 +77,17 @@ interface WikitextTocOptions {
 }
 ```
 
-| 选项                | 说明                                     |
-| ------------------- | ---------------------------------------- |
-| `wikitextPlugins`   | 在克隆的语义树上运行                     |
-| `rehypePlugins`     | 在 HAST 转换后、最终清洗前运行           |
-| `resolveLink`       | 决定链接地址与标签                       |
-| `resolveImage`      | 授权图片资源                             |
-| `labels`            | 覆盖用户可见文案                         |
-| `policy`            | 调整 URL、标签与类名白名单               |
-| `headingIdStrategy` | `instance`（默认）/ `mediawiki` / `none` |
-| `toc`               | 目录阈值、列数，或 `false` 关闭目录      |
-| `handlers`          | 自定义语义节点的 HAST 转换器             |
+| 选项                | 说明                                             |
+| ------------------- | ------------------------------------------------ |
+| `wikitextPlugins`   | 在克隆的语义树上运行                             |
+| `rehypePlugins`     | 在 HAST 转换后、最终清洗前运行                   |
+| `resolveLink`       | 决定链接地址与标签                               |
+| `resolveImage`      | 授权图片资源                                     |
+| `labels`            | 覆盖用户可见文案                                 |
+| `policy`            | 调整 URL、标签与类名白名单                       |
+| `headingIdStrategy` | `instance`（默认）/ `mediawiki` / `none`         |
+| `toc`               | 目录阈值、列数，或 `false` 关闭目录              |
+| `handlers`          | 自定义语义节点的 HAST 转换器                     |
 | `profile`           | 阶段计时接收器 `WikitextStageSink`；省略时不计量 |
 
 插件列表是结构化数组，元素可以是插件函数或 `[plugin, options]` 元组，按顺序执行。插件签名沿用 unified 的 `(tree, file)`，`file` 是 VFile。

@@ -84,7 +84,7 @@ interface WikitextCompileCallOptions {
 | `budget.maxInvocations`           | `1000`                       | 实际进入求值的调用次数上限，非负安全整数               |
 | `budget.maxExpandedLength`        | 解析预算的 `maxSourceLength` | 展开后源码长度上限                                     |
 | `budget.maxTemplates`             | `5000`                       | 单次编译读取的模板数量上限                             |
-| `profile`                         | 无                           | 阶段计时接收器 `WikitextStageSink`；省略时不计量        |
+| `profile`                         | 无                           | 阶段计时接收器 `WikitextStageSink`；省略时不计量       |
 | `cache.maxEntries` / `maxBytes`   | `500` / `16 MiB`             | 条目与字节双重 LRU                                     |
 | `fetch.concurrency` / `batchSize` | `4` / `50`                   | 并发上限与 `getMany` 批大小                            |
 

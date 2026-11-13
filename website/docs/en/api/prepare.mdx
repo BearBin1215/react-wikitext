@@ -77,17 +77,17 @@ interface WikitextTocOptions {
 }
 ```
 
-| Option              | Description                                             |
-| ------------------- | ------------------------------------------------------- |
-| `wikitextPlugins`   | Run on the cloned semantic tree                         |
-| `rehypePlugins`     | Run after HAST conversion and before final sanitization |
-| `resolveLink`       | Decide link addresses and labels                        |
-| `resolveImage`      | Authorize image resources                               |
-| `labels`            | Override user-visible text                              |
-| `policy`            | Adjust URL, tag, and class whitelists                   |
-| `headingIdStrategy` | `instance` (default) / `mediawiki` / `none`             |
-| `toc`               | TOC threshold, columns, or `false` to disable           |
-| `handlers`          | HAST converters for custom semantic nodes               |
+| Option              | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `wikitextPlugins`   | Run on the cloned semantic tree                                  |
+| `rehypePlugins`     | Run after HAST conversion and before final sanitization          |
+| `resolveLink`       | Decide link addresses and labels                                 |
+| `resolveImage`      | Authorize image resources                                        |
+| `labels`            | Override user-visible text                                       |
+| `policy`            | Adjust URL, tag, and class whitelists                            |
+| `headingIdStrategy` | `instance` (default) / `mediawiki` / `none`                      |
+| `toc`               | TOC threshold, columns, or `false` to disable                    |
+| `handlers`          | HAST converters for custom semantic nodes                        |
 | `profile`           | Stage timing sink (`WikitextStageSink`); omitted means no timing |
 
 Plugin lists are structured arrays. Elements can be plugin functions or `[plugin, options]` tuples and run in order. The signature follows unified's `(tree, file)`, where `file` is a VFile.
