@@ -124,10 +124,19 @@ The returned `snapshot` is already a normal parsed snapshot; **do not parse agai
 
 ## Template table provider
 
+```ts
+const provider = createTemplateTableProvider({
+  key: "site:example",
+  revision: "templates-v1",
+  templates: {
+    "Template:Note": "Note",
+  },
+});
+```
+
 - Keys are parser-normalized titles. With the default config, `{{Box}}` requests `Template:Box`; `Box` and `box` do not match.
 - Values must be strings; an empty string is a valid empty template.
 - The table is validated and copied once at construction and reused by later compilations. Update it by creating a new `revision`; do not mutate the old object.
-- Call titles are normalized by the parser (`{{Box}}` → `Template:Box`); the table lookup itself is exact and never rewrites your keys.
 - Imports from other namespaces, or under a custom parser config, must use the exact full title that is requested.
 
 ## Pure functions
@@ -186,10 +195,8 @@ const provider: WikitextTemplateProvider = {
 ```
 
 - `get` / `getMany` may be synchronous or return a Promise; pass `request.signal` to `fetch` so cancellation aborts requests.
-- `null` means missing; `undefined` or a wrong type is a fetch failure. Thrown errors record `TEMPLATE_RESOLVE_FAILED`.
-- A snapshot must return stable content for a title; content changes require a new `revision`.
 - `getMany` results may arrive in any order but must be indexed by title; missing titles are fetch failures.
-- One compilation uses exactly one snapshot; template edits during a session never mix versions.
+- Snapshot stability, one snapshot per compilation, and `null` / `undefined` semantics are in [Expansion `/expand`](../api/expand.mdx#template-provider).
 
 ## Scheduling and caching
 
@@ -234,7 +241,6 @@ These calls are preserved with diagnostics by default:
 Defaults, budget behavior, and cancellation live in [Expansion `/expand`](../api/expand.mdx); the full error-code list is in [Errors and diagnostics](../api/errors.mdx).
 
 - By default a failed final parse falls back to the original snapshot with `status: "fallback"`; `attemptedSourceId` points at the abandoned expanded source.
-- Original parse failures, hard resource limits, cancellation, and incompatible parsers always fail, regardless of `failureMode`.
 
 ## How preserved calls render
 

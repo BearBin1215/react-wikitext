@@ -174,7 +174,7 @@ function keepRanges(start: number, end: number, drops: readonly WikitextRange[])
 }
 
 /** 模板嵌入过滤结果：有效正文与它在原模板源码中保留的片段。 */
-export interface IncludeFilterResult {
+interface IncludeFilterResult {
   readonly text: string;
   /** 保留片段在输入源码中的范围，按源码顺序排列；片段之间即为被删除内容。 */
   readonly kept: readonly WikitextRange[];

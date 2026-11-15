@@ -6,6 +6,8 @@ import * as expand from "@/expand";
 import * as hast from "@/hast";
 import * as unified from "@/unified";
 import * as view from "@/view";
+import * as preview from "@/preview";
+import * as worker from "@/worker";
 import * as configs from "@/configs";
 import * as devtools from "@/devtools";
 
@@ -17,17 +19,30 @@ const SURFACE = {
   root: ["Wikitext", "WikitextView", "WikitextFragment", "useWikitextIds", "WikitextError"],
   ast: [
     "AST_SCHEMA_VERSION",
+    "COMPILATION_SCHEMA_VERSION",
     "RENDER_SCHEMA_VERSION",
+    "SOURCE_GRAPH_VERSION",
     "SYNTAX_SCHEMA_VERSION",
     "WikitextError",
     "WikitextParseError",
     "createWikitextParser",
     "findNodeAtOffset",
+    "findNodeById",
+    "findRenderedNodes",
+    "findSource",
+    "findSourceByRole",
     "flattenNodes",
     "getFileParameters",
+    "getSourcePosition",
     "getSourceText",
+    "getSpanText",
     "getTemplateParameters",
+    "hashText",
+    "isNodeType",
+    "locateRenderedNode",
+    "mapSourceSpan",
     "toPlainText",
+    "validateSourceGraph",
   ],
   parse: [
     "DEFAULT_MAX_SOURCE_LENGTH",
@@ -64,6 +79,8 @@ const SURFACE = {
     "useWikitextIds",
     "useWikitextLabels",
   ],
+  preview: ["useWikitextPreview", "createWikitextWorkerExecutor"],
+  worker: ["attachWikitextWorker", "createWikitextWorkerHandler"],
   configs: ["MEDIAWIKI_CONFIG", "createMediaWikiConfig"],
   devtools: [
     "AstTree",
@@ -89,6 +106,8 @@ describe("public export surface", () => {
     ["hast", hast],
     ["unified", unified],
     ["view", view],
+    ["preview", preview],
+    ["worker", worker],
     ["configs", configs],
     ["devtools", devtools],
   ] as const)("%s keeps its runtime exports", (name, module) => {
@@ -101,5 +120,35 @@ describe("public export surface", () => {
   it("does not export internal state helpers from the root entry", () => {
     expect("prepareWikitext" in rootEntry).toBe(false);
     expect("parseWikitext" in rootEntry).toBe(false);
+  });
+
+  it("keeps source graph construction out of public entries", () => {
+    const modules = [
+      rootEntry,
+      ast,
+      parse,
+      expand,
+      hast,
+      unified,
+      view,
+      preview,
+      worker,
+      configs,
+      devtools,
+    ];
+    for (const symbol of [
+      "bindSegmentSources",
+      "createSourceGraphBuilder",
+      "effectiveSourceId",
+      "expandedSourceId",
+      "inputSourceId",
+      "normalizeWithSegments",
+      "normalizedSourceId",
+      "templateSourceId",
+    ]) {
+      for (const module of modules) {
+        expect(symbol in module, symbol).toBe(false);
+      }
+    }
   });
 });

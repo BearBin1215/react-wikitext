@@ -50,25 +50,7 @@ playground 的约束：
 
 ## 4. 测试分工
 
-`pnpm test` 运行 `tests/**/*.test.{ts,tsx}`，新增测试文件不需要更新本文。各目录的职责如下：
-
-| 目录 | 覆盖 |
-| --- | --- |
-| `tests/parser/` | CRLF 归一化、配置快照、IIFE 捕获、adapter 协议与预算、属性提取、静态依赖边界与入口隔离 |
-| `tests/api/` | 公共导出面，以及中英文状态页与 API 页的 schema、包版本一致性 |
-| `tests/ast/` | 语义节点与顺序、路径 id、来源区间、预算、查询、序列化与扩展标签节点 |
-| `tests/render/` | 视图与组件、标题锚点、列表、表格、HTML、模板与文件、引用、目录、分类、安全与清洗 |
-| `tests/view/` | 模板参数、文件参数与 caption 派生 |
-| `tests/pipeline/` | 准备阶段插件、工作树隔离、id 重分配、缓存失效、policy、图片授权、诊断与序列化恢复 |
-| `tests/unified/` | unified 插件组合、VFile 状态、树替换、诊断阶段与高层准备的等价性 |
-| `tests/expand/` | 展开语义、失败与回退、预算、取消、与准备阶段的集成、上游 oracle 对比 |
-| `tests/preview/` | 防抖与请求身份、旧结果保留、取消、执行器与序列化恢复一致性 |
-| `tests/normalize/` | 块级/行内归一化边界、深度预算与生成文本的来源规则 |
-| `tests/devtools/` | `AstTree`、`NodeInspector`、选择恢复与调试树的无障碍与交互 |
-| `tests/components/`、`tests/playground/` | 组件行为，以及 playground 只能通过 package 公共入口导入 |
-| `tests/oracle/` | 浏览器语法树与 Node 完整版的 range、稳定 fixture 的 `toHtml` 对比 |
-| `tests/samples/` | 条目样本的 range 回归与安全渲染 |
-| `tests/performance/` | 分阶段性能报告与报告校验 |
+`pnpm test` 运行 `tests/**/*.test.{ts,tsx}`。测试按主题分目录，新增测试文件不需要更新本文；目录职责与具体用例以 `tests/` 为准，这里只记录无法从目录结构推断的约定。
 
 ### 4.1 Oracle 与样本
 

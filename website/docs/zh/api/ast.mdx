@@ -8,6 +8,8 @@ description: 语义节点模型、查询辅助函数、源码归一化与解析�
 ```ts
 import {
   AST_SCHEMA_VERSION,
+  COMPILATION_SCHEMA_VERSION,
+  SOURCE_GRAPH_VERSION,
   SYNTAX_SCHEMA_VERSION,
   RENDER_SCHEMA_VERSION,
   flattenNodes,
@@ -91,7 +93,7 @@ declare module "react-wikitext/ast" {
 
 扩展标签即使没有专门的默认展示，也使用 `extension` 节点并保留名称与内部原文，不会进入 `unknown`。
 
-自定义节点需要同时扩展 `WikitextNodeMap` 并在准备阶段注册转换函数；未注册转换函数的节点会产生诊断并降级为源码卡片。
+自定义节点需要扩展 `WikitextNodeMap`；转换函数流程与降级规则见[定制指南](../guide/customization.mdx#自定义语义节点)。
 
 ## 源码语法树
 
@@ -109,7 +111,7 @@ interface WikitextSyntaxNode {
 }
 ```
 
-源码语法树是上游 token 的调试视图：语义节点的 `origin`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 内部通过 `parser.compile` 构建语法，`retainSyntax` 只控制是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
+源码语法树是上游 token 的调试视图：语义节点的 `origin`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 的 `retainSyntax` 也只控制语法树是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
 
 ## 查询
 
@@ -136,7 +138,24 @@ interface SourceSnapshotLike {
 - 需要按 id 建索引时用 `flattenNodes` 自行生成 `Map`。
 - 准备阶段会重新分配节点 id；插件在此之前持有的 `flattenNodes` 数组或 id 索引不会自动更新，需要重新生成。
 - 查询转换后的节点时，必须使用渲染快照；不要用渲染快照里的 id 查原始解析快照。
-- 按源码范围反查节点用 `findRenderedNodes`，把节点范围映射到其他文本源用 `mapSourceSpan`（见 [`/expand`](./expand.mdx#来源图与定位)）。
+
+### 来源图
+
+来源图查询辅助函数从 `/ast` 导出；构造辅助函数只在库内部使用。
+
+| 函数                                             | 行为                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| `findSource(graph, id)`                          | 按 id 返回文本源；不存在时返回 `undefined`                       |
+| `findSourceByRole(graph, role)`                  | 返回第一个具有该角色的文本源                                     |
+| `getSourcePosition(graph, span)`                 | 把范围换算为行列坐标；未知源或越界范围抛错                       |
+| `getSpanText(graph, span)`                       | 返回范围内的源码；非法范围返回空字符串                           |
+| `mapSourceSpan(graph, span, options?)`           | 跨来源图片段映射范围；返回匹配、未映射范围、覆盖率与截断状态     |
+| `locateRenderedNode(snapshot, nodeId, options?)` | 把语义节点的 origin 映射到目标源；生成节点返回空结果             |
+| `findRenderedNodes(snapshot, span, options?)`    | 查找与源码范围相交的语义节点；`truncated` 表示达到上限           |
+| `validateSourceGraph(value)`                     | 断言值是合法来源图；非法时抛 `WikitextError("INVALID_DOCUMENT")` |
+| `hashText(text)`                                 | 用于修订身份的稳定 32 位 FNV-1a 哈希；不用于安全用途             |
+
+`SOURCE_GRAPH_VERSION` 标识来源图 schema。`mapSourceSpan` 只在可证明的边界返回 `exact`；纯生成或被删除的文本没有对应关系，只有锚定到调用的输出使用 `enclosing-invocation`。映射精度与覆盖率规则见[展开 `/expand`](./expand.mdx#来源图与定位)。
 
 ## 结构化辅助函数
 
@@ -197,10 +216,12 @@ import {
 
 ## 版本常量
 
-| 常量                    | 当前值 | 适用       |
-| ----------------------- | ------ | ---------- |
-| `AST_SCHEMA_VERSION`    | `3`    | 语义 AST   |
-| `SYNTAX_SCHEMA_VERSION` | `2`    | 源码语法树 |
-| `RENDER_SCHEMA_VERSION` | `4`    | 渲染快照   |
+| 常量                         | 当前值 | 适用       |
+| ---------------------------- | ------ | ---------- |
+| `AST_SCHEMA_VERSION`         | `3`    | 语义 AST   |
+| `SYNTAX_SCHEMA_VERSION`      | `2`    | 源码语法树 |
+| `RENDER_SCHEMA_VERSION`      | `4`    | 渲染快照   |
+| `COMPILATION_SCHEMA_VERSION` | `1`    | 编译结果   |
+| `SOURCE_GRAPH_VERSION`       | `1`    | 来源图     |
 
-版本变化意味着快照结构不兼容；缓存或跨进程传输时应把版本写入缓存键。
+版本变化意味着对应数据结构不兼容；缓存或跨进程传输时应把相关版本写入缓存键。

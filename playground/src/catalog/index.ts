@@ -21,7 +21,6 @@ export {
   SCENE_GROUP_LABELS,
   SCENE_GROUP_ORDER,
   resolveSceneOptions,
-  type SceneConfig,
   type SceneControlId,
   type SceneGroupId,
 } from "./scenes";
@@ -74,7 +73,7 @@ export function sceneOf(id: string): SceneDefinition {
 }
 
 /** 场景菜单分组；与场景清单同源，不会出现“有输入源但没有分组”的情况。 */
-export interface SceneMenuGroup {
+interface SceneMenuGroup {
   readonly id: SceneGroupId;
   readonly title: string;
   readonly items: readonly SceneDefinition[];

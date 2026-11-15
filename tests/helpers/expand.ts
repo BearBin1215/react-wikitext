@@ -24,7 +24,7 @@ import {
 } from "@/parse";
 
 /** 测试用的顶层调用记录视图；由来源图中的调用记录派生。 */
-export interface TestExpansionRecord {
+interface TestExpansionRecord {
   readonly kind: "template" | "parserFunction" | "argument";
   readonly name: string;
   readonly originalRange: WikitextRange;
@@ -33,7 +33,7 @@ export interface TestExpansionRecord {
 }
 
 /** 测试用展开结果；保留原始与最终快照，以及派生的顶层记录。 */
-export interface TestExpansion {
+interface TestExpansion {
   readonly original: WikitextParsedSnapshot;
   readonly snapshot: WikitextParsedSnapshot;
   readonly expansion: {
@@ -43,13 +43,13 @@ export interface TestExpansion {
   };
 }
 
-/** 旧的测试入口签名；实现已经改为编译器。 */
-export interface WikitextExpandOptions {
+/** 测试用展开选项；把模板表、回调与预算映射到编译器。 */
+export interface TestExpandOptions {
   readonly parser?: WikitextParser;
   readonly pageName?: string;
   readonly parseOptions?: Omit<WikitextParseOptions, "pageName">;
   readonly templates?: WikitextTemplateTable | undefined;
-  readonly resolveTemplate?: WikitextTemplateResolver | undefined;
+  readonly resolveTemplate?: TestTemplateResolver | undefined;
   readonly maxDepth?: number;
   readonly maxInvocations?: number;
   readonly maxExpandedLength?: number;
@@ -58,8 +58,8 @@ export interface WikitextExpandOptions {
   readonly profile?: WikitextStageSink;
 }
 
-/** 旧测试回调签名；`invocation` 现在只是调用位置的偏移视图。 */
-export type WikitextTemplateResolver = (
+/** 测试回调：在模板请求上附加调用位置范围。 */
+export type TestTemplateResolver = (
   request: WikitextTemplateRequest & { readonly invocation: WikitextRange },
 ) => string | null | undefined | Promise<string | null | undefined>;
 
@@ -67,7 +67,7 @@ function invalidOptions(message: string): never {
   throw new WikitextExpandError("INVALID_EXPAND_OPTIONS", message);
 }
 
-function providerFor(options: WikitextExpandOptions): WikitextTemplateProvider {
+function providerFor(options: TestExpandOptions): WikitextTemplateProvider {
   const table = options.templates;
   const remote = options.resolveTemplate;
   if (remote !== undefined && typeof remote !== "function") {
@@ -134,12 +134,12 @@ function recordsFrom(snapshot: WikitextParsedSnapshot): TestExpansionRecord[] {
 }
 
 /**
- * 测试入口：用编译器执行展开，并派生旧的顶层记录视图。
- * 生产代码不再提供该包装；测试断言仍然检查真实输出与来源图。
+ * 测试入口：用编译器执行展开，并派生顶层调用记录视图。
+ * 测试断言仍然检查真实输出与来源图。
  */
 export async function expandWikitext(
   source: string,
-  options: WikitextExpandOptions = {},
+  options: TestExpandOptions = {},
 ): Promise<TestExpansion> {
   if (!options || typeof options !== "object" || Array.isArray(options)) {
     invalidOptions("expandWikitext requires an options object.");
@@ -216,5 +216,3 @@ export function parserThrowingOn(marker: string): WikitextParser {
     },
   };
 }
-
-export { WikitextExpandError };

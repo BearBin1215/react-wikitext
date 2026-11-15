@@ -8,7 +8,7 @@ const DEFAULT_MAX_INVOCATIONS = 1_000;
 const DEFAULT_MAX_TEMPLATES = 5_000;
 
 /** 一次编译生效的预算；已按解析上限收敛。 */
-export interface ResolvedBudgets {
+interface ResolvedBudgets {
   readonly maxDepth: number;
   readonly maxInvocations: number;
   readonly maxExpandedLength: number;
@@ -42,7 +42,7 @@ export function positive(value: unknown, name: string, fallback: number): number
  * @param name 选项名，用于错误消息。
  * @param fallback 省略时的默认值。
  */
-export function nonNegative(value: unknown, name: string, fallback: number): number {
+function nonNegative(value: unknown, name: string, fallback: number): number {
   if (value === undefined) {
     return fallback;
   }

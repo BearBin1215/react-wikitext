@@ -7,7 +7,7 @@ export function splitParagraphText(text: string): string[] {
   return text.split(PARAGRAPH_BREAK);
 }
 
-export function normalizeInlineText(text: string): string {
+function normalizeInlineText(text: string): string {
   return text.replace(/\n/gu, " ");
 }
 

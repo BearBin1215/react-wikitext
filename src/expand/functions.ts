@@ -237,7 +237,7 @@ function orExpression(source: TokenReader): number {
 }
 
 /** 把结果格式化为紧凑的十进制字符串。 */
-export function formatExpressionNumber(value: number): string {
+function formatExpressionNumber(value: number): string {
   if (!Number.isFinite(value)) {
     throw new ExpressionError("The result is not a finite number.");
   }

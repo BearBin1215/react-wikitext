@@ -4,7 +4,7 @@ import { DEFAULT_OPTIONS, type PlaygroundOptions } from "@pg/state/options";
 import { loadSource, type InitialLocation, type RightPanel } from "./persistence";
 
 /** 会话状态：源码、选项、面板与选区各只有一份。 */
-export interface SessionState {
+interface SessionState {
   readonly sourceId: string;
   readonly source: string;
   readonly options: PlaygroundOptions;
@@ -15,7 +15,7 @@ export interface SessionState {
   readonly editorReset: number;
 }
 
-export type SessionAction =
+type SessionAction =
   | { readonly type: "selectScene"; readonly sourceId: string }
   | { readonly type: "editSource"; readonly source: string }
   | { readonly type: "resetSource" }

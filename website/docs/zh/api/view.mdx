@@ -12,7 +12,7 @@ import { WikitextView } from "react-wikitext/view";
 `/view` 只加载 React 与已准备好的快照，不加载解析器、准备阶段或插件。源码组件 `<Wikitext>` 见 [React 组件](./react.mdx)。
 
 :::warning 警告
-视图组件在模块加载时创建 Context，并使用 `useId` / `useMemo`，只能在客户端组件中运行。`/view` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用。
+视图组件只能在客户端组件中运行；`/view` 的产物顶部带有 `"use client"` 指令。完整边界与 SSR 用法见[服务端与框架](../guide/server-rendering.mdx)。
 :::
 
 ## WikitextView
@@ -38,7 +38,7 @@ import { WikitextView } from "react-wikitext/view";
 | `onRenderError`      | 块级渲染失败回调                                                         |
 
 - 根节点固定为 `div.wikitext-view`。
-- `idPrefix` 同时影响标题 id、文档内 `#fragment` 链接与表格 `headers`。
+- `idPrefix` 会清洗为 `[A-Za-z0-9_-]` 并截断到 128 字符，空值回退到 `useId`；它同时影响标题 id、文档内 `#fragment` 链接与表格 `headers`。
 - 每个顶层块包在错误边界内；一个块失败不会影响其他块。
 - 视图内部建立语义索引与 HAST 索引，供组件与 `WikitextFragment` 使用。
 
@@ -119,10 +119,12 @@ interface WikitextSemanticComponentProps<Node extends WikitextNode> {
 | ----------------------------- | ------------------------------------- |
 | `link`                        | `target`、`kind`、`href?`、`external` |
 | `template` / `parserFunction` | `displayName`                         |
+| `argument`                    | —                                     |
 | `file`                        | `name`                                |
 | `reference`                   | `number`                              |
 | `extension`                   | `name`、`block`                       |
 | `unknown`                     | `parsedType`、`block`                 |
+| `table`                       | —                                     |
 
 优先级：显式语义组件替换整个语义结构；未替换时，默认 HAST 内部的标签继续应用 `components`；最后回退到原生元素。
 
@@ -180,6 +182,6 @@ function useWikitextIds(): { toDomId(id: string): string; toHref(href: string): 
 
 ## 相关类型
 
-`/view` 导出视图组件会用到的精选语义类型：`WikitextLink`、`WikitextTemplate`、`WikitextFile`、`WikitextReference`、`WikitextTable`、`WikitextUnknown` 等。完整节点子类型与 AST 工具从 [`/ast`](./ast.mdx) 导入。
+`/view` 导出上面用到的组件属性类型。精选语义类型（`WikitextLink`、`WikitextTemplate`、`WikitextFile`、`WikitextReference`、`WikitextTable`、`WikitextUnknown` 等）由根入口导出；完整节点子类型与 AST 工具从 [`/ast`](./ast.mdx) 导入。
 
 需要检查解析或渲染结果时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree` 与 `NodeInspector`；它们读取同一份快照，不参与正式渲染。

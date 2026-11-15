@@ -1,6 +1,6 @@
 ---
 title: React 组件
-description: 根入口的源码组件 Wikitext、属性、错误处理与相关类型。
+description: 根入口的源码组件 Wikitext、属性与错误处理。
 ---
 
 # React 组件
@@ -8,7 +8,7 @@ description: 根入口的源码组件 Wikitext、属性、错误处理与相关�
 根入口导出源码组件 `Wikitext` 与视图组件；只渲染已准备快照的宿主应使用 [`/view`](./view.mdx)，它不加载解析器。
 
 :::warning 警告
-组件在模块加载时创建 Context，并使用 `useId` / `useMemo`，只能在客户端组件中运行。根入口与 `/view` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用；服务端只调用 `/parse` 与 `/hast`。
+组件只能在客户端组件中运行；根入口的产物顶部带有 `"use client"` 指令。完整边界与 SSR 用法见[服务端与框架](../guide/server-rendering.mdx)。
 :::
 
 ## Wikitext
@@ -38,25 +38,16 @@ interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
 }
 ```
 
-| 属性                 | 说明                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| `source`             | 待渲染的 wikitext 源码                                                                 |
-| `parser`             | 复用已创建的解析器；缺省使用默认配置的共享解析器                                       |
-| `parseOptions`       | 解析选项，见 [`/parse`](./parse.mdx)                                                   |
-| `prepareOptions`     | 准备选项，见 [`/hast`](./prepare.mdx)                                                  |
-| `onPrepared`         | 准备成功后回调；读取快照的 `diagnostics`、`headings` 与生效设置                        |
-| `onError`            | 解析/准备失败回调；`error` 一定是 `WikitextError`，`info.stage` 区分阶段               |
-| `fallback`           | 失败时渲染的内容；提供后完全接管展示，不再渲染内置错误容器                             |
-| `components`         | 按 HTML 标签覆盖组件                                                                   |
-| `semanticComponents` | 按 wiki 语义类型覆盖组件                                                               |
-| `lang` / `dir`       | 写入根容器的语言与方向                                                                 |
-| `idPrefix`           | 实例标题 id 前缀；只在 `headingIdStrategy: "instance"` 下生效，非法/空值回退到 `useId` |
-| `className`          | 与 `wikitext-view` 合并                                                                |
-| `containerProps`     | 根容器的额外属性；类型层排除 `dangerouslySetInnerHTML`                                 |
-| `sourceAttributes`   | `"none"` / `"block"` / `"all"`，输出 `data-wikitext-*` 来源属性                        |
-| `onRenderError`      | 单个块渲染失败时的回调                                                                 |
-
-`components`、`semanticComponents`、`sourceAttributes`、`onRenderError` 的语义与 [`WikitextView`](./view.mdx#wikitextview) 完全一致。
+| 属性             | 说明                                                                                                                                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source`         | 待渲染的 wikitext 源码                                                                                                                                                                       |
+| `parser`         | 复用已创建的解析器；缺省使用默认配置的共享解析器                                                                                                                                             |
+| `parseOptions`   | 解析选项，见 [`/parse`](./parse.mdx)                                                                                                                                                         |
+| `prepareOptions` | 准备选项，见 [`/hast`](./prepare.mdx)                                                                                                                                                        |
+| `onPrepared`     | 准备成功后回调；读取快照的 `diagnostics`、`headings` 与生效设置                                                                                                                              |
+| `onError`        | 解析/准备失败回调；`error` 一定是 `WikitextError`，`info.stage` 区分阶段                                                                                                                     |
+| `fallback`       | 失败时渲染的内容；提供后完全接管展示，不再渲染内置错误容器                                                                                                                                   |
+| 其余属性         | 与 [`WikitextView`](./view.mdx#wikitextview) 相同，包括 `components`、`semanticComponents`、`lang` / `dir`、`idPrefix`、`className`、`containerProps`、`sourceAttributes` 与 `onRenderError` |
 
 ### 行为
 
@@ -89,10 +80,7 @@ interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
 
 错误边界按顶层 HAST 块隔离，块级失败的显示与 `onRenderError` 见[视图组件](./view.mdx#渲染错误)。解析与准备错误不会进入错误边界：未提供 `onError` 与 `fallback` 时直接抛给外层错误边界；只提供 `onError` 时显示内置错误容器（文案取 `prepareOptions.labels.renderFailed`）；提供 `fallback` 时由它完全接管，返回 `null` 即不渲染任何内容。
 
-## 相关类型
+## 相关
 
-根入口额外导出视图组件会用到的精选语义类型：`WikitextLink`、`WikitextTemplate`、`WikitextFile`、`WikitextReference`、`WikitextTable`、`WikitextUnknown` 等。完整节点子类型与 AST 工具从 [`/ast`](./ast.mdx) 导入。
-
-## 调试
-
-需要检查解析或渲染结果时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree` 与 `NodeInspector`；它们读取同一份快照，不参与正式渲染。
+- 视图组件与 `WikitextFragment`：[`/view`](./view.mdx)。精选语义类型由根入口导出；完整节点子类型见 [`/ast`](./ast.mdx)。
+- 检查解析或渲染结果：[`/devtools`](./devtools.mdx)。

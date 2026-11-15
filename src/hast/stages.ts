@@ -5,7 +5,6 @@ import {
   RENDER_SCHEMA_VERSION,
   type WikitextDiagnostic,
   type WikitextParsedSnapshot,
-  type WikitextHeadingIdStrategy,
   type WikitextRenderSnapshot,
   type WikitextRoot,
 } from "../ast/model";
@@ -120,10 +119,8 @@ export function convertWorkingAst(
   });
 }
 
-/** 最终整理阶段可以覆盖的设置；unified 的 raw finalize 会用到。 */
-export interface FinishPreparedHastOptions {
-  /** 覆盖设置中的标题策略。 */
-  readonly headingIdStrategy?: WikitextHeadingIdStrategy;
+/** 最终整理阶段可以覆盖的设置；prepare 与 unified 的最终阶段会用到。 */
+interface FinishPreparedHastOptions {
   /** 目录模式；默认没有显式 marker，也没有自动目录需求。 */
   readonly toc?: WikitextTocMode;
   /** 原始快照；用于给补位格降级诊断补充来源与位置。 */
@@ -146,7 +143,7 @@ export function finishPreparedHast(
   const finalized = finalizeHast(sanitized, {
     policy: settings.policy,
     labels: settings.labels,
-    headingIdStrategy: options.headingIdStrategy ?? settings.headingIdStrategy,
+    headingIdStrategy: settings.headingIdStrategy,
     authorizedImages,
     diagnostics,
     toc: options.toc ?? "none",
@@ -173,8 +170,6 @@ export function createRenderDocument(
   settings: ResolvedPrepareSettings,
   authorizedImages: ReadonlySet<string>,
   diagnostics: WikitextDiagnostic[],
-  /** 覆盖设置中的标题策略；raw finalize 使用。 */
-  headingIdStrategy: WikitextHeadingIdStrategy = settings.headingIdStrategy,
 ): WikitextRenderSnapshot {
   return {
     kind: "render",
@@ -194,7 +189,7 @@ export function createRenderDocument(
       sourceNormalized: document.meta.sourceNormalized,
       originalLength: document.meta.originalLength,
       limits: document.meta.limits,
-      headingIdStrategy,
+      headingIdStrategy: settings.headingIdStrategy,
       policy: settings.policy,
       labels: settings.labels,
       authorizedImages: [...authorizedImages],
@@ -204,7 +199,7 @@ export function createRenderDocument(
 }
 
 /** unified 在同步路径遇到异步插件时抛出的固定消息；只按原文匹配。 */
-export const ASYNC_IN_SYNC_MESSAGE = "`runSync` finished async. Use `run` instead";
+const ASYNC_IN_SYNC_MESSAGE = "`runSync` finished async. Use `run` instead";
 
 /**
  * 把阶段错误包装为准备错误；已经是准备错误时原样抛出。

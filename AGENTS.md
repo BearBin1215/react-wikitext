@@ -6,13 +6,7 @@
 
 - 贡献入口与提交前检查：[`CONTRIBUTING.md`](CONTRIBUTING.md)
 - 面向用户的 Rspress 文档站：`website/`，线上地址 <https://react-wikitext.pages.dev>；公共接口以 [`website/docs/zh/api/index.mdx`](website/docs/zh/api/index.mdx) 为准，中英文页面同步
-- 内部文档入口、职责划分与阅读路径：[`.agents/docs/README.md`](.agents/docs/README.md)
-- 系统边界、处理管线、模块依赖、数据模型、诊断、安全与性能：[`.agents/docs/architecture.md`](.agents/docs/architecture.md)
-- 默认适配器、IIFE、配置快照、语法树/range/属性、预算与 oracle：[`.agents/docs/parser-integration.md`](.agents/docs/parser-integration.md)
-- 语义归一化、HAST、链接/文件/引用/目录、表格、HTML 与清洗：[`.agents/docs/rendering-spec.md`](.agents/docs/rendering-spec.md)
-- 配置文件无法表达的测试、验收与合规约定：[`.agents/docs/development.md`](.agents/docs/development.md)
-- 设计选择、理由、被否方案与风险：[`.agents/docs/decisions.md`](.agents/docs/decisions.md)
-- 未完成能力、开放问题与稳定限制索引：[`.agents/docs/roadmap.md`](.agents/docs/roadmap.md)
+- 内部文档入口、职责划分、阅读路径与各文档链接：[`.agents/docs/README.md`](.agents/docs/README.md)
 
 ## 行为准则
 

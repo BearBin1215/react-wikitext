@@ -16,7 +16,7 @@ export interface StatusFacts {
   warningCount: number;
 }
 
-export interface StatusFactsInput {
+interface StatusFactsInput {
   mode: "source" | "dist";
   executedInWorker: boolean;
   doc?: WikitextParsedSnapshot;

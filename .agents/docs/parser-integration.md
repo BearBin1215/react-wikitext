@@ -103,7 +103,7 @@ return buildSyntaxTree(rootToken, source, context.limits);
 - **必须先做 LF 归一化**：parser 内部会把 CRLF 归一化，但 token `toString()` 不含 `\r`；用原源码反查 range 会整体错位。
 - 上游 `config/*.json` 没有 `excludes` 字段；浏览器 parse 会读取它，缺失会报 `excludes is not iterable`，因此 `normalizeConfig` 补 `excludes: []`。
 - 不按数组字段混合合并站点配置；调用方传入 config 时整体深拷贝使用，只补 `excludes` 并展开 `doubleUnderscore`。
-- 库内置 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.2` 的 `config/default.json` 快照；来源记录在源码注释中，不作为公共常量导出。
+- 库公开 `MEDIAWIKI_CONFIG`，来源是 `wikiparser-node@1.48.2` 的 `config/default.json` 快照；原始上游配置 JSON 不单独导出，来源记录在源码注释中。
 - 最小配置不作为公共导出；测试与 playground 直接读取上游 `wikiparser-node/config/minimum.json`。在它下面 ref/gallery/图片参数会退化，相关测试会显式覆盖这种差异。
 - `pageName` 用于页面上下文（如 `{{PAGENAME}}`）；库不擅自造页面名。
 - 同一份源码配不同 config 或 pageName 可能产生不同 AST；它们属于解析输入。

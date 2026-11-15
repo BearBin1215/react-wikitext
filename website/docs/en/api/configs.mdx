@@ -60,7 +60,7 @@ const config = createMediaWikiConfig({
 const parser = createWikiparser({ config });
 ```
 
-The result is an independent deep copy that has passed `normalizeConfig`; invalid fields throw `WikitextParseError("INVALID_CONFIG")`.
+The result is an independent, validated deep copy; invalid fields throw `WikitextParseError("INVALID_CONFIG")`.
 
 Do not rely on the upstream minimum config as a public option: it silently degrades `<ref>`, `<gallery>`, and file parameters, and the library makes no compatibility promise for it. If you genuinely need minimal recognition, read `wikiparser-node/config/minimum.json` and convert it to `ParserConfig` yourself after confirming those degradations are acceptable.
 

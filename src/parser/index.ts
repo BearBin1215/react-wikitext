@@ -37,7 +37,7 @@ export interface WikitextParseOptions {
   readonly maxSourceLength?: number;
   /** 源码语法树的节点数上限，默认 {@link DEFAULT_MAX_SYNTAX_NODES}。 */
   readonly maxSyntaxNodes?: number;
-  /** 语义树的节点数上限，默认 {@link DEFAULT_MAX_SEMANTIC_NODES}。 */
+  /** 语义树的节点数上限，默认 50_000。 */
   readonly maxSemanticNodes?: number;
   /** 树的嵌套深度上限，默认 {@link DEFAULT_MAX_DEPTH}。 */
   readonly maxDepth?: number;

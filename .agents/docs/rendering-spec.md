@@ -4,7 +4,7 @@
 
 适用范围：语义 AST 的归一化结果、HAST 转换、最终整理、React 映射与安全规则。
 
-公共组件与扩展点见[文档站 react 页面](../../website/docs/zh/api/react.mdx)；测试分工见[开发约定](./development.md)；未实现能力见[路线图](./roadmap.md)。
+公共组件与扩展点见[文档站 view 页面](../../website/docs/zh/api/view.mdx)与[react 页面](../../website/docs/zh/api/react.mdx)；测试分工见[开发约定](./development.md)；未实现能力见[路线图](./roadmap.md)。
 
 本文只描述当前实现。支持的节点按规则渲染；未覆盖的语义结构降级为源码卡片，不猜测近似结构。
 
@@ -351,7 +351,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - `semanticComponents.file` 替换整个文件结构；`components.img` 只替换其中的 `<img>`。
 - 引号输出 `<b>` / `<i>`，覆盖时使用 `components.b` / `components.i`；源码中的 `<b>` / `<i>` 与引号共用同一覆盖点，源码 `<strong>` / `<em>` 仍走各自的标签覆盖点。
 - HTML 组件接收安全 props、HAST 元素、可选的 `semantic` 节点与 `origin`。
-- `WikitextFragment` 在 Context 内按语义 id 查找准备结果中的 HAST 节点，适合参数值、说明文字和 ref 内容；同文档限制与重复渲染行为见[文档站 react 页面](../../website/docs/zh/api/react.mdx)。
+- `WikitextFragment` 在 Context 内按语义 id 查找准备结果中的 HAST 节点，适合参数值、说明文字和 ref 内容；同文档限制与重复渲染行为见[文档站 view 页面](../../website/docs/zh/api/view.mdx#wikitextfragment)。
 
 ### 12.2 实例 id
 

@@ -12,7 +12,7 @@ import { WikitextView } from "react-wikitext/view";
 `/view` loads only React and a prepared snapshot; it does not load a parser, the preparation stage, or plugins. The source component lives in [React components](./react.mdx).
 
 :::warning
-View components create context at module load and use `useId` / `useMemo`, so they only run in Client Components. The `/view` output ships a `"use client"` directive and works directly in Next.js App Router and similar environments.
+View components run only in Client Components; the `/view` output ships a `"use client"` directive. See [Server rendering and frameworks](../guide/server-rendering.mdx) for the full boundary and SSR usage.
 :::
 
 ## WikitextView
@@ -38,7 +38,7 @@ View components create context at module load and use `useId` / `useMemo`, so th
 | `onRenderError`      | Block-level render error callback                                              |
 
 - The root is always `div.wikitext-view`.
-- `idPrefix` affects heading ids, in-document `#fragment` links, and table `headers`.
+- `idPrefix` is sanitized to `[A-Za-z0-9_-]` and truncated to 128 characters; an empty result falls back to `useId`. It affects heading ids, in-document `#fragment` links, and table `headers`.
 - Each top-level block is wrapped in an error boundary; one failing block does not affect the others.
 - The view builds semantic and HAST indexes for components and `WikitextFragment`.
 
@@ -119,10 +119,12 @@ Additional fields:
 | ----------------------------- | ------------------------------------- |
 | `link`                        | `target`, `kind`, `href?`, `external` |
 | `template` / `parserFunction` | `displayName`                         |
+| `argument`                    | —                                     |
 | `file`                        | `name`                                |
 | `reference`                   | `number`                              |
 | `extension`                   | `name`, `block`                       |
 | `unknown`                     | `parsedType`, `block`                 |
+| `table`                       | —                                     |
 
 Precedence: an explicit semantic component replaces the whole semantic structure; otherwise `components` still apply inside the default HAST; finally native elements are used.
 
@@ -180,6 +182,6 @@ Parse and prepare failures never enter the error boundary: without `onError` or 
 
 ## Related types
 
-`/view` exports the selected semantic types used by components: `WikitextLink`, `WikitextTemplate`, `WikitextFile`, `WikitextReference`, `WikitextTable`, `WikitextUnknown`, and others. Import full node subtypes and AST helpers from [`/ast`](./ast.mdx).
+`/view` exports the component prop types used above. The selected semantic types (`WikitextLink`, `WikitextTemplate`, `WikitextFile`, `WikitextReference`, `WikitextTable`, `WikitextUnknown`, and others) are exported by the root entry; import full node subtypes and AST helpers from [`/ast`](./ast.mdx).
 
 To inspect parse or render results, use `AstTree` and `NodeInspector` from [`/devtools`](./devtools.mdx); they read the same snapshot and stay out of the render path.

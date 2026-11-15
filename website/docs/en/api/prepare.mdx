@@ -200,7 +200,7 @@ Defaults:
 - `labels` are shallow-merged with defaults during preparation and written to `meta.labels`.
 - Default fields are listed in the [customization guide](../guide/customization.mdx#labels).
 - `headingIdStrategy` controls how logical anchors map to DOM ids; `headings` stores `nodeId`, `level`, `text`, and optional `id`.
-- Anchors are generated from stripped heading text; semantic headings and source `h1`–`h6` both participate.
+- Anchor generation rules are in the [customization guide](../guide/customization.mdx#heading-anchors).
 
 ## Render snapshot
 
@@ -223,7 +223,7 @@ interface WikitextRenderSnapshot {
 
 ## handlers
 
-`handlers` convert custom semantic nodes to HAST. A node without a handler produces a diagnostic and degrades to a source card.
+`handlers` convert custom semantic nodes to HAST; the full flow is in the [customization guide](../guide/customization.mdx#custom-semantic-nodes).
 
 ```ts
 type WikitextHastHandler<Node extends WikitextNode = WikitextNode> = (

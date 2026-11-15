@@ -37,24 +37,7 @@ const resolveLink: WikitextLinkResolver = (request) => {
 };
 ```
 
-返回值语义：
-
-| 返回值                            | 行为                                      |
-| --------------------------------- | ----------------------------------------- |
-| `undefined`                       | 沿用默认行为；内部链接仍是无法导航的文本  |
-| `null`                            | 关闭导航                                  |
-| `{ href }`                        | 生成 `<a>`；`href` 仍会经过安全校验       |
-| `{ label }`                       | 替换纯文本标签；只有 `label` 时不生成链接 |
-| `{ target: "_blank" \| "_self" }` | 覆盖窗口目标                              |
-| `{ exists: false }`               | 生成红链 `new` class 与“页面不存在”标题   |
-
-`resolveLink` 还会用于图片说明页（`File:{name}`）、分类底栏和重定向目标，同样只使用返回的 `href`。
-
-`request` 提供 `kind`、`target`，内部链接还可能有 `page` 与 `fragment`。`context` 提供原始解析快照 `document`、当前工作树 `ast` 与当前节点 `node`。
-
-:::note 说明
-解析回调只返回普通数据，不返回 React 元素。需要完全自定义链接外观与交互时，使用 [`semanticComponents.link`](../api/view.mdx#语义组件)。
-:::
+返回值语义、空值规则与额外链接目标见 [`/hast`](../api/prepare.mdx#解析回调)。解析回调只返回普通数据，不返回 React 元素；需要完全自定义链接外观与交互时，使用 [`semanticComponents.link`](../api/view.mdx#语义组件)。
 
 下面的示例为内部链接提供站内地址，外链沿用默认处理：
 

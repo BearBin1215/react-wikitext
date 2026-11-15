@@ -104,8 +104,8 @@ export function createWikiparser(options: CreateWikiparserOptions = {}): Wikitex
 
 let defaultParser: WikitextParser | undefined;
 
-/** 默认配置的共享 parser；`parseWikitext` 与 `/expand` 共用同一实例。 */
-export function getDefaultParser(): WikitextParser {
+/** 默认配置的共享 parser；只供 `parseWikitext` 使用。 */
+function getDefaultParser(): WikitextParser {
   defaultParser ??= createWikiparser();
   return defaultParser;
 }

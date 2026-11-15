@@ -47,32 +47,22 @@ export default function Demo() {
 
 ## 段落、文本与格式
 
-- 连续行内内容聚合为 `<p class="wikitext-paragraph">`；两个及以上空行切分段落，单个换行折叠为空格。
-- 粗体、斜体来自 MediaWiki 引号语法，输出 `<b>` / `<i>`；粗体与斜体同时开启时输出 `<i><b>…</b></i>`。
-- 标题输出真实 `<h1>`–`<h6 class="wikitext-heading">`，内容包在 `span.mw-headline` 中，并参与标题锚点与目录。
-- 水平线输出 `<hr class="wikitext-hr">`。
-- 注释、分类与行为开关不进入正文；分类汇总到文末底栏，行为开关只影响目录。
+段落切分、行内格式、标题、水平线、注释、分类与行为开关按[语法支持](./syntax-support.mdx#文本与块)中的对应行处理。标题内容额外包在 `span.mw-headline` 中；注释、分类与行为开关不进入正文。
 
 ## 列表
 
-- `*`、`#`、`;`、`:` 前缀生成嵌套的 `<ul>`、`<ol>`、`<dl>/<dt>/<dd>`。
-- 续行会并入当前列表项；空行、标题、表格、块级 HTML 等结束列表。
-- 定义列表支持 `; term : definition` 与 `;term:definition`。
-- 单元格内的列表扫描受单元格范围限制，不会把下一个单元格并入列表。
+列表前缀与输出见[语法支持](./syntax-support.mdx#列表与表格)。续行会并入当前列表项；空行、标题、表格、块级 HTML 等结束列表。单元格内的列表扫描受单元格范围限制，不会把下一个单元格并入列表。
 
 ## 表格
 
-- 输出顺序为 `<table><caption>…</caption><tbody>…`；单元格使用 `<th>` / `<td>`。
-- 表格、行、单元格属性按白名单保留；`style` 只保留安全排版子集，事件属性与 `id` 始终丢弃。
-- 布局按逻辑网格计算：`colspan` / `rowspan` 会被限制在表格范围内，未被占用的位置会生成填充单元格（`wikitext-table__cell--filler`）。
+表格输出、属性处理、`colspan` / `rowspan` 布局、嵌套表格降级与 `data-*` 规则见[语法支持](./syntax-support.mdx#列表与表格)。补充行为：
+
 - 只有源 `wikitable` class 套用 MediaWiki 1.43 的边框、背景与单元格内边距；普通表格保持浏览器默认外观，移动端可横向滚动。
 - 最终 HAST 节点数超限时，语义 wiki 表格短行末尾的空填充格会被省略，并记录 `TABLE_FILLER_BUDGET_EXCEEDED` 警告；真实单元格、HTML 表格与插件内容不受影响。
-- `{|` 与 `|}` 标记不配对的 wikitext 嵌套表格会整表降级为源码卡片；标记配对完整的嵌套表格与 HTML `<table>` 嵌套可以正常渲染。
-- 表格属性允许安全的 `data-*`，但拒绝库保留的 `data-node-id`、`data-wikitext` 等名称。
 
 ## 链接
 
-各类链接的默认输出、协议白名单与解析回调用法见[链接与图片](./links-and-images.mdx)。这里只补充影响渲染结果的部分：内部链接只有在 `resolveLink` 返回 `href` 时才生成 `<a>`，无标签外链按文档顺序生成 `[N]`，编号独立于引用。外部链接默认 `rel="nofollow"`、不写 `target`，可通过 `policy.externalLinkTarget` 或解析回调返回的 `target` 调整。
+各类链接的默认输出、协议白名单、解析回调用法与外部链接策略见[链接与图片](./links-and-images.mdx)；构造矩阵见[语法支持](./syntax-support.mdx#链接与媒体)。
 
 ## 文件与图片
 
@@ -93,14 +83,7 @@ export default function Demo() {
 
 ## 模板、函数与参数
 
-默认管线**不求值**：
-
-- 模板：块级 `<details class="wikitext-template">` 或行内徽标，列出参数；文案来自 `labels.templateNotExpanded`。
-- 解析器函数：同样是占位结构，明确标记为未求值。
-- 参数 `{{{name|default}}}`：显示参数名与默认值。
-- 模板、函数与参数中的魔术字不参与目录与分类判断。
-
-需要展开时使用 [`/expand`](./templates.mdx)。展开失败而保留的调用仍然按占位渲染。
+默认管线不求值模板、解析器函数与参数；它们的默认输出见[语法支持](./syntax-support.mdx#模板与函数)。需要展开时使用 [`/expand`](./templates.mdx)；展开失败而保留的调用仍然按占位渲染。
 
 ## 参考文献
 
@@ -124,33 +107,11 @@ export default function Demo() {
 
 ## HTML
 
-源码 HTML 不会作为原始 HTML 注入。库按类别处理：
-
-- 行内标签：`b`、`i`、`u`、`span`、`code`、`ruby`、`abbr` 等。
-- 块级标签：`div`、`p`、`blockquote`、`center`、`pre`、列表、表格、标题等。
-- 空元素（void）：`br`、`wbr`、`hr`。
-- 丢弃：`meta`、`link`。
-- 禁止：`script`、`style`、`iframe`、`object`、`embed`、表单控件、`svg`、HTML 版 `math` 等。默认配置不解析这些标签，源码会作为纯文本转义；若被配置纳入 HTML 解析，整对内容会被丢弃并显示可读提示。
-- 未知但非危险标签：显示源码卡片，不渲染为真实元素。
-
-HTML 属性只保留白名单中的 `class`、`title`、`dir`、`lang`、安全 `style` 与表格相关属性；`id`、事件属性不会进入 DOM。完整规则见[安全模型](./security.mdx)。
+源码 HTML 不会作为原始 HTML 注入。标签分类与禁止标签见[语法支持](./syntax-support.mdx#html-与扩展标签)。HTML 属性只保留白名单中的 `class`、`title`、`dir`、`lang`、安全 `style` 与表格相关属性；`id`、事件属性不会进入 DOM。完整规则见[安全模型](./security.mdx)。
 
 ## 扩展标签
 
-| 标签                                                                              | 当前行为                                                |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `<nowiki>`                                                                        | 纯文本，不解析链接或模板                                |
-| `<pre>`                                                                           | 保留原始空白                                            |
-| `<ref>`                                                                           | 分组编号引用 + 引用区                                   |
-| `<references>`                                                                    | 占位；最终整理把对应分组引用区放到该位置                |
-| `<math>`                                                                          | `<code>` 公式源码占位，不引入 KaTeX                     |
-| `<syntaxhighlight>`                                                               | `<pre><code class="language-*">` 原始文本，不接语法高亮 |
-| `<poem>`                                                                          | 按空行分段，段内换行输出 `<br>`                         |
-| `<gallery>`                                                                       | 经 `resolveImage` 出图，否则显示文件名                  |
-| `<imagemap>`、`<templatestyles>`、`<chem>`、`<score>`、`<timeline>`、`<mapframe>` | 块级源码卡片                                            |
-| 其他未专门支持的扩展                                                              | 源码卡片；独立成行时按块级展示                          |
-
-`semanticComponents.extension` 可以按标签名自定义这些扩展结构；`<ref>` 走 `semanticComponents.reference`，`<references>` 不产生组件调用。
+`<nowiki>`、`<pre>`、`<ref>`、`<references>`、`<math>`、`<syntaxhighlight>`、`<poem>`、`<gallery>`、`<imagemap>` 等扩展标签的默认输出见[语法支持](./syntax-support.mdx)。`semanticComponents.extension` 可以按标签名自定义这些扩展结构；`<ref>` 走 `semanticComponents.reference`，`<references>` 不产生组件调用。
 
 ## 未知结构与降级
 

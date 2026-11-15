@@ -22,7 +22,7 @@ See [How it works](../guide/concepts.mdx) for the stages, the optional expansion
 | `react-wikitext/preview`      | `useWikitextPreview`, executor protocol, worker transport                                                                              | No                           | Yes         |
 | `react-wikitext/worker`       | `createWikitextWorkerHandler`, `attachWikitextWorker`, message protocol                                                                | No (parser injected)         | No          |
 | `react-wikitext/hast`         | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
-| `react-wikitext/unified`      | `createWikitextProcessor`, a unified integration with a finalize stage owned by the library                                            | No (parser must be injected) | No          |
+| `react-wikitext/unified`      | `createWikitextProcessor`, a unified integration with a library-owned final sanitize stage                                             | No (parser must be injected) | No          |
 | `react-wikitext/view`         | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
 | `react-wikitext/configs`      | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
 | `react-wikitext/devtools`     | `AstTree`, `NodeInspector`, node range/source queries, selection restore helpers, and debug label types                                | No                           | Yes         |
@@ -30,7 +30,7 @@ See [How it works](../guide/concepts.mdx) for the stages, the optional expansion
 | `react-wikitext/tokens.css`   | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
 | `react-wikitext/devtools.css` | Debug component styles; includes theme variables                                                                                       | —                            | —           |
 
-The root entry does not export anything from the parse, expand, hast, unified, or devtools subpaths. Only the root entry and `/parse` load the default parser; `/expand`, `/worker`, and `/unified` accept a host-injected `parser`; `/ast`, `/hast`, and `/configs` never touch a parser. `/view` loads only React and an already prepared snapshot, and `/preview` loads only React and the executor protocol.
+The root entry does not export the parse, expand, hast, unified, or devtools entry APIs; import them from the corresponding entries. The shared error classes are also re-exported from the root entry.
 
 ## Parse and render snapshots
 
@@ -76,11 +76,4 @@ Query transformed nodes with the render snapshot. Do not use ids from the render
 | `/configs`  | [configs](./configs.mdx)          |
 | `/devtools` | [Devtools](./devtools.mdx)        |
 
-## Next steps
-
-- [React components](./react.mdx): source component, view, Fragment, and context hooks.
-- [Parsing `/parse`](./parse.mdx): parsers, budgets, and custom adapters.
-- [Preparation `/hast`](./prepare.mdx): plugins, resolvers, policy, and snapshot restore.
-- [Devtools `/devtools`](./devtools.mdx): AST tree, node details, and selection restore.
-- [Errors and diagnostics](./errors.mdx): codes and handling advice.
-- [Status and compatibility](../project/status.mdx): versions, snapshot versions, and runtime requirements.
+Error codes and handling advice are in [Errors and diagnostics](./errors.mdx); versions, schema versions, and runtime requirements are in [Status and compatibility](../project/status.mdx).

@@ -21,7 +21,7 @@ export function referenceGroupName(group: string | undefined): string {
 }
 
 /** 引用锚点所需的稳定字段；与 Cite 1.43 的 key/name 规则一致。 */
-export interface ReferenceAnchor {
+interface ReferenceAnchor {
   /** 全文档范围的自增 key；命名引用首次出现时分配。 */
   readonly key: number;
   /** 命名引用的 name；匿名引用没有。 */

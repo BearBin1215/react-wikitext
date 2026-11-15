@@ -94,14 +94,14 @@ function validateLabels(value: unknown): void {
 }
 
 /** 默认目录设置；与 MediaWiki 的 4 个标题阈值一致。 */
-export const DEFAULT_TOC_SETTINGS: WikitextResolvedTocSettings = Object.freeze({
+const DEFAULT_TOC_SETTINGS: WikitextResolvedTocSettings = Object.freeze({
   enabled: true,
   minHeadings: 4,
   columns: 1,
 });
 
 /** 校验目录选项；非法字段在准备阶段统一失败。 */
-export function resolveTocSettings(
+function resolveTocSettings(
   value: false | WikitextTocOptions | undefined,
 ): WikitextResolvedTocSettings {
   if (value === undefined) {

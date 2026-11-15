@@ -9,7 +9,7 @@ import { runParse, statsFor } from "./runParse";
 const PARSE_DEBOUNCE_MS = 250;
 
 /** 调度输入；`key` 只用于防抖分组，调度器不持有输入源身份。 */
-export interface ParseSchedulerInput {
+interface ParseSchedulerInput {
   /** 调用方提供的防抖分组键，通常是当前输入源 id。 */
   readonly key: string;
   readonly source: string;
@@ -22,7 +22,7 @@ export interface ParseSchedulerInput {
 }
 
 /** 一次解析尝试的完整结果；`key` 标明它属于哪个防抖分组。 */
-export interface ParseSchedulerResult {
+interface ParseSchedulerResult {
   readonly key: string;
   readonly doc?: WikitextParsedSnapshot;
   readonly expansion?: WikitextExpansionInfo;
@@ -32,7 +32,7 @@ export interface ParseSchedulerResult {
   readonly origin: "worker" | "main";
 }
 
-export interface ParseSchedulerState {
+interface ParseSchedulerState {
   readonly result?: ParseSchedulerResult;
   readonly parsing: boolean;
   /** Worker 是否可用；构造失败或出错后会退到主线程。 */

@@ -18,20 +18,7 @@ export {
   type WikitextSourceSpan,
   type WikitextTextSource,
 } from "./types";
-export {
-  bindSegmentSources,
-  createSourceGraphBuilder,
-  effectiveSourceId,
-  expandedSourceId,
-  hashText,
-  inputSourceId,
-  normalizeWithSegments,
-  normalizedSourceId,
-  templateSourceId,
-  type NormalizedWithSegments,
-  type SourceGraphBuilder,
-  type SourceGraphLimits,
-} from "./graph";
+export { hashText } from "./graph";
 export {
   EMPTY_OUTPUT,
   concatOutputs,

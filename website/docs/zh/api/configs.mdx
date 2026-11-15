@@ -60,7 +60,7 @@ const config = createMediaWikiConfig({
 const parser = createWikiparser({ config });
 ```
 
-返回的是可独立修改的深拷贝，并且已经过 `normalizeConfig` 校验；非法字段抛 `WikitextParseError("INVALID_CONFIG")`。
+返回的是可独立修改、结构已校验的深拷贝；非法字段抛 `WikitextParseError("INVALID_CONFIG")`。
 
 不要依赖上游的最小配置作为公共选项：它会让 `<ref>`、`<gallery>` 与文件参数静默退化，库不为它提供兼容承诺。确实需要最小识别时，可以从 `wikiparser-node/config/minimum.json` 读取并自行转换为 `ParserConfig`，但要先确认这些退化可接受。
 

@@ -77,24 +77,10 @@ Each output can be traced back to its source, which makes issues easier to debug
 
 ## Entry boundaries
 
-| Entry       | Loads parser       | Loads React | Typical use                                   |
-| ----------- | ------------------ | ----------- | --------------------------------------------- |
-| Root entry  | Yes                | Yes         | Render source on the client                   |
-| `/view`     | No                 | Yes         | Render a prepared snapshot                    |
-| `/parse`    | Yes                | No          | Server, worker, cache                         |
-| `/expand`   | No (host parser)   | No          | Expand templates before parse                 |
-| `/preview`  | No                 | Yes         | Debounce, request versions and stale results  |
-| `/worker`   | No (host compiler) | No          | Compile and prepare inside a worker           |
-| `/hast`     | No                 | No          | Prepare, serialize, restore                   |
-| `/ast`      | No                 | No          | AST queries and data pipelines                |
-| `/unified`  | No                 | No          | Fixed-order processor with an injected parser |
-| `/configs`  | No                 | No          | Site config constants and override builder    |
-| `/devtools` | No                 | Yes         | Debug parse results and render snapshots      |
-
-[Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, see the export notes on each entry page.
+[Entry points](../api/index.mdx#subpaths) lists each subpath's contents, whether it loads a parser or React, and its typical use. For a symbol-by-symbol list, see the export notes on each entry page.
 
 :::warning
-React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, `/preview`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server, only call React-free entries such as `/parse`, `/expand`, `/worker`, and `/hast`.
+React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, `/preview`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server and at build time, use React-free entries such as `/parse`, `/expand`, and `/hast`; use `/worker` inside a Worker.
 :::
 
 ## Glossary

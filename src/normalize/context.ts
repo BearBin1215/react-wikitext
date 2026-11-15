@@ -10,7 +10,7 @@ import { createPositionIndex, type PositionIndex } from "../ast/position";
 import type { WikitextSourceId } from "../ast/sourceGraph/types";
 
 /** 把一段源码语法节点归一化为块级语义节点；用于 inline 容器内的块级回落。 */
-export type NormalizeBlockBuilder = (
+type NormalizeBlockBuilder = (
   nodes: readonly WikitextSyntaxNode[],
   limit: number,
   depth: number,
@@ -32,7 +32,7 @@ export interface NormalizeContext {
 }
 
 /** 创建归一化上下文的选项。 */
-export interface CreateNormalizeContextOptions {
+interface CreateNormalizeContextOptions {
   /** 块级嵌套深度预算，默认 {@link DEFAULT_MAX_DEPTH}。 */
   readonly maxDepth?: number;
   /** 归一化阶段收集诊断的可写数组。 */

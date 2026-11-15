@@ -6,7 +6,7 @@ description: 用 createWikitextProcessor 把 wikitext 处理接入 unified 生�
 # unified
 
 ```ts
-import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikitext/unified";
+import { createWikitextProcessor, getWikitextSnapshot } from "react-wikitext/unified";
 ```
 
 `/unified` 不加载默认解析器，也不加载 React。它提供一个固定顺序的处理器，适合需要复用插件组合、逐步注册转换，或把 wikitext 处理嵌入已有 unified 风格的构建流程。
@@ -15,7 +15,7 @@ import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikite
 
 解析、语义树转换与 HAST 清洗必须按固定顺序执行。手写 `unified().use(...)` 时，运行时无法阻止插件被排在最终清洗之后：后续插件返回新树会让快照与实际输出分叉，原地修改则会把未清洗内容带进已标记完成的渲染快照。
 
-`createWikitextProcessor` 在内部追加最终阶段，宿主注册的插件永远在清洗之前运行，因此不需要、也无法把插件排在最终整理之后。`/unified` 不再导出单独的 parse / rehype / finalize 插件。
+`createWikitextProcessor` 在内部追加最终阶段，宿主注册的插件永远在清洗之前运行，因此不需要、也无法把插件排在最终整理之后。`/unified` 不导出单独的 parse / rehype / finalize 插件。
 
 ## 基本用法
 
@@ -90,15 +90,15 @@ await processor.run(source); // 允许插件返回 Promise
 ## 在插件内读取快照
 
 ```ts
-import { getWikitextParsedSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
+import { getWikitextSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
 
 processor.useWikitext(() => (tree, file) => {
-  const parsed = getWikitextParsedSnapshot(file); // 解析快照；插件可以读取，但不能修改
+  const parsed = getWikitextSnapshot(file); // 解析快照；插件可以读取，但不能修改
   void parsed;
 });
 ```
 
-- `getWikitextParsedSnapshot(file)` 返回本次运行的解析快照。
+- `getWikitextSnapshot(file)` 返回本次运行的解析快照。
 - `getWikitextRenderSnapshot(file)` 返回渲染快照；它在最终阶段才写入，HAST 插件阶段读不到。
 
 ## 与 prepareWikitext 的关系

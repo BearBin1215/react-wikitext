@@ -106,31 +106,9 @@ interface WikitextParsedSnapshot {
 
 ## 自定义适配器
 
-接入其他解析器时从 [`/ast`](./ast.mdx) 导入 `createWikitextParser`：该入口不加载默认 IIFE，也不加载 React。`/parse` 也导出同一个工厂，但导入它会执行上游 IIFE，不适合只想使用自定义 adapter 的场景。
+接入其他解析器时从 [`/ast`](./ast.mdx) 导入 `createWikitextParser`：该入口不加载默认 IIFE，也不加载 React；导入 `/parse` 则会执行上游 IIFE。适配器形状、语法树要求与完整示例见[自定义解析器](../guide/custom-parser.mdx)；源码归一化、预算、校验、语义 AST、诊断与 `meta` 由工厂处理。
 
-```ts
-import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
-
-const adapter: WikitextParserAdapter = {
-  name: "my-parser",
-  version: "1.0.0",
-  parse(source, context) {
-    // 必须返回符合 WikitextSyntaxRoot 的普通对象；
-    // range 基于 LF 归一化后的源码，行列从 1 开始，offset 从 0 开始。
-    return buildSyntaxRoot(source, context);
-  },
-};
-
-const parser = createWikitextParser(adapter, {
-  defaults: { pageName: "Example" },
-});
-```
-
-- 适配器只把输入转换为源码语法树；归一化、预算合并、语义 AST 构建、诊断与 meta 由工厂完成。
-- `context.limits` 提供有效的 `maxSyntaxNodes` 与 `maxDepth`，适配器可以据此提前停止。
-- 适配器返回后，工厂仍会校验结构、源码范围与预算。
-- 适配器的 `name` / `version` 会写入文档 meta。
-- `WikitextParser` 接口还包含 `resolveOptions()`；通过 `createWikitextParser` 创建时自动提供，手写该接口的宿主需要自行补齐。
+手写 `WikitextParser` 还需实现 `resolveOptions()`；由 `createWikitextParser` 创建的对象自动提供。
 
 ## 错误
 
@@ -149,13 +127,7 @@ class WikitextParseError extends WikitextError {
 }
 ```
 
-| 错误码               | 触发条件                     |
-| -------------------- | ---------------------------- |
-| `SOURCE_TOO_LONG`    | 归一化后的源码超过长度预算   |
-| `SOURCE_TOO_COMPLEX` | 节点数或深度超过预算         |
-| `INVALID_CONFIG`     | 站点配置缺少必需字段         |
-| `PARSE_FAILED`       | 上游解析或语义构建失败       |
-| `PARSER_UNAVAILABLE` | 默认 IIFE 未初始化全局解析器 |
+错误码含义与处理建议见[错误与诊断](./errors.mdx#错误码)。
 
 节点数与深度上限见[性能与预算](../guide/performance.mdx)；触发错误时 `error.message` 会给出实际生效值。
 

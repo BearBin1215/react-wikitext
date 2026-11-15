@@ -223,7 +223,6 @@ HAST 使用标准 `element`、`text`、`root` 节点。语义关联记录在可�
 - 浏览器优先；解析、归一化与 HAST 转换均不依赖 DOM，可在 Node 测试环境执行。
 - `wikiparser-node` 与 React 保持 external，因此只有它们是运行时依赖；unified、vfile、HAST 清洗与 JSX 工具及其传递依赖打包进库产物，作为开发依赖安装。CJS 产物强制按浏览器条件解析，不残留 `node:*` 内置模块引用。打包范围与原因见 `tsdown.config.ts`。
 - parser 精确锁定单一版本，不提供兼容区间；浏览器加载后 `globalThis.Parser` 是单例，多版本并存会互相覆盖，当前不支持。`loadParser` 在模块执行后立即捕获。
-- 只有根入口的 `Wikitext` 与 `/parse` 加载默认 parser；`/expand`、`/worker` 与 `/unified` 接收宿主注入的 parser；`/ast`、`/hast`、`/configs` 不接触 parser。加载 React 的入口是根入口、`/view`、`/devtools` 与 `/preview`。
 - CodeMirror 只在 playground 中使用；Worker 由宿主创建，`/worker` 只提供 handler 与协议，不进入默认渲染链。
 - 交付物是 `dist/` 库产物；playground 不构建、不部署、不发布。
 - 不内建 SSR/RSC 数据流：React 入口是客户端组件（产物带 `"use client"`），服务端渲染通过 `/parse` + `/hast` 预准备快照、再用 `/view` 恢复实现。

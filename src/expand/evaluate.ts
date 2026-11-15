@@ -72,7 +72,7 @@ export interface TemplateDemand {
 }
 
 /** 求值环境；所有数据由编译器提供。`Evaluator` 的实例字段只属于本次求值，不跨编译共享。 */
-export interface EvaluateContext {
+interface EvaluateContext {
   readonly pageSource: WikitextTextSource;
   readonly pageName?: string;
   /** 查找已编译模板程序；未命中时求值器记录需求并推迟本轮。 */
@@ -96,7 +96,7 @@ export interface EvaluateContext {
 }
 
 /** 一次求值的结果；`unresolved` 为真时调用方必须丢弃输出并重试。 */
-export interface Evaluation {
+interface Evaluation {
   readonly output: WikitextOutput;
   readonly invocations: readonly InvocationDraft[];
   readonly unresolved: boolean;

@@ -116,7 +116,7 @@ interface WikitextTemplateSnapshot {
 
 - One compilation uses exactly one snapshot; template edits during an edit session never mix versions.
 - A snapshot must return stable content for a title; changed content requires a new `revision`.
-- `null` means missing; `undefined` or a wrong type is treated as a fetch failure.
+- `null` means missing; `undefined`, a wrong type, or a thrown error is treated as a fetch failure (`TEMPLATE_RESOLVE_FAILED`).
 - `createTemplateTableProvider` validates and copies once; update the table by creating a new version.
 - Remote providers own auth, redirects, site data, rate limits and I/O; the library never guesses site URLs.
 - `release` is called once after success, failure or cancellation; `dispose` never destroys a host provider.
@@ -124,10 +124,12 @@ interface WikitextTemplateSnapshot {
 ## Compilation result
 
 ```ts
+import { COMPILATION_SCHEMA_VERSION } from "react-wikitext/ast";
+
 type WikitextCompilationStatus = "complete" | "partial" | "fallback";
 
 interface WikitextCompilation {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: typeof COMPILATION_SCHEMA_VERSION;
   readonly status: WikitextCompilationStatus;
   readonly inputSourceId: string;
   readonly outputSourceId: string;
@@ -165,20 +167,15 @@ const position = getSourcePosition(snapshot.graph, span);
 
 - `WikitextMappingMatch.precision` is `exact` or `enclosing-invocation`; multi-hop composition never upgrades precision.
 - Every occurrence of a repeated template is returned; when the limit is reached `truncated` is `true`.
-- Deleted ranges, generated characters and function results never claim exact mapping.
+- Deleted ranges and pure generated text produce no match; function results and other length-changing output use `enclosing-invocation`.
+- `coverage` is `complete` when every input character maps, `partial` when some ranges remain unmapped, and `none` when no match is found.
 - Line and column data is derived from the owning source on demand.
 
 ## Caching and scheduling
 
-| Cache                   | Key contains                                                                    | Invalidation                                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Template fetch result   | provider key, snapshot revision, normalized title                               | revision changes; missing results reused within one revision; transient failures are not cached across compiles |
-| Template syntax program | parser identity, budgets, page context, normalized content, preprocessing rules | bounded LRU                                                                                                     |
-| Page syntax compilation | parser identity, input content, budgets                                         | unchanged text is reused                                                                                        |
+The page, template-program and fetch caches are LRU-bounded by `cache.maxEntries` / `cache.maxBytes`; the internal title cache keeps a fixed entry cap. A new provider `revision`, a different parser identity, or changed input content invalidates the relevant entries; transient fetch failures are not reused across compilations.
 
-Evaluation advances in deterministic rounds: pure computation runs first, uncompiled templates are recorded as demands and deferred, then the scheduler deduplicates by provider snapshot, fetches in batches and commits results at fixed task addresses. Output, call status and diagnostics therefore do not depend on network completion order; `concurrency: 1` and larger values produce identical results.
-
-Concurrent compiles share unfinished fetches for the same provider snapshot. Cancelling one compile only removes that subscriber; the underlying request is aborted after the last subscriber leaves.
+Evaluation results do not depend on network completion order; `concurrency: 1` and larger values produce identical output. Concurrent compilations share unfinished fetches for the same provider snapshot; cancelling one compile only removes that subscriber, and the underlying request is aborted after the last subscriber leaves.
 
 ## Resource limits
 
@@ -186,7 +183,11 @@ Source counts, segment counts, invocation records, diagnostics, total template s
 
 ## Errors
 
-`WikitextExpandError.code` includes `INVALID_EXPAND_OPTIONS`, `INVALID_PROVIDER`, `INCOMPATIBLE_PARSER`, `TEMPLATE_NOT_FOUND`, `TEMPLATE_RESOLVE_FAILED`, `TEMPLATE_PARSE_FAILED`, `TEMPLATE_LOOP`, `UNSUPPORTED_CALL`, `UNRESOLVED_DEPENDENCY`, `EXPANSION_BUDGET_EXCEEDED`, `EXPANSION_TOO_LARGE`, `FINAL_PARSE_FAILED`, `SOURCE_GRAPH_TOO_LARGE`, `ABORTED` and `DISPOSED`.
+```ts
+import { WikitextExpandError } from "react-wikitext/expand";
+```
+
+`WikitextExpandError.code` is typed as `WikitextExpandErrorCode`; the full list and triggers are in [Errors and diagnostics](./errors.mdx#error-codes).
 
 Errors share the `WikitextSourceSpan` location model with snapshot diagnostics; `location` points at the text source where the failure actually happened.
 

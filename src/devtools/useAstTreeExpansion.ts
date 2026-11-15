@@ -105,7 +105,7 @@ function reducer(state: ExpansionState, action: ExpansionAction): ExpansionState
 }
 
 /** 展开状态管理；受控模式由调用方维护，不做隐式重映射。 */
-export interface AstTreeExpansion {
+interface AstTreeExpansion {
   readonly expanded: ReadonlySet<string>;
   toggle(id: string): void;
   expandAll(): void;
@@ -114,7 +114,7 @@ export interface AstTreeExpansion {
   revealAncestors(id: string): void;
 }
 
-export interface UseAstTreeExpansionOptions {
+interface UseAstTreeExpansionOptions {
   readonly document: AstTreeDocument;
   readonly kind: AstTreeKind;
   readonly defaultExpandedDepth: number;

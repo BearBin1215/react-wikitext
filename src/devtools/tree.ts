@@ -31,7 +31,7 @@ export type AstTreeKind = "semantic" | "syntax";
 export type AstTreeNode = WikitextNode | WikitextSyntaxNode;
 
 /** 节点在树中的位置信息；不依赖 id 的路径格式，自定义 adapter 也能用。 */
-export interface TreeEntry {
+interface TreeEntry {
   readonly node: AstTreeNode;
   readonly depth: number;
   readonly parentId?: string;
@@ -58,7 +58,7 @@ export function childrenOf(node: AstTreeNode): readonly AstTreeNode[] {
 }
 
 /** 按先序展开任意一棵树，并按根节点缓存结果。 */
-export function flattenTree(root: AstTreeNode): readonly AstTreeNode[] {
+function flattenTree(root: AstTreeNode): readonly AstTreeNode[] {
   const cached = flattenCache.get(root);
   if (cached) {
     return cached;

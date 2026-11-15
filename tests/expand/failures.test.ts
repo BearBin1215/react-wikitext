@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { WikitextExpandError } from "@/expand";
 import {
   expandWikitext,
-  type WikitextExpandOptions,
-  type WikitextTemplateResolver,
+  type TestExpandOptions,
+  type TestTemplateResolver,
 } from "../helpers/expand";
 
 import { createWikiparser, type WikitextParser } from "@/parse";
@@ -12,7 +12,7 @@ import { parserThrowingOn } from "../helpers/expand";
 async function expectExpandError(
   source: string,
   templates: Record<string, string>,
-  options: Partial<WikitextExpandOptions> = {},
+  options: Partial<TestExpandOptions> = {},
 ): Promise<WikitextExpandError> {
   try {
     await expandWikitext(source, { templates, ...options });
@@ -85,7 +85,7 @@ describe("source and resolver failures", () => {
     expect(rejected.snapshot.source).toBe("{{T}}");
     expect(rejected.expansion.diagnostics[0]?.code).toBe("TEMPLATE_RESOLVE_FAILED");
     const invalid = await expandWikitext("{{T}}", {
-      resolveTemplate: (() => 1) as unknown as WikitextTemplateResolver,
+      resolveTemplate: (() => 1) as unknown as TestTemplateResolver,
     });
     expect(invalid.snapshot.source).toBe("{{T}}");
     expect(invalid.expansion.records[0]?.status).toBe("preserved");

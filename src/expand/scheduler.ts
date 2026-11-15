@@ -7,7 +7,7 @@ import type {
 } from "./provider";
 
 /** 单标题获取结果。 */
-export interface TemplateFetchResult {
+interface TemplateFetchResult {
   readonly title: string;
   readonly ok: boolean;
   /** 命中的模板；缺失与失败时省略。 */
@@ -23,7 +23,7 @@ export interface TemplateFetchResult {
 }
 
 /** 共享的未完成获取任务；键包含 provider 来源与版本。 */
-export interface BatchTask {
+interface BatchTask {
   readonly promise: Promise<readonly TemplateFetchResult[]>;
   readonly subscribers: Set<AbortSignal | undefined>;
   readonly controller: AbortController;
@@ -92,9 +92,9 @@ async function mapPool<T, R>(
 }
 
 /** 获取缓存值；`null` 表示明确缺失，与失败区分。 */
-export type TemplateFetchCache = WikitextLruCache<WikitextTemplateSource | null>;
+type TemplateFetchCache = WikitextLruCache<WikitextTemplateSource | null>;
 
-export interface TemplateFetcherOptions {
+interface TemplateFetcherOptions {
   readonly snapshot: WikitextTemplateSnapshot;
   readonly cache: TemplateFetchCache;
   readonly concurrency: number;

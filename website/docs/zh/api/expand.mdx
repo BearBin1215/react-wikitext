@@ -116,7 +116,7 @@ interface WikitextTemplateSnapshot {
 
 - 一次编译固定使用同一个快照；编辑期间模板更新不会把两个版本混入一个结果。
 - 同一快照对同一标题必须返回稳定内容；内容变化必须更换 `revision`。
-- `null` 表示明确不存在；`undefined` 或类型不符按获取失败处理。
+- `null` 表示明确不存在；`undefined`、类型不符或抛出异常都按获取失败处理（`TEMPLATE_RESOLVE_FAILED`）。
 - `createTemplateTableProvider` 在构造时校验并复制一次，后续编译复用；更新表要构造新版本。
 - 远程 provider 负责鉴权、重定向、站点数据、限流与 I/O；库不猜测站点 URL。
 - `release` 在成功、失败与取消后各调用一次；`dispose` 不销毁宿主提供的 provider。
@@ -124,10 +124,12 @@ interface WikitextTemplateSnapshot {
 ## 编译结果
 
 ```ts
+import { COMPILATION_SCHEMA_VERSION } from "react-wikitext/ast";
+
 type WikitextCompilationStatus = "complete" | "partial" | "fallback";
 
 interface WikitextCompilation {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: typeof COMPILATION_SCHEMA_VERSION;
   readonly status: WikitextCompilationStatus;
   readonly inputSourceId: string;
   readonly outputSourceId: string;
@@ -167,20 +169,15 @@ const position = getSourcePosition(snapshot.graph, span);
 
 - `WikitextMappingMatch.precision` 为 `exact` 或 `enclosing-invocation`；多阶段组合不会提升精度。
 - 重复模板出现位置全部返回，不任选第一个；达到上限时 `truncated` 为 `true`。
-- 被删除片段、生成字符与函数转换结果不能冒充精确映射。
+- 被删除范围与纯生成文本没有对应关系；函数结果与其他长度变化的输出使用 `enclosing-invocation`。
+- `coverage` 为 `complete` 表示输入全部映射，`partial` 表示仍有未映射范围，`none` 表示没有匹配。
 - 行列坐标由所属文本源按需计算，不与 span 分别存储。
 
 ## 缓存与调度
 
-| 缓存         | 键包含                                                | 失效                                                     |
-| ------------ | ----------------------------------------------------- | -------------------------------------------------------- |
-| 模板获取结果 | provider 键、快照版本、规范化标题                     | 版本变化失效；缺失在同一版本内复用；瞬态错误不跨编译缓存 |
-| 模板语法程序 | parser 身份、预算、页面上下文、归一化内容、预处理规则 | 容量受控，按 LRU 淘汰                                    |
-| 页面语法编译 | parser 身份、输入内容、预算                           | 静态或未变文本复用                                       |
+页面、模板程序与获取缓存受 `cache.maxEntries` / `cache.maxBytes` 约束；内部的标题缓存使用固定条目上限。provider 的 `revision`、parser 身份或输入内容变化会使相关缓存失效；瞬态获取失败不会跨编译复用。
 
-求值按确定顺序进行：纯计算先推进，需要未编译模板时记录需求并推迟本轮；调度器按 provider 快照去重、批量获取后按固定任务地址提交，再继续下一轮。因此输出、调用状态与诊断不依赖网络返回顺序，`concurrency: 1` 与更大并发结果相同。
-
-并发编译共享同一 provider 快照的未完成获取任务；取消某次编译只移除该订阅者，全部订阅者取消后才中断底层请求。
+求值结果不依赖网络返回顺序；`concurrency: 1` 与更大并发产生相同输出。并发编译共享同一 provider 快照的未完成获取任务；取消某次编译只移除该订阅者，全部订阅者取消后才中断底层请求。
 
 ## 资源上限
 
@@ -192,7 +189,7 @@ const position = getSourcePosition(snapshot.graph, span);
 import { WikitextExpandError } from "react-wikitext/expand";
 ```
 
-`WikitextExpandError.code` 取值包括 `INVALID_EXPAND_OPTIONS`、`INVALID_PROVIDER`、`INCOMPATIBLE_PARSER`、`TEMPLATE_NOT_FOUND`、`TEMPLATE_RESOLVE_FAILED`、`TEMPLATE_PARSE_FAILED`、`TEMPLATE_LOOP`、`UNSUPPORTED_CALL`、`UNRESOLVED_DEPENDENCY`、`EXPANSION_BUDGET_EXCEEDED`、`EXPANSION_TOO_LARGE`、`FINAL_PARSE_FAILED`、`SOURCE_GRAPH_TOO_LARGE`、`ABORTED`、`DISPOSED`。
+`WikitextExpandError.code` 的类型是 `WikitextExpandErrorCode`；完整取值与触发条件见[错误与诊断](./errors.mdx#错误码)。
 
 错误对象与快照诊断共用 `WikitextSourceSpan` 位置模型；`location` 指向真实失败所在的文本源。
 

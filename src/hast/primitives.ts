@@ -53,7 +53,7 @@ export interface LinkState {
 }
 
 /** 目录模式；在转换开始时固定。 */
-export interface TocState {
+interface TocState {
   readonly mode: WikitextTocMode;
 }
 

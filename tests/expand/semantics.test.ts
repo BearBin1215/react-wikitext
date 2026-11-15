@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { getSpanText } from "@/ast";
 import {
   expandWikitext,
-  type WikitextExpandOptions,
-  type WikitextTemplateResolver,
+  type TestExpandOptions,
+  type TestTemplateResolver,
 } from "../helpers/expand";
 
 const TEMPLATES: Record<string, string> = {
@@ -81,11 +81,11 @@ describe("pure parser functions", () => {
   });
 });
 
-function resolver(locate: (title: string) => string | null | undefined): WikitextTemplateResolver {
+function resolver(locate: (title: string) => string | null | undefined): TestTemplateResolver {
   return ({ title }) => locate(title);
 }
 
-async function expand(source: string, options: Partial<WikitextExpandOptions> = {}) {
+async function expand(source: string, options: Partial<TestExpandOptions> = {}) {
   return expandWikitext(source, { templates: TEMPLATES, ...options });
 }
 

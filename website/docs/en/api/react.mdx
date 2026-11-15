@@ -1,6 +1,6 @@
 ---
 title: React components
-description: The root source component Wikitext, its props, error handling, and related types.
+description: The root source component Wikitext, its props, and error handling.
 ---
 
 # React components
@@ -8,7 +8,7 @@ description: The root source component Wikitext, its props, error handling, and 
 The root entry exports the source component `Wikitext` and the view components; hosts that render prepared snapshots should use [`/view`](./view.mdx), which does not load a parser.
 
 :::warning
-Components create context at module load and use `useId` / `useMemo`, so they only run in Client Components. The root entry and `/view` ship a `"use client"` directive and work directly in Next.js App Router and similar environments; servers should only call `/parse` and `/hast`.
+Components run only in Client Components; the root entry ships a `"use client"` directive. See [Server rendering and frameworks](../guide/server-rendering.mdx) for the full boundary and SSR usage.
 :::
 
 ## Wikitext
@@ -38,25 +38,16 @@ interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
 }
 ```
 
-| Prop                 | Description                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `source`             | Wikitext source to render                                                                                     |
-| `parser`             | Reuse an existing parser; otherwise a shared default parser is used                                           |
-| `parseOptions`       | Parse options, see [`/parse`](./parse.mdx)                                                                    |
-| `prepareOptions`     | Prepare options, see [`/hast`](./prepare.mdx)                                                                 |
-| `onPrepared`         | Called after a successful prepare; read `diagnostics`, `headings`, and settings                               |
-| `onError`            | Parse/prepare failure callback; `error` is always `WikitextError`, `info.stage` tells which stage             |
-| `fallback`           | Rendered on failure; takes over entirely and disables the built-in error container                            |
-| `components`         | Override by HTML tag name                                                                                     |
-| `semanticComponents` | Override by wiki semantic type                                                                                |
-| `lang` / `dir`       | Language and direction on the root container                                                                  |
-| `idPrefix`           | Instance heading prefix; only with `headingIdStrategy: "instance"`, invalid/empty values fall back to `useId` |
-| `className`          | Merged with `wikitext-view`                                                                                   |
-| `containerProps`     | Extra root attributes; `dangerouslySetInnerHTML` is excluded at the type level                                |
-| `sourceAttributes`   | `"none"` / `"block"` / `"all"`; emits `data-wikitext-*` source attributes                                     |
-| `onRenderError`      | Per-block render error callback                                                                               |
-
-`components`, `semanticComponents`, `sourceAttributes`, and `onRenderError` behave exactly as on [`WikitextView`](./view.mdx#wikitextview).
+| Prop             | Description                                                                                                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source`         | Wikitext source to render                                                                                                                                                                 |
+| `parser`         | Reuse an existing parser; otherwise a shared default parser is used                                                                                                                       |
+| `parseOptions`   | Parse options, see [`/parse`](./parse.mdx)                                                                                                                                                |
+| `prepareOptions` | Prepare options, see [`/hast`](./prepare.mdx)                                                                                                                                             |
+| `onPrepared`     | Called after a successful prepare; read `diagnostics`, `headings`, and settings                                                                                                           |
+| `onError`        | Parse/prepare failure callback; `error` is always `WikitextError`, `info.stage` tells which stage                                                                                         |
+| `fallback`       | Rendered on failure; takes over entirely and disables the built-in error container                                                                                                        |
+| Other props      | Same as [`WikitextView`](./view.mdx#wikitextview): `components`, `semanticComponents`, `lang` / `dir`, `idPrefix`, `className`, `containerProps`, `sourceAttributes`, and `onRenderError` |
 
 ### Behavior
 
@@ -89,10 +80,7 @@ On parse or prepare failure, `fallback` takes over:
 
 The error boundary isolates top-level HAST blocks; see [view components](./view.mdx#render-errors) for block-level display and `onRenderError`. Parse and prepare failures never enter the boundary: without `onError` or `fallback` they propagate to the outer boundary; with only `onError` the built-in error container renders (`prepareOptions.labels.renderFailed`); with `fallback` it takes over entirely and returning `null` renders nothing.
 
-## Related types
+## Related
 
-The root entry also exports the selected semantic types used by components: `WikitextLink`, `WikitextTemplate`, `WikitextFile`, `WikitextReference`, `WikitextTable`, `WikitextUnknown`, and others. Import full node subtypes and AST helpers from [`/ast`](./ast.mdx).
-
-## Debugging
-
-To inspect parse or render results, use `AstTree` and `NodeInspector` from [`/devtools`](./devtools.mdx); they read the same snapshot and stay out of the render path.
+- View components and `WikitextFragment`: [`/view`](./view.mdx). Selected semantic types are exported by the root entry; full node subtypes are in [`/ast`](./ast.mdx).
+- Inspect parse or render results: [`/devtools`](./devtools.mdx).

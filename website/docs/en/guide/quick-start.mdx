@@ -9,11 +9,10 @@ This page renders a snippet. For pipeline, snapshot, and entry trade-offs, see [
 
 ## Requirements
 
-- React `>=18.2 <20` (peer dependency).
-- `react-dom` is an optional peer dependency with the same range; install it for server rendering or hydration.
-- Node `>=20.19` for builds or server execution; `>=22.13` with `engine-strict`.
-- ESM and CJS builds; consumer builds with Vite and webpack 5 are covered by tests.
-- No Wikimedia, font CDN, or external API dependency at runtime.
+- React `>=18.2 <20` (peer dependency); `react-dom` is optional for server rendering or hydration.
+- Node `>=20.19` for builds or server execution.
+
+See [Status and compatibility](../project/status.mdx) for the full matrix.
 
 ## Installation
 
@@ -51,7 +50,7 @@ export default function Article() {
 `Wikitext` renders a root `div.wikitext-view`. `lang` and `dir` are written to that container for layout and assistive technology.
 
 :::warning
-`Wikitext` and `WikitextView` depend on React Context and only run in Client Components. The root entry and `/view` already ship a `"use client"` directive, so they can be used directly in Next.js App Router; the server should only call React-free entries such as `/parse` and `/hast`, as shown in [server preparation](./server-rendering.mdx).
+`Wikitext` and `WikitextView` run only in Client Components; the root entry and `/view` ship a `"use client"` directive. See [server preparation](./server-rendering.mdx) for the server-side path.
 :::
 
 ## What you get

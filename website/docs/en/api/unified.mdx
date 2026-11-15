@@ -6,7 +6,7 @@ description: Integrate wikitext processing into unified via createWikitextProces
 # unified
 
 ```ts
-import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikitext/unified";
+import { createWikitextProcessor, getWikitextSnapshot } from "react-wikitext/unified";
 ```
 
 `/unified` loads neither the default parser nor React. It provides a processor with a fixed stage order for reusing plugin combinations, registering transforms incrementally, or embedding wikitext processing in an existing unified-style build.
@@ -15,7 +15,7 @@ import { createWikitextProcessor, getWikitextParsedSnapshot } from "react-wikite
 
 Parsing, semantic conversion, and HAST sanitization must run in a fixed order. With a hand-written `unified().use(...)` chain, nothing at runtime prevents a plugin from running after the final sanitize: a later plugin returning a new tree makes the snapshot diverge from the actual output, and in-place mutation can carry unsanitized content into a snapshot marked as finalized.
 
-`createWikitextProcessor` appends the final stage internally, so host plugins always run before sanitization. There is no way — and no need — to place a plugin after finalization. `/unified` no longer exports separate parse / rehype / finalize plugins.
+`createWikitextProcessor` appends the final stage internally, so host plugins always run before sanitization. There is no way — and no need — to place a plugin after finalization. `/unified` does not export separate parse / rehype / finalize plugins.
 
 ## Basic usage
 
@@ -90,15 +90,15 @@ await processor.run(source); // plugins may return a Promise
 ## Reading snapshots inside plugins
 
 ```ts
-import { getWikitextParsedSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
+import { getWikitextSnapshot, getWikitextRenderSnapshot } from "react-wikitext/unified";
 
 processor.useWikitext(() => (tree, file) => {
-  const parsed = getWikitextParsedSnapshot(file); // parse snapshot; read-only for plugins
+  const parsed = getWikitextSnapshot(file); // parse snapshot; read-only for plugins
   void parsed;
 });
 ```
 
-- `getWikitextParsedSnapshot(file)` returns the parse snapshot for the current run.
+- `getWikitextSnapshot(file)` returns the parse snapshot for the current run.
 - `getWikitextRenderSnapshot(file)` returns the render snapshot; it is written only in the final stage, so HAST plugins cannot read it yet.
 
 ## Relation to prepareWikitext

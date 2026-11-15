@@ -50,7 +50,7 @@ export function readLocation(search: string = window.location.search): InitialLo
   };
 }
 
-export interface LocationState {
+interface LocationState {
   readonly sourceId: string;
   readonly panel: RightPanel;
   readonly treeKind: AstTreeKind;
@@ -98,7 +98,7 @@ export function writeLocation(state: LocationState): void {
   window.history.replaceState(null, "", current);
 }
 
-export function readDraft(sourceId: string): string | undefined {
+function readDraft(sourceId: string): string | undefined {
   try {
     return window.localStorage.getItem(DRAFT_PREFIX + sourceId) ?? undefined;
   } catch {

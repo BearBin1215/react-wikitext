@@ -31,7 +31,7 @@ import { createInitialState, sessionReducer } from "./reducer";
 import { useDevtoolsLabels, usePrepareOutcome, useViewProps } from "./selectors";
 
 /** 解析结果与准备结果都是派生值，不作为会话状态保存。 */
-export interface PlaygroundSession {
+interface PlaygroundSession {
   readonly state: ReturnType<typeof createInitialState>;
   readonly scene: ReturnType<typeof sceneOf>;
   readonly parseSource: string;

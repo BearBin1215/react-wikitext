@@ -1,7 +1,7 @@
 import { RENDER_MAX_HAST_DEPTH, RENDER_MAX_HAST_NODES } from "../ast/limits";
 
 /** 渲染快照的 HAST 预算；prepare 与 restore 共用同一组上限，避免合法产物无法恢复。 */
-export interface HastBudget {
+interface HastBudget {
   readonly maxNodes: number;
   readonly maxDepth: number;
 }

@@ -47,32 +47,22 @@ Four headings trigger the TOC. The `javascript:` address becomes readable text, 
 
 ## Paragraphs, text, and formatting
 
-- Consecutive inline content becomes `<p class="wikitext-paragraph">`; two or more blank lines split paragraphs, and a single newline collapses to a space.
-- Bold and italic come from MediaWiki quote syntax and render as `<b>` / `<i>`. When bold and italic are both open, the output is `<i><b>…</b></i>`.
-- Headings render as real `<h1>`–`<h6 class="wikitext-heading">` elements whose content is wrapped in `span.mw-headline`, and participate in anchors and the table of contents.
-- Horizontal rules render as `<hr class="wikitext-hr">`.
-- Comments, categories, and behavior switches do not enter the body. Categories go to the footer; behavior switches only affect the table of contents.
+Paragraph splitting, inline formatting, headings, horizontal rules, comments, categories, and behavior switches follow their rows in [Syntax support](./syntax-support.mdx#text-and-blocks). Headings additionally wrap their content in `span.mw-headline`; comments, categories, and behavior switches never enter the body.
 
 ## Lists
 
-- `*`, `#`, `;`, and `:` prefixes produce nested `<ul>`, `<ol>`, and `<dl>/<dt>/<dd>`.
-- Continuation lines join the current list item; blank lines, headings, tables, and block HTML end a list.
-- Definition lists support both `; term : definition` and `;term:definition`.
-- List scanning inside a table cell is bounded by the cell range and never consumes the next cell.
+List prefixes and output are in [Syntax support](./syntax-support.mdx#lists-and-tables). Continuation lines join the current item; blank lines, headings, tables, and block HTML end a list. List scanning inside a table cell is bounded by the cell range and never consumes the next cell.
 
 ## Tables
 
-- The output order is `<table><caption>…</caption><tbody>…`; cells are `<th>` / `<td>`.
-- Table, row, and cell attributes are kept through a whitelist; `style` keeps only a safe layout subset, while event attributes and `id` are always dropped.
-- Layout is computed on a logical grid: `colspan` / `rowspan` are clamped to the table bounds, and missing slots get filler cells (`wikitext-table__cell--filler`).
+Table output, attribute handling, `colspan` / `rowspan` layout, nested-table degradation, and `data-*` rules are in [Syntax support](./syntax-support.mdx#lists-and-tables). Additional behavior:
+
 - Only tables with the source `wikitable` class get MediaWiki 1.43 borders, background, and cell padding; plain tables keep the browser default and scroll horizontally on mobile.
 - When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
-- A wikitext table with unmatched `{|` / `|}` markers degrades to a source card. A nested wikitext table with matched markers and a nested HTML `<table>` render normally.
-- Tables allow safe `data-*` attributes but reject library-reserved names such as `data-node-id` and `data-wikitext`.
 
 ## Links
 
-Default output for each link type, the protocol allowlist, and resolver usage are in [Links and images](./links-and-images.mdx). The parts that affect rendering here: an internal link becomes an `<a>` only when `resolveLink` returns an `href`, and unlabeled external links get `[N]` in document order, counted separately from references. External links default to `rel="nofollow"` with no `target`, adjustable through `policy.externalLinkTarget` or the resolver's `target`.
+Default output for each link type, the protocol allowlist, resolver usage, and external-link policy are in [Links and images](./links-and-images.mdx); the construct matrix is in [Syntax support](./syntax-support.mdx#links-and-media).
 
 ## Files and images
 
@@ -93,14 +83,7 @@ File nodes render as a placeholder by default:
 
 ## Templates, functions, and arguments
 
-The default pipeline **does not evaluate** anything:
-
-- Templates render as a block `<details class="wikitext-template">` or an inline badge listing their parameters, using `labels.templateNotExpanded`.
-- Parser functions render the same kind of placeholder and are explicitly marked as not evaluated.
-- Arguments `{{{name|default}}}` show the name and default value.
-- Magic words inside templates, functions, and arguments do not affect the table of contents or categories.
-
-Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preserved after a failed expansion continue to render as placeholders.
+The default pipeline does not evaluate templates, parser functions, or arguments; their default output is listed in [Syntax support](./syntax-support.mdx#templates-and-functions). Use [`/expand`](./templates.mdx) when you need expansion; calls preserved after a failed expansion still render as placeholders.
 
 ## References
 
@@ -124,33 +107,11 @@ Use [`/expand`](./templates.mdx) when you need expansion. Calls that were preser
 
 ## HTML
 
-Source HTML is never injected as raw HTML. The library handles categories:
-
-- Inline tags: `b`, `i`, `u`, `span`, `code`, `ruby`, `abbr`, and similar.
-- Block tags: `div`, `p`, `blockquote`, `center`, `pre`, lists, tables, headings, and similar.
-- Void tags: `br`, `wbr`, `hr`.
-- Dropped: `meta`, `link`.
-- Forbidden: `script`, `style`, `iframe`, `object`, `embed`, form controls, `svg`, HTML `math`, and similar. The default config does not parse these tags, so source stays escaped text; if configured as HTML, the whole pair is dropped and replaced with a readable hint.
-- Unknown but non-dangerous tags: rendered as source cards, not real elements.
-
-HTML attributes keep only `class`, `title`, `dir`, `lang`, safe `style`, and table-related attributes from the whitelist. `id` and event attributes never reach the DOM. See the [security model](./security.mdx).
+Source HTML is never injected as raw HTML. Tag categories and forbidden tags are in [Syntax support](./syntax-support.mdx#html-and-extension-tags). HTML attributes keep only `class`, `title`, `dir`, `lang`, safe `style`, and table-related attributes from the whitelist. `id` and event attributes never reach the DOM. See the [security model](./security.mdx).
 
 ## Extension tags
 
-| Tag                                                                               | Current behavior                                              |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `<nowiki>`                                                                        | Plain text; links and templates are not parsed                |
-| `<pre>`                                                                           | Preserves original whitespace                                 |
-| `<ref>`                                                                           | Numbered reference + grouped endnotes                         |
-| `<references>`                                                                    | Marker; the matching group section is moved here              |
-| `<math>`                                                                          | `<code>` formula placeholder; no KaTeX                        |
-| `<syntaxhighlight>`                                                               | `<pre><code class="language-*">` source text; no highlighting |
-| `<poem>`                                                                          | Paragraphs split by blank lines, line breaks use `<br>`       |
-| `<gallery>`                                                                       | Images through `resolveImage`, otherwise file names           |
-| `<imagemap>`, `<templatestyles>`, `<chem>`, `<score>`, `<timeline>`, `<mapframe>` | Block-level source cards                                      |
-| Other unsupported extension tags                                                  | Source cards; block-level when they occupy their own line     |
-
-`semanticComponents.extension` can take over these structures by name. `<ref>` uses `semanticComponents.reference`, and `<references>` produces no component call.
+The default output of `<nowiki>`, `<pre>`, `<ref>`, `<references>`, `<math>`, `<syntaxhighlight>`, `<poem>`, `<gallery>`, `<imagemap>`, and other extension tags is listed in [Syntax support](./syntax-support.mdx). `semanticComponents.extension` can take over these structures by name; `<ref>` uses `semanticComponents.reference`, and `<references>` produces no component call.
 
 ## Unknown structures and degradation
 

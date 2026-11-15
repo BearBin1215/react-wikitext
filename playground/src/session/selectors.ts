@@ -14,7 +14,7 @@ function signature(values: readonly (string | number | boolean | undefined)[]): 
 }
 
 /** 准备结果；错误与解析错误分开保存。 */
-export interface PrepareOutcome {
+interface PrepareOutcome {
   readonly prepared?: WikitextRenderSnapshot;
   readonly prepareError?: ParseErrorInfo;
 }

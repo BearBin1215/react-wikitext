@@ -7,7 +7,7 @@ import {
   type WikitextTemplateSnapshot,
 } from "@/expand";
 import type { WikitextParser } from "@/parse";
-import { expandWikitext, parserThrowingOn, type WikitextExpandOptions } from "../helpers/expand";
+import { expandWikitext, parserThrowingOn, type TestExpandOptions } from "../helpers/expand";
 
 const request: WikitextTemplateRequest = {
   title: "Template:Own",
@@ -23,7 +23,7 @@ function snapshotOf(table: unknown): WikitextTemplateSnapshot {
   return provider.open({ key: "page", revision: "1" }) as WikitextTemplateSnapshot;
 }
 
-const asTable = (value: unknown) => value as WikitextExpandOptions["templates"];
+const asTable = (value: unknown) => value as TestExpandOptions["templates"];
 
 function expectInvalid(message: string, code: string, run: () => unknown): void {
   try {
@@ -236,9 +236,9 @@ describe("option validation", () => {
   it("rejects invalid tables and resolvers before parsing", async () => {
     const parse = vi.fn();
     const parser = { name: "trace", version: "1.0.0", parse } as unknown as WikitextParser;
-    const invalid: readonly (WikitextExpandOptions | null)[] = [
+    const invalid: readonly (TestExpandOptions | null)[] = [
       null,
-      [] as unknown as WikitextExpandOptions,
+      [] as unknown as TestExpandOptions,
       { parser, templates: asTable("templates") },
       { parser, templates: asTable(null) },
       { parser, templates: asTable([]) },
@@ -250,7 +250,7 @@ describe("option validation", () => {
     for (const options of invalid) {
       // 选项本身非法与模板表非法分别使用 INVALID_EXPAND_OPTIONS / INVALID_PROVIDER。
       await expect(
-        expandWikitext("x", options as unknown as WikitextExpandOptions),
+        expandWikitext("x", options as unknown as TestExpandOptions),
       ).rejects.toMatchObject({
         name: "WikitextExpandError",
         code: expect.stringMatching(/^INVALID_(?:EXPAND_OPTIONS|PROVIDER)$/u),

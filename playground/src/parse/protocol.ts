@@ -3,7 +3,7 @@ import type { WikitextDiagnostic, WikitextParsedSnapshot } from "react-wikitext/
 import type { ParserConfigKey } from "./configs";
 
 /** 验收台展示用的顶层调用记录；由来源图派生。 */
-export interface PlaygroundExpansionRecord {
+interface PlaygroundExpansionRecord {
   readonly kind: string;
   readonly name: string;
   readonly originalRange: readonly [number, number];

@@ -100,16 +100,7 @@ A cache key must cover every input that affects output:
 
 ## Bundle by entry
 
-| Entry      | Parser           | React | Typical use                   |
-| ---------- | ---------------- | ----- | ----------------------------- |
-| Root entry | Yes              | Yes   | Client-side source rendering  |
-| `/parse`   | Yes              | No    | Parsing, workers, build time  |
-| `/expand`  | No (host parser) | No    | Template expansion            |
-| `/view`    | No               | Yes   | Render a prepared snapshot    |
-| `/hast`    | No               | No    | Preparation and serialization |
-| `/ast`     | No               | No    | AST queries and data work     |
-
-For display-only clients, load `/view` dynamically so the parser stays out of the initial bundle:
+See [Entry points](../api/index.mdx#subpaths) for loading boundaries. For display-only clients, load `/view` dynamically so the parser stays out of the initial bundle:
 
 ```tsx
 async function loadViewer() {
@@ -130,4 +121,4 @@ async function loadViewer() {
 
 ## Measuring
 
-Numbers vary with source, config, browser, and hardware, so this documentation does not pin them. To assess a change, sample your own application scenario; maintainers run the benchmark described in [Contributing and feedback](../project/contributing.mdx).
+Numbers vary with source, config, browser, and hardware, so this documentation does not pin them. To assess a change, sample your own application scenario; maintainers can run `pnpm bench` as described in [Contributing and feedback](../project/contributing.mdx#performance-measurements).

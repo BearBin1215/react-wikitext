@@ -15,7 +15,7 @@ import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext
 
 `/ast` 不加载默认解析器，也不加载 React。`/parse` 也导出同一个工厂，但导入 `/parse` 会初始化默认 IIFE；只想使用自定义 adapter 时不要从那里导入。
 
-adapter 只负责把源码转换为源码语法树；源码归一化、预算合并、语义 AST 构建、诊断与 `meta` 由工厂完成。
+adapter 只负责把源码转换为源码语法树；源码归一化、预算合并、语义 AST 构建、诊断与 `meta` 由工厂完成。`context.limits` 提供有效的 `maxSyntaxNodes` 与 `maxDepth`，适配器可以据此提前停止。
 
 ## 语法树格式
 
@@ -187,7 +187,7 @@ export default function Demo() {
 
 ## 解析、准备与渲染
 
-上面的预览把 adapter 注册给 `createWikitextParser`，再依次交给 `prepareWikitext` 与 `WikitextView`。准备和渲染与默认 parser 完全共用；`document.meta.parser` / `parserVersion` 来自 adapter。服务端或 Worker 只需要自定义 adapter 时，直接从 `/ast` 导入工厂；`/parse` 会执行上游 IIFE。
+上面的预览把 adapter 注册给 `createWikitextParser`，再依次交给 `prepareWikitext` 与 `WikitextView`。准备和渲染与默认 parser 完全共用；`document.meta.parser` / `parserVersion` 来自 adapter。
 
 ## 边界
 

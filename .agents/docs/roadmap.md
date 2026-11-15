@@ -31,7 +31,7 @@
 | 不提供编辑器 SDK | CodeMirror 与 Worker 仅用于 playground | [设计决策](./decisions.md#12-渲染范围与非目标) |
 | 不提供大文档虚拟列表 | 依赖解析/准备预算、宿主 Worker 与减少装饰/占位 DOM | [设计决策](./decisions.md#12-渲染范围与非目标) |
 | playground 不交付 | 只用于内部验证，不构建、不部署、不发布 | [总体架构](./architecture.md#9-运行时与交付边界) |
-| 来源图是唯一坐标来源 | 快照内所有位置都是带 `sourceId` 的 span；跨 CRLF、模板展开与插件改写用 `mapSourceSpan` 映射，不要直接对原文 `slice` | [总体架构](./architecture.md#5-数据模型与来源) |
+| 来源图是唯一坐标来源 | 快照内所有位置都是带 `sourceId` 的 span；跨 CRLF、模板展开与插件改写用 `mapSourceSpan` 映射，不要直接对原文 `slice` | [总体架构](./architecture.md#5-数据模型与源码映射) |
 | 公共调度不做硬中断 | `/preview` 提供防抖、请求身份、旧结果保留与取消；同步 parser 不能被抢占，需要硬中断时宿主终止 Worker 并重建实例 | [总体架构](./architecture.md#8-性能与规模) |
 | 渲染输入仍分散在快照与视图属性 | `labels` 写入快照，`idPrefix` 只在视图；服务端与客户端必须提供同一份渲染输入才能保证 hydration 一致 | [设计决策](./decisions.md#19-公共-api-收敛2026-11-审阅) |
 

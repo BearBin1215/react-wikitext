@@ -195,10 +195,8 @@ const provider: WikitextTemplateProvider = {
 ```
 
 - `get` / `getMany` 可以同步返回，也可以返回 Promise；把 `request.signal` 传给 `fetch`，取消编译时请求会被中断。
-- `null` 表示模板不存在；`undefined` 或类型不符按获取失败处理。抛出异常记录 `TEMPLATE_RESOLVE_FAILED`。
-- 同一快照对同一标题必须返回稳定内容；内容变化必须更换 `revision`。
 - `getMany` 返回顺序可以不同，但必须按标题索引结果；缺少请求标题按获取失败处理。
-- 一次编译只使用同一个快照，编辑期间模板更新不会把两个版本混入一个结果。
+- 快照稳定性、一次编译只使用一个快照，以及 `null` / `undefined` 的语义见[展开 `/expand`](../api/expand.mdx#模板-provider)。
 
 ## 调度与缓存
 
@@ -243,7 +241,6 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 默认值、预算行为与取消语义见[展开 `/expand`](../api/expand.mdx)，错误码的完整清单见[错误与诊断](../api/errors.mdx)。
 
 - 默认模式下，最终源码解析失败会退回原始快照，`status` 为 `"fallback"`；`attemptedSourceId` 指向被放弃的展开源。
-- 原始解析失败、硬资源上限、取消与不兼容 parser 始终失败，不受 `failureMode` 影响。
 
 ## 未展开的调用如何显示
 

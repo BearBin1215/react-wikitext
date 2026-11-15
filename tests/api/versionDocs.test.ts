@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AST_SCHEMA_VERSION, RENDER_SCHEMA_VERSION, SYNTAX_SCHEMA_VERSION } from "@/ast";
+import {
+  AST_SCHEMA_VERSION,
+  COMPILATION_SCHEMA_VERSION,
+  RENDER_SCHEMA_VERSION,
+  SOURCE_GRAPH_VERSION,
+  SYNTAX_SCHEMA_VERSION,
+} from "@/ast";
 
 const read = (path: string): string => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -16,6 +22,8 @@ const SCHEMAS = {
   AST_SCHEMA_VERSION,
   SYNTAX_SCHEMA_VERSION,
   RENDER_SCHEMA_VERSION,
+  COMPILATION_SCHEMA_VERSION,
+  SOURCE_GRAPH_VERSION,
 } as const;
 
 describe("documented versions", () => {

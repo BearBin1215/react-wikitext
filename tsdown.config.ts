@@ -105,7 +105,8 @@ export default defineConfig({
   dts: {
     tsconfig: "./tsconfig.build.json",
   },
-  // 根入口、/view 与 /devtools 会调用 React hooks；在入口产物顶部声明 client 组件边界。
+  // 浏览器入口（根、/view、/preview、/worker、/devtools）统一声明 client 边界；
+  // 其中根、/view、/preview 与 /devtools 还会调用 React hooks。
   banner: ({ fileName }) =>
     /^(?:index|view|preview|worker|devtools)\.(?:js|cjs)$/u.test(fileName)
       ? '"use client";'

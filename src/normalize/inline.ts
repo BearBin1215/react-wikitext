@@ -28,7 +28,7 @@ import { needsBlockNormalization } from "./block-policy";
 import { decodeText } from "./text";
 
 /** 合成文本的来源；合成片段不带 `origin/position`。 */
-export type InlineGeneratedReason = "list-join";
+type InlineGeneratedReason = "list-join";
 
 /**
  * 行内片段：要么来自源码语法节点（可附带从源码截取的文本），要么是归一化生成的文本。

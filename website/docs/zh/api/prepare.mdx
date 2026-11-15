@@ -202,7 +202,7 @@ interface WikitextPreparePolicy {
 - `labels` 由准备阶段与默认值浅合并，最终写入 `meta.labels`。
 - 默认文案与字段见[定制指南](../guide/customization.mdx#文案)。
 - `headingIdStrategy` 决定逻辑锚点与 DOM id 的映射；`headings` 保存 `nodeId`、`level`、`text` 与可选 `id`。
-- 锚点由移除标记后的标题文本生成；语义标题与源码 `h1`–`h6` 都参与。
+- 锚点生成规则见[定制指南](../guide/customization.mdx#标题锚点)。
 
 ## 渲染快照
 
@@ -225,7 +225,7 @@ interface WikitextRenderSnapshot {
 
 ## handlers
 
-`handlers` 把自定义语义节点转换为 HAST。未注册转换函数的节点会产生诊断并降级为源码卡片。
+`handlers` 把自定义语义节点转换为 HAST；完整流程见[定制指南](../guide/customization.mdx#自定义语义节点)。
 
 ```ts
 type WikitextHastHandler<Node extends WikitextNode = WikitextNode> = (

@@ -4,12 +4,12 @@ import { DEFAULT_MAX_SOURCE_LENGTH } from "./source";
 /** 默认源码语法树的节点数上限。 */
 export const DEFAULT_MAX_SYNTAX_NODES = 50_000;
 /** 默认语义树的节点数上限。 */
-export const DEFAULT_MAX_SEMANTIC_NODES = 50_000;
+const DEFAULT_MAX_SEMANTIC_NODES = 50_000;
 /** 语法树与语义树的默认嵌套深度上限。 */
 export const DEFAULT_MAX_DEPTH = 1_000;
 
 /** 解析预算字段；解析器与展开阶段共用同一份校验规则。 */
-export interface ParseLimitOptions {
+interface ParseLimitOptions {
   /** 归一化后的源码上限。 */
   readonly maxSourceLength?: number;
   /** 源码语法树的节点数上限。 */

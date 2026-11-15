@@ -8,16 +8,16 @@ import {
 } from "./tree";
 
 /** 搜索时可以命中的节点说明文字。 */
-export type NodeLabeler = (node: AstTreeNode) => string;
+type NodeLabeler = (node: AstTreeNode) => string;
 
 /** 单个搜索结果。 */
-export interface AstTreeSearchResult {
+interface AstTreeSearchResult {
   readonly node: AstTreeNode;
   readonly source: string;
 }
 
 /** 搜索结果；超过数量上限时 `truncated` 为真。 */
-export interface AstTreeSearchState {
+interface AstTreeSearchState {
   readonly results: readonly AstTreeSearchResult[];
   readonly truncated: boolean;
 }

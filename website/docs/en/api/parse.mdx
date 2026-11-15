@@ -106,31 +106,9 @@ The same source with a different config or `pageName` can produce a different AS
 
 ## Custom adapter
 
-Import `createWikitextParser` from [`/ast`](./ast.mdx) when wiring another parser: that entry loads neither the default IIFE nor React. `/parse` also re-exports the same factory, but importing it executes the upstream IIFE, so it is a poor fit when you only need a custom adapter.
+To wire another parser, import `createWikitextParser` from [`/ast`](./ast.mdx): it loads neither the default IIFE nor React, while importing `/parse` executes the upstream IIFE. The adapter shape, syntax tree requirements, and a complete example are in [Custom parsers](../guide/custom-parser.mdx); the factory handles normalization, budgets, validation, semantic AST construction, diagnostics, and meta.
 
-```ts
-import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
-
-const adapter: WikitextParserAdapter = {
-  name: "my-parser",
-  version: "1.0.0",
-  parse(source, context) {
-    // Must return a plain object matching WikitextSyntaxRoot.
-    // Ranges are based on LF-normalized source, 1-based line/column + 0-based offset.
-    return buildSyntaxRoot(source, context);
-  },
-};
-
-const parser = createWikitextParser(adapter, {
-  defaults: { pageName: "Example" },
-});
-```
-
-- The adapter only maps source → syntax tree; normalization, budget merging, semantic AST construction, diagnostics, and meta are handled by the factory.
-- `context.limits` provides the effective `maxSyntaxNodes` and `maxDepth` so adapters can stop early.
-- The factory still validates structure, ranges, and budgets after the adapter returns.
-- The adapter's `name` / `version` are written to document meta.
-- The `WikitextParser` interface also includes `resolveOptions()`; objects created by `createWikitextParser` provide it automatically, while hand-written implementations must add it.
+A hand-written `WikitextParser` must also implement `resolveOptions()`; objects created by `createWikitextParser` provide it automatically.
 
 ## Errors
 
@@ -149,13 +127,7 @@ class WikitextParseError extends WikitextError {
 }
 ```
 
-| Code                 | Condition                                             |
-| -------------------- | ----------------------------------------------------- |
-| `SOURCE_TOO_LONG`    | Normalized source exceeds the length budget           |
-| `SOURCE_TOO_COMPLEX` | Node count or depth exceeds the budget                |
-| `INVALID_CONFIG`     | Site config is missing required fields                |
-| `PARSE_FAILED`       | Upstream parsing or semantic construction failed      |
-| `PARSER_UNAVAILABLE` | The default IIFE did not initialize the global parser |
+Code triggers and handling advice are in [Errors and diagnostics](./errors.mdx#error-codes).
 
 Node and depth limits are listed in [Performance and budgets](../guide/performance.mdx); the effective values appear in `error.message` when triggered.
 
