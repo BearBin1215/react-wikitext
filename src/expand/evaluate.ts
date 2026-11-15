@@ -38,6 +38,7 @@ import {
   urlEncode,
 } from "./functions";
 import { findChild, isCallNode, isOpaqueNode, stripRawExtensions } from "./syntax";
+import { htmlEqual, switchBranch } from "./switch";
 
 /** 规范化后的模板程序：有效正文、语法树与内容版本。 */
 export interface TemplateProgram {
@@ -178,12 +179,6 @@ function implicitNewline(text: string, previousChar: string, heading: boolean): 
   const visible = text.replace(/^(?:<!--[\s\S]*?-->)+/u, "");
   const structural = heading ? /^(?:\{\||[:;#*=])/u : /^(?:\{\||[:;#*])/u;
   return structural.test(visible);
-}
-
-function htmlEqual(left: string, right: string): boolean {
-  const a = decodeHTML(left);
-  const b = decodeHTML(right);
-  return a === b || (a !== "" && b !== "" && Number(a) === Number(b));
 }
 
 /** 判断可见输出是否带站点错误标记；`#iferror` 只依据可见输出。 */
@@ -1100,72 +1095,6 @@ export class Evaluator {
       return result(output);
     }
 
-    return this.evaluateSwitch(params, readText, readValue, dependency);
-  }
-
-  private evaluateSwitch(
-    params: readonly WikitextSyntaxNode[],
-    readText: (param: WikitextSyntaxNode | undefined) => WikitextOutput,
-    readValue: (param: WikitextSyntaxNode | undefined) => WikitextOutput,
-    dependency: () => WikitextOutput,
-  ): WikitextOutput {
-    if (params.length <= 1) {
-      return EMPTY_OUTPUT;
-    }
-    const condition = readText(params[0]);
-    if (condition.unresolved) {
-      return dependency();
-    }
-    const value = outputText(condition);
-
-    const readSwitchValue = (param: WikitextSyntaxNode): WikitextOutput =>
-      param.props.anon === true ? readValue(param) : readValue(findChild(param, "parameter-value"));
-
-    let defaultParam: WikitextSyntaxNode | undefined;
-    let found: 0 | 1 | 2 | 3 = 0;
-    for (let index = 1; index < params.length; index++) {
-      const param = params[index]!;
-      if (param.props.anon === true) {
-        if (index === params.length - 1) {
-          return readValue(param);
-        }
-        const item = readText(param);
-        if (item.unresolved) {
-          found = 3;
-          continue;
-        }
-        const text = outputText(item);
-        if (text === "#default" && found < 2) {
-          found = 1;
-          continue;
-        }
-        if (htmlEqual(text, value)) {
-          found = 2;
-        }
-        continue;
-      }
-      if (found === 2) {
-        return readSwitchValue(param);
-      }
-      if (found === 3) {
-        return dependency();
-      }
-      const key = readText(findChild(param, "parameter-key"));
-      if (key.unresolved) {
-        return dependency();
-      }
-      const text = outputText(key);
-      if (htmlEqual(text, value)) {
-        return readSwitchValue(param);
-      }
-      if (found === 1 || text.toLowerCase() === "#default") {
-        defaultParam = param;
-        found = 0;
-      }
-    }
-    if (defaultParam) {
-      return readSwitchValue(defaultParam);
-    }
-    return EMPTY_OUTPUT;
+    return switchBranch(params, readText, readValue, dependency);
   }
 }

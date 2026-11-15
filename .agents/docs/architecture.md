@@ -146,11 +146,12 @@ src/
                 不加载默认 parser
   parse/        loadParser（IIFE）、默认 adapter、buildSyntax、ranges、attributes、index；
                 仅此层加载默认 parser
-  expand/       编译器：compiler、provider、cache、scheduler、evaluate、functions、include、
-                syntax、types、index；依赖 parse 与 ast，不依赖 React、HAST、view
-  hast/         types、toHast、prepare、stages、settings、workingAst、budget、finalize、toc、
-                references、rel、sanitize、tableLayout、serialize、vfile、index；
-                无 React、parser、normalize
+  expand/       编译器：compiler、options、assemble、provider、cache、scheduler、title、
+                evaluate、switch、functions、include、syntax、types、index；依赖 parse 与 ast，
+                不依赖 React、HAST、view
+  hast/         types、primitives、toHast、extensions、prepare、stages、settings、workingAst、
+                budget、finalize、toc、references、rel、sanitize、tableLayout、serialize、
+                vfile、index；无 React、parser、normalize
   preview/      useWikitextPreview、executor 协议与 worker transport；
                 只依赖 React 与 hast 的恢复函数
   worker/       消息协议、handler 与 attach；依赖 expand、hast，不依赖 React

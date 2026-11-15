@@ -33,7 +33,16 @@ import type {
   WikitextTextSource,
 } from "../ast/sourceGraph/types";
 import { measureAsync, measureSync } from "../instrumentation";
+import { createTitleResolver } from "./title";
 import { assemble, recordInvocations } from "./assemble";
+import {
+  assertSyntaxProgram,
+  deletedRanges,
+  invalid,
+  limitsKey,
+  positive,
+  resolveBudgets,
+} from "./options";
 import { WikitextLruCache } from "./cache";
 import { Evaluator, type TemplateDemand, type TemplateProgram } from "./evaluate";
 import { filterTransclusionSource } from "./include";
@@ -47,7 +56,6 @@ import {
 import { TemplateFetcher, type SharedFetchTasks } from "./scheduler";
 import { scanProtectedRegions } from "./syntax";
 import type {
-  WikitextCompileBudget,
   WikitextCompileCallOptions,
   WikitextCompiler,
   WikitextCompilerLimitsOptions,
@@ -56,9 +64,6 @@ import type {
   WikitextInput,
 } from "./types";
 
-const DEFAULT_MAX_DEPTH = 40;
-const DEFAULT_MAX_INVOCATIONS = 1_000;
-const DEFAULT_MAX_TEMPLATES = 5_000;
 const DEFAULT_MAX_DIAGNOSTICS = 5_000;
 const DEFAULT_MAX_TEMPLATE_BYTES = 16 * 1024 * 1024;
 const DEFAULT_MAX_SOURCES = 4_096;
@@ -77,13 +82,6 @@ function entryBytes(text: string, overhead: number): number {
 /** 求值轮次上限：每轮至少解决一层模板嵌套，超过说明需求无法收敛。 */
 const MAX_ROUNDS = 256;
 
-interface ResolvedBudgets {
-  readonly maxDepth: number;
-  readonly maxInvocations: number;
-  readonly maxExpandedLength: number;
-  readonly maxTemplates: number;
-}
-
 interface TemplateProgramEntry extends TemplateProgram {
   readonly sources: readonly WikitextTextSource[];
   readonly segments: readonly WikitextSourceSegment[];
@@ -96,86 +94,6 @@ interface PageProgramEntry {
   readonly sources: readonly WikitextTextSource[];
   readonly segments: readonly WikitextSourceSegment[];
   readonly bytes: number;
-}
-
-function invalid(message: string): never {
-  throw new WikitextExpandError("INVALID_EXPAND_OPTIONS", message);
-}
-
-function positive(value: unknown, name: string, fallback: number): number {
-  if (value === undefined) {
-    return fallback;
-  }
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
-    invalid(`${name} must be a positive safe integer.`);
-  }
-  return value;
-}
-
-function nonNegative(value: unknown, name: string, fallback: number): number {
-  if (value === undefined) {
-    return fallback;
-  }
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    invalid(`${name} must be a non-negative safe integer.`);
-  }
-  return value;
-}
-
-function limitsKey(limits: ResolvedParseLimits): string {
-  return `${limits.maxSourceLength}:${limits.maxSyntaxNodes}:${limits.maxSemanticNodes}:${limits.maxDepth}`;
-}
-
-function resolveBudgets(
-  limits: ResolvedParseLimits,
-  budget: WikitextCompileBudget = {},
-): ResolvedBudgets {
-  const maxExpandedLength = nonNegative(
-    budget.maxExpandedLength,
-    "budget.maxExpandedLength",
-    limits.maxSourceLength,
-  );
-  return {
-    maxDepth: positive(budget.maxDepth, "budget.maxDepth", DEFAULT_MAX_DEPTH),
-    maxInvocations: nonNegative(
-      budget.maxInvocations,
-      "budget.maxInvocations",
-      DEFAULT_MAX_INVOCATIONS,
-    ),
-    // 展开长度不能高于最终解析能接受的长度，否则最终解析必然失败。
-    maxExpandedLength: Math.min(maxExpandedLength, limits.maxSourceLength),
-    maxTemplates: positive(budget.maxTemplates, "budget.maxTemplates", DEFAULT_MAX_TEMPLATES),
-  };
-}
-
-/** 校验 parser 返回的语法程序；缺失或畸形时报明确的不兼容错误。 */
-function assertSyntaxProgram(program: WikitextSyntaxProgram): void {
-  const syntax = program.syntax as { type?: unknown; children?: unknown } | undefined;
-  if (!syntax || syntax.type !== "root" || !Array.isArray(syntax.children)) {
-    throw new WikitextExpandError(
-      "INCOMPATIBLE_PARSER",
-      "The parser must return a syntax tree for template expansion.",
-    );
-  }
-}
-
-/** 计算 `kept` 片段之间的删除区间。 */
-function deletedRanges(
-  kept: readonly (readonly [number, number])[],
-  length: number,
-): Array<readonly [number, number]> {
-  const deleted: Array<readonly [number, number]> = [];
-  let cursor = 0;
-  for (const [start, end] of kept) {
-    if (start > cursor) {
-      deleted.push([cursor, start]);
-    }
-    cursor = Math.max(cursor, end);
-  }
-  if (cursor < length) {
-    deleted.push([cursor, length]);
-  }
-  return deleted;
 }
 
 /**
@@ -264,32 +182,7 @@ export function createWikitextCompiler(options: WikitextCompilerOptions): Wikite
     batches: 0,
   };
 
-  const resolveTitle = (
-    text: string,
-    pageName: string | undefined,
-    limits: ResolvedParseLimits,
-  ): string | undefined => {
-    const key = `${pageName ?? ""}\u0000${text}`;
-    const cached = titleCache.get(key);
-    if (cached !== undefined) {
-      return cached ?? undefined;
-    }
-    let title: string | null = null;
-    const snippet = `{{${text}}}`;
-    try {
-      const program = parser.compile(snippet, {
-        ...(pageName === undefined ? {} : { pageName }),
-        maxSourceLength: Math.max(limits.maxSourceLength, snippet.length),
-      });
-      const template = program.syntax.children.find((child) => child.type === "template");
-      const parsed = template?.props.name;
-      title = typeof parsed === "string" && parsed ? parsed : null;
-    } catch {
-      title = null;
-    }
-    titleCache.set(key, title);
-    return title ?? undefined;
-  };
+  const resolveTitle = createTitleResolver(parser, titleCache);
 
   /** 页面语法程序：静态或未变文本复用；缓存命中也要按新预算重新校验。 */
   const pageProgram = (

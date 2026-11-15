@@ -1,11 +1,7 @@
-import type { Element, ElementContent, Properties, Text } from "hast";
+import type { Element, ElementContent, Properties } from "hast";
 import {
   isWikitextParentNode,
-  type WikitextAttribute,
   type WikitextCategory,
-  type WikitextDiagnostic,
-  type WikitextDiagnosticCode,
-  type WikitextExtension,
   type WikitextFile,
   type WikitextHtmlElement,
   type WikitextLink,
@@ -13,13 +9,31 @@ import {
   type WikitextReference,
 } from "../ast/model";
 import { getFileParameters } from "../ast/helpers";
-import { getSourceText } from "../ast/query";
 import { fileLayoutIsBlock } from "../ast/file-options";
+import {
+  classNames,
+  element,
+  LINK_STATE,
+  mark,
+  REFERENCE_STATE,
+  reportDegrade,
+  sourceOf,
+  sourceProperties,
+  textNode,
+  TOC_STATE,
+  unknownElement,
+  withClassName,
+  type BuildContext,
+  type LinkState,
+  type ReferenceEntry,
+  type ReferenceGroupState,
+  type ReferenceState,
+} from "./primitives";
+import { extensionElement } from "./extensions";
 import {
   REFERENCE_COLUMNS_CLASS,
   REFERENCE_GROUP_PROPERTY,
   REFERENCE_LIST_CLASS,
-  REFERENCE_PLACEHOLDER_CLASS,
   REFERENCE_SECTION_CLASS,
   REFERENCE_TEXT_CLASS,
   REFERENCE_WRAP_CLASS,
@@ -28,153 +42,23 @@ import {
 } from "./references";
 import { applyTableLayout } from "./tableLayout";
 import { TOC_DATA_PROPERTY, TOC_PLACEHOLDER_CLASS } from "./toc";
-import {
-  clampDimension,
-  sanitizeHref,
-  sanitizeImageUrl,
-  sanitizedAttributesToProps,
-} from "./sanitize";
+import { clampDimension, sanitizeHref, sanitizeImageUrl } from "./sanitize";
 import type {
-  WikitextHastData,
   WikitextHastHandler,
-  WikitextHastMeta,
-  WikitextToHastContext,
   WikitextToHastInput,
   WikitextToHastResult,
   WikitextTocMode,
 } from "./types";
 
-const REFERENCE_STATE = Symbol("wikitext.references");
-const LINK_STATE = Symbol("wikitext.links");
-const TOC_STATE = Symbol("wikitext.toc");
+const OPAQUE_SYMBOL_TYPES = new Set(["template", "parserFunction", "argument"]);
 
-interface ReferenceEntry {
-  readonly node: WikitextReference;
-  readonly number: number;
-  readonly group: string;
-  /** Cite 1.43 的全局 key：命名引用首次出现时分配，重复引用不增加。 */
-  readonly key: number;
-  readonly name?: string;
-  occurrences: number;
-}
-
-interface ReferenceGroupState {
-  readonly name: string;
-  readonly entries: ReferenceEntry[];
-  readonly definitions: Map<string, ReferenceEntry>;
-}
-
-interface ReferenceState {
-  readonly groups: Map<string, ReferenceGroupState>;
-  buildingList: boolean;
-  nextKey: number;
-}
-
-interface LinkState {
-  nextAutonumber: number;
-}
-
-interface TocState {
-  readonly mode: WikitextTocMode;
-}
-
+/** 一次预扫描得到的分类、目录与行为开关。 */
 interface SymbolScan {
   readonly categories: WikitextCategory[];
   readonly toc: boolean;
   readonly notoc: boolean;
   readonly forcetoc: boolean;
 }
-
-type BuildContext = WikitextToHastContext & {
-  readonly [REFERENCE_STATE]: ReferenceState;
-  readonly [LINK_STATE]: LinkState;
-  readonly [TOC_STATE]: TocState;
-  readonly authorizedImages: Set<string>;
-  readonly diagnostics: WikitextDiagnostic[];
-  readonly convert: (node: WikitextNode) => ElementContent | ElementContent[] | null;
-  readonly convertChildren: (nodes: readonly WikitextNode[]) => ElementContent[];
-};
-
-function mark(node: WikitextNode): { wikitext: WikitextHastMeta } {
-  return {
-    wikitext: {
-      id: node.id,
-      type: node.type,
-      ...(node.origin ? { origin: node.origin } : {}),
-      ...(node.origin ? {} : { generated: true }),
-    },
-  };
-}
-
-function textNode(value: string, data?: WikitextHastData): Text {
-  return { type: "text", value, ...(data ? { data } : {}) };
-}
-
-function element(
-  tagName: string,
-  properties: Properties,
-  children: ElementContent[],
-  node?: WikitextNode,
-): Element {
-  return {
-    type: "element",
-    tagName,
-    properties,
-    children,
-    ...(node ? { data: mark(node) } : {}),
-  };
-}
-
-function classNames(...names: string[]): string[] {
-  return names.flatMap((name) => name.split(/\s+/u)).filter(Boolean);
-}
-
-function withClassName(properties: Properties, ...names: string[]): Properties {
-  return {
-    ...properties,
-    className: classNames(...names, ...((properties.className as string[] | undefined) ?? [])),
-  };
-}
-
-function sourceOf(context: BuildContext, node: WikitextNode): string {
-  return getSourceText(context.document, node);
-}
-
-/** 为一次明确的降级追加诊断；位置与来源直接取自语义节点。 */
-function reportDegrade(
-  context: BuildContext,
-  node: WikitextNode,
-  code: WikitextDiagnosticCode,
-  message: string,
-  severity: WikitextDiagnostic["severity"] = "warning",
-): void {
-  context.reportDiagnostic({
-    code,
-    stage: "hast",
-    severity,
-    message,
-    ...(node.origin ? { location: node.origin } : {}),
-  });
-}
-
-/** 源码属性转换；被丢弃的样式声明同时产生诊断。 */
-function sourceProperties(
-  context: BuildContext,
-  node: WikitextNode & { readonly attributes: readonly WikitextAttribute[] },
-  tag: string,
-): Properties {
-  return sanitizedAttributesToProps(node.attributes, tag, {
-    onStyleDropped: (dropped) =>
-      reportDegrade(
-        context,
-        node,
-        "STYLE_DECLARATION_DROPPED",
-        `Dropped unsupported inline style declaration: ${dropped.join(", ")}.`,
-      ),
-  });
-}
-
-const OPAQUE_SYMBOL_TYPES = new Set(["template", "parserFunction", "argument"]);
 
 function scanSymbols(root: WikitextNode): SymbolScan {
   const categories: WikitextCategory[] = [];
@@ -349,63 +233,6 @@ function convertChildren(context: BuildContext, nodes: readonly WikitextNode[]):
     }
   }
   return result;
-}
-
-function unknownElement(
-  context: BuildContext,
-  node: WikitextNode,
-  parserType: string,
-  value: string,
-  block: boolean,
-  reason?: string,
-): Element {
-  const label = reason
-    ? reason === "nestedTableUnsupported"
-      ? context.labels.nestedTableUnsupported
-      : reason
-    : `${context.labels.unknownNode}: ${parserType}`;
-  if (reason === "nestedTableUnsupported") {
-    return element(
-      "section",
-      { className: classNames("wikitext-table--degraded"), role: "note" },
-      [
-        element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
-        element("pre", { className: ["wikitext-unknown__source"] }, [textNode(value)]),
-      ],
-      node,
-    );
-  }
-  if (block) {
-    return element(
-      "section",
-      {
-        className: ["wikitext-unknown", "wikitext-unknown--block"],
-        dataNodeType: parserType,
-        dataNodeId: node.id,
-      },
-      [
-        element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
-        element("pre", { className: ["wikitext-unknown__source"] }, [textNode(value)]),
-      ],
-      node,
-    );
-  }
-  return element(
-    "span",
-    {
-      className: ["wikitext-unknown", "wikitext-unknown--inline"],
-      dataNodeType: parserType,
-      dataNodeId: node.id,
-      title: label,
-    },
-    [
-      element("span", { className: ["wikitext-unknown__label"] }, [textNode(label)]),
-      element("code", { className: ["wikitext-unknown__source"] }, [
-        textNode(value.length > 160 ? `${value.slice(0, 160)}…` : value),
-      ]),
-    ],
-    node,
-  );
 }
 
 function isEmptyLabel(children: readonly ElementContent[]): boolean {
@@ -963,159 +790,6 @@ function referencesSections(context: BuildContext, state: ReferenceState): Eleme
   });
   state.buildingList = false;
   return sections;
-}
-
-function extensionElement(context: BuildContext, node: WikitextExtension): Element | Text | null {
-  const raw = node.raw ?? "";
-  switch (node.name) {
-    case "references": {
-      const group =
-        node.attributes.find((attribute) => attribute.name === "group")?.value?.trim() ?? "";
-      return element(
-        "section",
-        {
-          className: [REFERENCE_PLACEHOLDER_CLASS],
-          [REFERENCE_GROUP_PROPERTY]: group,
-        },
-        [],
-        node,
-      );
-    }
-    case "nowiki":
-      // MediaWiki 1.43 的 nowiki 只输出纯文本，不生成包裹元素。
-      return textNode(raw);
-    case "pre":
-      return element(
-        "pre",
-        { className: ["wikitext-ext-pre"], dataNodeId: node.id },
-        [textNode(raw)],
-        node,
-      );
-    case "syntaxhighlight": {
-      const language =
-        node.attributes.find((attribute) => attribute.name === "lang")?.value?.trim() ?? "";
-      const safeLanguage = /^[A-Za-z0-9_-]+$/u.test(language) ? language.toLowerCase() : "";
-      const classes = ["wikitext-ext-code", ...(safeLanguage ? [`language-${safeLanguage}`] : [])];
-      return element(
-        "pre",
-        { className: classes, dataNodeId: node.id },
-        [
-          element("code", safeLanguage ? { className: [`language-${safeLanguage}`] } : {}, [
-            textNode(raw),
-          ]),
-        ],
-        node,
-      );
-    }
-    case "poem": {
-      const stanzas = raw
-        .split(/\n[ \t]*\n/u)
-        .map((stanza) => stanza.trim())
-        .filter(Boolean);
-      return element(
-        "div",
-        { className: ["wikitext-poem"], dataNodeId: node.id },
-        stanzas.map((stanza) => {
-          const children: ElementContent[] = [];
-          for (const [index, line] of stanza.split("\n").entries()) {
-            if (index > 0) {
-              children.push(element("br", {}, []));
-            }
-            children.push(textNode(line));
-          }
-          return element("p", { className: ["wikitext-poem__stanza"] }, children);
-        }),
-        node,
-      );
-    }
-    case "math":
-      return element(
-        "code",
-        { className: ["wikitext-math"], dataNodeId: node.id, title: context.labels.unknownNode },
-        [textNode(raw)],
-        node,
-      );
-    case "gallery": {
-      const lines = raw
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-      return element(
-        "div",
-        { className: ["wikitext-gallery"], dataNodeId: node.id },
-        lines.map((line) => {
-          const [file = "", ...rest] = line.split("|");
-          const name = file.replace(/^(?:File|Image):/iu, "").trim();
-          const caption = rest.join("|").trim();
-          // gallery 行不是独立的 file 节点；给 resolver 一个等价的最小文件节点。
-          const fileNode: WikitextFile = {
-            type: "file",
-            id: node.id,
-            name,
-            parameters: [],
-            captionKind: "none",
-            attributes: [],
-            children: [],
-            ...(node.origin ? { origin: node.origin } : {}),
-          };
-          const resolved = context.resolveImage?.(
-            { name, parameters: [], caption },
-            { document: context.document, ast: context.ast, node: fileNode },
-          );
-          const src = resolved?.src
-            ? sanitizeImageUrl(resolved.src, { allowRelative: context.policy.allowRelativeImages })
-            : null;
-          if (src) {
-            context.authorizedImages.add(src);
-          }
-          let media: ElementContent;
-          if (src) {
-            const image = element(
-              "img",
-              {
-                className: ["wikitext-gallery__image"],
-                src,
-                alt: resolved?.alt ?? (caption || name),
-              },
-              [],
-            );
-            image.data = { wikitext: { ...mark(node).wikitext, imageSource: "resolver" } };
-            media = image;
-          } else {
-            media = element("span", { className: ["wikitext-gallery__label"] }, [textNode(name)]);
-          }
-          return element(
-            "figure",
-            {
-              className: [
-                "wikitext-gallery__item",
-                src ? "wikitext-gallery__item--media" : "wikitext-gallery__item--placeholder",
-              ],
-            },
-            [
-              media,
-              ...(caption
-                ? [
-                    element("figcaption", { className: ["wikitext-gallery__caption"] }, [
-                      textNode(caption),
-                    ]),
-                  ]
-                : []),
-            ],
-          );
-        }),
-        node,
-      );
-    }
-    default:
-      reportDegrade(
-        context,
-        node,
-        "EXTENSION_UNSUPPORTED",
-        `Extension tag "${node.name}" has no default renderer and is shown as a source card.`,
-      );
-      return unknownElement(context, node, "ext", sourceOf(context, node), node.block);
-  }
 }
 
 function listElement(
