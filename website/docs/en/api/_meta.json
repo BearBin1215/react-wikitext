@@ -1,19 +1,21 @@
 [
   { "type": "section-header", "label": "Overview" },
-  { "type": "file", "name": "index", "label": "Entry Points" },
+  { "type": "file", "name": "index", "label": "Entry overview" },
   { "type": "section-header", "label": "Rendering" },
-  { "type": "file", "name": "react", "label": "React Components" },
+  { "type": "file", "name": "react", "label": "React components" },
+  { "type": "file", "name": "view", "label": "View components /view" },
+  { "type": "file", "name": "devtools", "label": "Devtools /devtools" },
   { "type": "section-header", "label": "Pipeline" },
   { "type": "file", "name": "parse", "label": "Parsing /parse" },
   { "type": "file", "name": "ast", "label": "AST /ast" },
   { "type": "file", "name": "prepare", "label": "Preparation /hast" },
   { "type": "file", "name": "expand", "label": "Expansion /expand" },
+  { "type": "section-header", "label": "Scheduling" },
   { "type": "file", "name": "preview", "label": "Realtime preview /preview" },
   { "type": "file", "name": "worker", "label": "Worker /worker" },
-  { "type": "section-header", "label": "Extended entries" },
+  { "type": "section-header", "label": "Extensions" },
   { "type": "file", "name": "unified", "label": "unified" },
   { "type": "file", "name": "configs", "label": "configs" },
-  { "type": "file", "name": "devtools", "label": "Devtools /devtools" },
   { "type": "section-header", "label": "Errors" },
-  { "type": "file", "name": "errors", "label": "Errors and Diagnostics" }
+  { "type": "file", "name": "errors", "label": "Errors and diagnostics" }
 ]

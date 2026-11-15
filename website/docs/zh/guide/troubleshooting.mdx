@@ -8,7 +8,7 @@ description: 常见显示、构建与错误码问题，以及定位问题的固�
 先按下面的步骤排查，通常能直接定位问题：
 
 1. 看占位文案：`labels` 能区分“未求值”“已拦截”“未知结构”。
-2. 看 `document.diagnostics`：每条诊断带有 `stage`、`code` 与源码位置。
+2. 看 `snapshot.diagnostics`：每条诊断带有 `stage`、`code` 与源码位置。
 3. 缩小到最小源码与最小选项；去掉自定义插件与组件后复现。
 
 不确定某个占位是否正常时，先对照[概览的默认输出](./introduction.mdx#默认输出)与[支持矩阵](./syntax-support.mdx)。
@@ -74,6 +74,6 @@ for (const diagnostic of prepared.diagnostics) {
 - 最小 wikitext 源码与 `pageName`。
 - 使用的入口、解析与准备选项（可脱敏）。
 - 库版本、`parserVersion`、React 与打包器版本。
-- `document.diagnostics` 与完整错误对象的 `code`、`stage`、`cause`。
+- `snapshot.diagnostics` 与完整错误对象的 `code`、`stage`、`cause`。
 
 更多渠道见[参与与反馈](../project/contributing.mdx)。

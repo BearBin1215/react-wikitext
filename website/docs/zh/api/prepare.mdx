@@ -157,7 +157,7 @@ interface WikitextResolvedImage {
 - 尺寸限制在 1–4096，最终 `<img>` 固定带 `loading="lazy"`。
 - `context.document` 是原始解析快照，`context.ast` 与 `context.node` 是本次工作树。
 
-解析回调只返回普通数据，不返回 React 元素。需要自定义外观时使用视图的 [`semanticComponents`](./react.mdx#语义组件)。
+解析回调只返回普通数据，不返回 React 元素。需要自定义外观时使用视图的 [`semanticComponents`](./view.mdx#语义组件)。
 
 ## 安全策略
 
@@ -208,6 +208,10 @@ interface WikitextPreparePolicy {
 
 ```ts
 interface WikitextRenderSnapshot {
+  kind: "render";
+  id: string;
+  activeSourceId: WikitextSourceId;
+  graph: WikitextSourceGraph;
   source: string;
   ast: WikitextRoot;
   hast: import("hast").Root;

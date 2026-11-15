@@ -88,7 +88,7 @@ interface WikitextCompileCallOptions {
 | `cache.maxEntries` / `maxBytes`   | `500` / `16 MiB`        | Entry and byte bounded LRU                                                               |
 | `fetch.concurrency` / `batchSize` | `4` / `50`              | Concurrency cap and `getMany` batch size                                                 |
 
-Original parse failures, hard resource limits, cancellation and incompatible parsers always fail.
+Original parse failures, hard resource limits, cancellation, and incompatible parsers always fail, regardless of `failureMode`.
 
 ## Template provider
 

@@ -21,17 +21,7 @@
 
 ## 2. 处理链
 
-```text
-WikitextParsedSnapshot.ast
-  ── 语义归一化结果（parse 阶段已完成）──
-  ── wikitextPlugins（克隆工作树）──
-  ── resolver + toHast ──▶ HAST（含引用区、分类底栏、目录占位）
-  ── rehypePlugins ──▶ HAST
-  ── sanitize + finalize ──▶ WikitextRenderSnapshot（链接/图片属性、引用 id、标题锚点、目录）
-  ── WikitextView / hast-util-to-jsx-runtime ──▶ React
-```
-
-归一化负责“内容结构是什么”，HAST 转换负责“显示为哪些 HTML 元素”，最终整理负责“安全属性、引用 id、标题锚点与目录”，React 层负责“组件映射、实例 id、错误隔离”。
+处理链与各阶段职责见[总体架构](./architecture.md#3-处理管线)。本规范从语义归一化的输出开始，覆盖到最终 HAST 与 React 映射。
 
 ## 3. 块级语义归一化
 
@@ -73,7 +63,7 @@ WikitextParsedSnapshot.ast
 ### 3.4 表格
 
 - `td[subtype=caption]` → `tableCaption`；多个 caption 只取第一个。wikitext caption 的属性（如 `align`）保存在 `tableCaption.attributes`，与源码 HTML caption 使用同一属性白名单。
-- 直接挂在 `table` 下的连续 `td` 单元格组成隐式 `tableRow`；遇到显式 `tr` 或表格结束时，结束当前行。
+- 直接作为 `table` 子节点的连续 `td` 单元格组成隐式 `tableRow`；遇到显式 `tr` 或表格结束时，结束当前行。
 - 显式 `tr` 只有在包含至少一个 `td` 时才生成 `tableRow`；空行或只含 caption 的行不产生行节点。
 - 单元格内容默认行内归一化；存在列表、定义列表、标题、表格、块级扩展、块级/禁止 HTML，或 text 含空行分段时，改为块级归一化，并把范围限制在单元格内容内。
 - 表格属性、行属性、单元格属性从语法属性读取，保留原始 `WikitextAttribute`，安全过滤在 HAST 阶段完成。
@@ -288,53 +278,30 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ## 8. 扩展标签
 
-扩展标签统一生成 `extension` 语义节点，保存 `name`、`attributes`、`selfClosing`、`block` 与已解码的内部原文 `raw`。`children` 当前为空，避免重复输出标记。
+各扩展标签的输出实现在 `extensions.ts`，需要保持的约定：
 
-| 标签 | 当前行为 |
-| --- | --- |
-| `nowiki` | 纯文本，实体解码，不解析链接/模板；与 MediaWiki 1.43 一样不生成包裹元素 |
-| `pre` | `<pre class="wikitext-ext-pre">` 原始文本，保留空白 |
-| `ref` | 编号 `<sup>` + 分组引用区；见 7.4 |
-| `references` | `<references/>` 占位；最终整理把对应分组引用区放到占位处 |
-| `math` | `<code class="wikitext-math">` 公式源码占位；不引入 KaTeX |
-| `syntaxhighlight` | `<pre class="wikitext-ext-code language-<lang>"><code class="language-<lang>">` 原始文本；不接语法高亮 |
-| `poem` | `<div class="wikitext-poem">`，按空行分段，段内换行输出 `<br>` |
-| `gallery` | `<div class="wikitext-gallery">`；每行文件名可经 `resolveImage` 出图，否则显示文件名与说明 |
-| `imagemap`、`templatestyles`、`chem`、`score`、`timeline`、`mapframe` | 块级源码卡片；无论行内还是独立成行都按块级展示 |
-| 其他未专门支持的标签 | 源码卡片；独立成行时按块级展示 |
-
-- 未专门支持的标签同样保留名称、属性与内部原文，默认展示为源码卡片并产生 `EXTENSION_UNSUPPORTED` 诊断，不递归渲染内部节点。
-- `block` 对块级扩展标签集合始终为 true；其他未专门支持的标签只有在独立成行时才标记为块级。
-- 行内源码卡片会截断过长的源码；块级卡片展示完整源码。
-- `semanticComponents.extension` 会收到除 `ref` 外的 `extension` 节点；`ref` 走 `semanticComponents.reference`，`<references>` 占位不产生组件调用，最终整理直接输出分组引用区。宿主可以按 `name` 接管未专门支持的标签。
+- `nowiki` 只输出纯文本；`pre` 与 `syntaxhighlight` 使用 `pre` 元素，不做语法高亮。
+- `poem` 按空行分段，段内换行输出 `br`；`gallery` 逐行经 `resolveImage` 出图，未授权时显示文件名与说明。
+- `references` 只输出分组占位，引用区在最终整理阶段生成；`math` 与未专门支持的标签输出源码卡片。
+- 未专门支持的标签保留名称、属性与内部原文，产生 `EXTENSION_UNSUPPORTED`，不递归渲染内部节点。
+- `block` 对块级扩展标签始终为 `true`，其他标签只在独立成行时标记为块级。
+- `semanticComponents.extension` 收到除 `ref` 外的扩展节点；`ref` 走 `reference`，`references` 占位不产生组件调用。
 
 ## 9. 表格细节
 
-- 输出顺序固定为 `<table><caption>…</caption><tbody>…`；caption 不放进行。
-- 仅带源 `wikitable` class 的表格套用 MediaWiki 网格视觉（1px 边框、`f8f9fa` 背景、`0.2em 0.4em` 单元格内边距、居中表头）；普通 wikitext 表格保持浏览器默认表格外观。移动端 639px 以下表格可横向滚动。
-- 每个含单元格的显式行生成 `<tr class="wikitext-table__row">`；隐式行只在有直接单元格时生成。表体固定为 `<tbody class="wikitext-table__body">`。
-- 单元格按 `kind` 生成 `<th>`/`<td>`，class 为 `wikitext-table__cell`；表格本身带 `wikitext-table`。
-- 表格、行、单元格属性使用 `sanitizedAttributesToProps`，按标签白名单保留：表格 `class`、`title`、`dir`、`lang`、`align`、`bgcolor`、`border`、`cellpadding`、`cellspacing`、`frame`、`rules`、`summary`、`width`；行 `align`、`valign`、`bgcolor`；单元格 `scope`、`colspan`/`rowspan`、`abbr`、`headers`、`axis`、`width`、`height`、`bgcolor`、`nowrap`、`align`、`valign`；表格相关标签允许安全的 `data-*`（保留 `data-sort-value` 等，拒绝 `data-node-id`、`data-node-type`、`data-wikitext`、`data-mw*`、`data-parsoid`、`data-wikitext-toc`）。所有标签继续丢弃 `style`、事件属性和 `id`。
-- 表格布局在 HAST 阶段按逻辑网格计算：`colspan` 限制在当前空闲列区间内，`rowspan` 限制在剩余行数内，越界声明不会溢出表格或与已有跨行/跨列区域重叠。
-- 每行补足到表格最大逻辑列数：未被本行单元格或跨行单元格占用的空位生成带 `wikitext-table__cell--filler` 的 `<td>`（wikitext 表格同时带 `wikitext-table__cell`），填充单元格不带语义节点，默认无边框、无内边距，不改变原有单元格内容与对齐。逻辑列数超过 100 或单表所需填充格超过 1000 时只缩小 span，不补格。
-- 最终 HAST 节点数超过固定预算时，语义 wiki 表格行末连续的空补位格会被省略，并记录每表一条 `TABLE_FILLER_BUDGET_EXCEEDED` 警告。只处理库生成、完全为空、无 `data` / `data-node-id` 的补位格；未超限的表格 DOM 不变，HTML 表格与插件写入的单元格不参与。省略后仍超预算或深度超限时整页准备失败。
-- HTML `<table>` 的直接 `<tr>` / `<td>` / `<th>` 行同样执行该布局；未支持的表格分组（如 `tbody`）不参与。HTML 表格的填充单元格只带 `wikitext-table__cell--filler`。
-- `colspan`/`rowspan` 的原始属性仍按 1–1000 clamp；布局计算只在此基础上进一步缩小，不会放大声明值。对齐、宽度和背景色只作为 HTML 属性输出。
-- 单元格内容可以是行内或块级；块级内容在 `<td>`/`<th>` 内生成段落、列表等。
-- 单元格内列表扫描不会跨入下一个单元格。
-- wikitext 嵌套表格降级为 `section.wikitext-table--degraded[role="note"]` 源码卡片，文案来自 `labels.nestedTableUnsupported`。
-- HTML `<table>` 嵌套可正常渲染，class 使用 `wikitext-html-block wikitext-html-table`。
+- 输出顺序固定为 `table > caption > tbody`；caption 不放入行。
+- 只有源 `wikitable` class 套用 MediaWiki 网格视觉，普通 wikitext 表格保持浏览器默认外观；移动端表格可横向滚动。
+- 表格布局在 HAST 阶段按逻辑网格计算：`colspan` 限制在空闲列区间内，`rowspan` 限制在剩余行数内，越界声明不会溢出表格。
+- 每行补足到最大逻辑列数，空位生成补位单元格；逻辑列数超过 100 或单表补位超过 1000 时只缩小 span，不补格。
+- 最终 HAST 超过预算时省略行末连续的空补位格并记录 `TABLE_FILLER_BUDGET_EXCEEDED`；省略后仍超限则整页准备失败。
+- 嵌套 wikitext 表格降级为源码卡片；HTML 表格嵌套可正常渲染。
+- class 名称、补位属性与 HTML 表格的差异以 `tableLayout.ts` 与渲染测试为准。
 
 ## 10. HTML 白名单、配对与禁止内容
 
 ### 10.1 分类
 
-- **行内**：`b`, `strong`, `i`, `em`, `u`, `s`, `del`, `ins`, `sub`, `sup`, `code`, `small`, `big`, `span`, `mark`, `abbr`, `q`, `ruby`, `rb`, `rt`, `rp`, `bdi`, `bdo`, `cite`, `dfn`, `kbd`, `samp`, `data`, `time`, `var`, `font`。
-- **块级**：`div`, `p`, `blockquote`, `center`, `pre`, `ul`, `ol`, `dl`, `table`, `caption`, `tr`, `td`, `th`, `h1`–`h6`, `li`, `dt`, `dd`。
-- **void**：`br`, `wbr`, `hr`。
-- **丢弃**：`meta`, `link` 不产生元素。
-- **禁止**：`script`, `style`, `iframe`, `object`, `embed`, `form`, `input`, `button`, `textarea`, `select`, `option`, `svg`, `math`（HTML 版本）等；整对内容丢弃并显示可读占位，不执行。
-- **未知但非危险**：不作为真实元素渲染，按源码卡片展示。
+标签按行内、块级与 void 分类，白名单定义在 `sanitize.ts`；`meta` 与 `link` 不产生元素。脚本、表单、`iframe`/`object`/`embed`、SVG 与 MathML 等可执行或嵌入内容属于禁止项，整对丢弃并显示可读占位。未知但非危险的标签按源码卡片展示。
 
 ### 10.2 配对
 
@@ -346,15 +313,12 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ### 10.3 属性
 
-源码 HTML 属性从语义节点 `attributes` 读取，按标签白名单重建：
+允许的属性按标签定义在 `sanitize.ts`：通用属性为 `class`、`title`、`dir`、`lang`，表格与图片另有专用集合，表格相关标签允许安全的 `data-*`。以下规则不可省略：
 
-- 通用：`class`, `title`, `dir`, `lang`。
-- 表格：`align`, `bgcolor`, `border`, `cellpadding`, `cellspacing`, `frame`, `rules`, `summary`, `width`；行：`align`, `valign`, `bgcolor`；单元格：`colspan`, `rowspan`, `scope`, `abbr`, `headers`, `axis`, `width`, `height`, `bgcolor`, `nowrap`, `align`, `valign`；caption：`align`；表格相关标签允许安全的 `data-*`。
-- `id`：不在白名单，直接丢弃，避免 DOM clobbering 与宿主页面冲突。
-- `style`：只保留排版与外观相关的安全子集（颜色、字体、对齐、宽高、边框、间距、浮动等）；`url(`、`expression(`、`var(`、`@import`、`!important`、反斜杠与尖括号等声明整条丢弃，并产生 `STYLE_DECLARATION_DROPPED` 诊断。插件写入的 `style` 在清洗后按同一规则过滤。
-- 事件属性（`on*`）、`srcdoc`、`href`/`src`：不在 HTML 标签白名单内；链接/图片通过 wiki 语法与 resolver 处理。源码 `<img>` 是 void 元素，`src`/`alt`/`width`/`height` 按图片属性白名单保留。
-- `class` 做 token 字符集校验；`dir` 只允许 `ltr|rtl|auto`；`lang` 做粗校验；`colspan`/`rowspan` clamp 到 1–1000；`nowrap` 作为布尔属性输出。
-- 属性值先做实体解码，再校验；禁止把实体编码的 `javascript:` 漏过 URL 检查。
+- `id` 不在白名单，直接丢弃，避免 DOM clobbering。
+- `style` 只保留排版与外观的安全子集；`url(`、`expression(`、`var(`、`@import`、`!important`、反斜杠与尖括号等声明整条丢弃，并产生 `STYLE_DECLARATION_DROPPED`。
+- 事件属性、`srcdoc` 与源码 `href`/`src` 不进入 HTML 白名单；链接和图片通过 wiki 语法与 resolver 处理。
+- 属性值先做实体解码再校验，禁止实体编码的 `javascript:` 绕过 URL 检查；`colspan`/`rowspan` clamp 到 1–1000。
 
 ## 11. 最终清洗与禁止内容
 
@@ -424,15 +388,9 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 
 ## 14. 样式
 
-- 库自有 class 以 `wikitext-` 前缀开头；为贴近 MediaWiki 1.43，也会输出 `mw-headline`、`toc`、`toctitle`、`toctogglecheckbox`、`toctogglespan`、`toctogglelabel`、`tocnumber`、`toctext`、`toclevel-*`、`tocsection-*`、`external`、`text`、`free`、`autonumber`、`new`、`reference`、`references`、`mw-references-wrap`、`mw-references-columns`、`mw-cite-backlink`、`reference-text`、`cite-bracket`、`catlinks`、`mw-normal-catlinks`、`redirectMsg`、`redirectText`、`mw-default-size`、`mw-halign-*`、`mw-file-element`、`mw-file-description` 等兼容 class。
-- `styles.css` 只含页面渲染规则，`devtools.css` 只含树与检查器规则，两者都 `@import "./tokens.css"`；主题 token 只有一份来源，构建时一并发布为 `dist/tokens.css`。样式源码使用原生嵌套，构建时经 lightningcss 展开为平铺规则；展开不内联 `@import`。playground 只消费公开样式，不维护私有副本。
-- 使用 CSS Variables：`--wikitext-font-mono`、`--wikitext-text`、`--wikitext-muted`、`--wikitext-border`、`--wikitext-border-strong`、`--wikitext-accent`、`--wikitext-accent-soft`、`--wikitext-neutral`、`--wikitext-placeholder-bg`、`--wikitext-danger`。
-- 基础排版与内容样式参考 MediaWiki 1.43 skinning：根容器使用 1.6 行高并建立浮动上下文；标题使用 188%/150%/128%/116%/108%/100% 字号、h1/h2 常规字重与底边线；段落、列表、水平线、`code`/`pre`、`.wikitable`、TOC、分类、引用与媒体各自使用对应的 1.43 间距和边框规则。宿主可通过 token 覆盖颜色，不承诺像素级外观一致。
-- token 定义在 `:root`，宿主可在任意祖先覆盖；库不设置全局元素样式。页面字体默认继承宿主。
-- 容器可选 `lang` / `dir`；`dir="rtl"` 时列表、表格、缩进正常排版。
-- 深色主题通过 `[data-wikitext-theme="dark"]` 或宿主 CSS Variables 覆盖，不依赖媒体查询强制。
-- 生成节点自身不写内联样式；唯一例外是目录折叠 checkbox 的 `display:none`，用于无 CSS 时隐藏控件，样式表再以 `!important` 覆盖为可聚焦控件。除此之外，内联样式只来自源码 HTML 与插件写入的白名单 `style` 声明（见第 10 节清洗规则），其余声明一律丢弃；`hast-util-to-jsx-runtime` 的表格对齐转 style 选项显式关闭。
-- 占位文案来自 `labels`，不硬编码在组件里；默认英文，playground 传中文。
+- 库自有 class 使用 `wikitext-` 前缀；为贴近 MediaWiki 1.43，还会输出固定的兼容 class，清单以渲染测试与样式源码为准。
+- `styles.css` 与 `devtools.css` 只含各自规则，并 `@import "./tokens.css"`；token 只有一份来源，构建时发布为 `dist/tokens.css`。源码使用原生嵌套，构建时展开为平铺规则，不内联 `@import`。
+- token 名称、默认值与基础排版细节以 `tokens.css` 和样式源码为准；宿主可在任意祖先覆盖 token，库不设置全局元素样式，页面字体继承宿主，不承诺像素级外观一致。
 
 ## 15. 公开 DOM 与样式承诺
 

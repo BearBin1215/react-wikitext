@@ -9,7 +9,7 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 
 ## 处理管线
 
-管线的阶段、可选展开与两种快照的关系见[工作原理](../guide/concepts.mdx)；各阶段使用的入口见下面的子路径表。
+管线的阶段、可选展开与快照类型的关系见[工作原理](../guide/concepts.mdx)；各阶段使用的入口见下面的子路径表。
 
 ## 子路径
 
@@ -55,25 +55,26 @@ description: 子路径提供的功能、加载边界与解析/渲染快照的区
 
 ## 类型与错误
 
-- 四个错误类（`WikitextError`、`WikitextParseError`、`WikitextExpandError`、`WikitextPrepareError`）在根入口与各自的功能入口导出，是同一份定义；宿主不需要为了 `instanceof` 从不同子路径分别导入。
+- 错误类（`WikitextError`、`WikitextParseError`、`WikitextExpandError`、`WikitextPrepareError`）在根入口与各自的功能入口导出，是同一份定义；宿主不需要为了 `instanceof` 从不同子路径分别导入。
 - `WikitextLabels` 类型可从 `/ast` 与 `/view` 导入；默认值 `DEFAULT_WIKITEXT_LABELS` 与 `DEFAULT_PREPARE_POLICY` 从 `/hast` 导出。
 - 完整节点子类型、`WikitextNodeBase`、`KnownWikitextDiagnosticCode` 与 `WikitextStage` 从 `/ast` 导入；根入口只导出视图组件会用到的精选语义类型。
 - 错误码、`stage` 与诊断字段见[错误与诊断](./errors.mdx)。
 
 ## 参考页面
 
-| 子路径          | 页面                       |
-| --------------- | -------------------------- |
-| 根入口、`/view` | [React 组件](./react.mdx)  |
-| `/parse`        | [解析](./parse.mdx)        |
-| `/ast`          | [AST](./ast.mdx)           |
-| `/hast`         | [准备](./prepare.mdx)      |
-| `/expand`       | [展开](./expand.mdx)       |
-| `/preview`      | [实时预览](./preview.mdx)  |
-| `/worker`       | [Worker](./worker.mdx)     |
-| `/unified`      | [unified](./unified.mdx)   |
-| `/configs`      | [configs](./configs.mdx)   |
-| `/devtools`     | [调试组件](./devtools.mdx) |
+| 子路径      | 页面                       |
+| ----------- | -------------------------- |
+| 根入口      | [React 组件](./react.mdx)  |
+| `/view`     | [视图组件](./view.mdx)     |
+| `/parse`    | [解析](./parse.mdx)        |
+| `/ast`      | [AST](./ast.mdx)           |
+| `/hast`     | [准备](./prepare.mdx)      |
+| `/expand`   | [展开](./expand.mdx)       |
+| `/preview`  | [实时预览](./preview.mdx)  |
+| `/worker`   | [Worker](./worker.mdx)     |
+| `/unified`  | [unified](./unified.mdx)   |
+| `/configs`  | [configs](./configs.mdx)   |
+| `/devtools` | [调试组件](./devtools.mdx) |
 
 ## 下一步
 

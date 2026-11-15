@@ -74,7 +74,7 @@ export const parser = createWikiparser({
 
 ## 复用准备结果
 
-准备阶段会重跑插件、HAST 转换与清洗。同一份源码只改了展示组件时，不需要重新准备：
+准备阶段会重新执行插件、HAST 转换与清洗。同一份源码只改了展示组件时，不需要重新准备：
 
 ```tsx
 import type { WikitextRenderSnapshot } from "react-wikitext/hast";

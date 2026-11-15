@@ -14,7 +14,7 @@ import { attachWikitextWorker, createWikitextWorkerHandler } from "react-wikitex
 ## Wiring
 
 ```ts
-// worker.ts
+// worker.ts (parser comes from createWikiparser(); revision and templates are provided by the host)
 import { createWikitextCompiler, createTemplateTableProvider } from "react-wikitext/expand";
 import { attachWikitextWorker } from "react-wikitext/worker";
 
@@ -28,6 +28,8 @@ attachWikitextWorker(self, { compiler, prepare: { resolveLink, resolveImage } })
 
 ```ts
 // main.ts
+import { createWikitextWorkerExecutor } from "react-wikitext/preview";
+
 const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
 const transport = createWikitextWorkerExecutor(worker);
 ```

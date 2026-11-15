@@ -53,7 +53,7 @@ const resolveLink: WikitextLinkResolver = (request) => {
 `request` 提供 `kind`、`target`，内部链接还可能有 `page` 与 `fragment`。`context` 提供原始解析快照 `document`、当前工作树 `ast` 与当前节点 `node`。
 
 :::note 说明
-解析回调只返回普通数据，不返回 React 元素。需要完全自定义链接外观与交互时，使用 [`semanticComponents.link`](../api/react.mdx#语义组件)。
+解析回调只返回普通数据，不返回 React 元素。需要完全自定义链接外观与交互时，使用 [`semanticComponents.link`](../api/view.mdx#语义组件)。
 :::
 
 下面的示例为内部链接提供站内地址，外链沿用默认处理：

@@ -94,12 +94,12 @@ const document = parseWikitext(source, { retainSyntax: true });
 
 - 默认是非受控模式：点击节点会选中并高亮，组件按树类型分别保留选区。
 - 文档更新后，非受控选区会按节点类型与源码区间尝试恢复；没有区间的生成节点不会恢复。受控模式由调用方决定何时清空或恢复。非受控模式的自动恢复不会触发 `onSelect`，需要把恢复结果同步给编辑器时请使用受控模式。
-- 受控时必须在 `onSelect` 中更新 `selectedId`，否则点击后不会高亮。`null` 和字符串都属于受控模式，`undefined` 表示非受控，不要在两种模式之间切换。
+- 受控时必须在 `onSelect` 中更新 `selectedId`，否则点击后不会高亮。`null` 和字符串都属于受控模式，`undefined` 表示非受控，不要在受控与非受控之间切换。
 - 选中的节点如果被折叠，组件会请求展开祖先并滚动到可见位置；受控展开需要调用方把 `onExpandedChange` 的新集合写回 `expandedIds`。如果该节点不在当前树中，组件只保留一个可聚焦的行，不报错。
 
 ### 展开
 
-- 非受控模式默认展开两层。切换 `kind` 时按新树的默认深度重新展开；同一类型的新快照会按节点类型与源码区间尽量保留展开项。
+- 非受控模式默认展开两层。切换 `kind` 时按新树的默认深度重新展开；同一类型的新快照会按节点类型与源码区间尽可能保留展开项。
 - `expandedIds` 提供后展开集合完全由调用方维护；`onExpandedChange` 仍会在请求变化时触发，调用方需要把新集合写回。
 - 非受控模式下，文档更新后的自动重映射和外部选中导致的展开也会触发 `onExpandedChange`。
 - 展开全部会一次性渲染整棵树；文档很大时优先逐层展开或配合搜索。
@@ -109,7 +109,7 @@ const document = parseWikitext(source, { retainSyntax: true });
 - 搜索不区分大小写，匹配节点类型、节点说明与源码片段；节点较大时只匹配源码开头部分。匹配过多时只显示前 80 条，并提示缩小范围。结果行显示类型、节点说明与源码片段，便于确认命中原因。
 - 搜索时结果列表会替换树视图。从输入框按向下键进入结果；在结果上按回车选中，按 `Escape` 清空搜索，按方向键在结果之间移动。选中结果后焦点回到对应的树行。
 - 树中按上下方向键移动、`Home` / `End` 跳到首尾、左右方向键展开或折叠并跳到父子节点，`Enter` / 空格选中当前节点。
-- 树使用 `role="tree"`、`role="treeitem"`、`aria-expanded` 与 `aria-selected`；键盘焦点落在当前 `treeitem` 行上。
+- 树使用 `role="tree"`、`role="treeitem"`、`aria-expanded` 与 `aria-selected`；键盘焦点位于当前 `treeitem` 行上。
 
 ## NodeInspector
 
@@ -158,15 +158,15 @@ const restoredNode = findAstTreeNode(next, restoredId, kind);
 const expanded = remapExpandedIds(document, next, expandedIds, kind);
 ```
 
-| 函数                                                     | 行为                                                                                      |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `findAstTreeNode(document, id, kind)`                    | 按 id 在指定树中查找节点；id 为空或不存在时返回 `undefined`                               |
-| `getNodeRange(node)`                                     | 返回节点区间；语法节点读取 `range`，语义节点读取 `origin.range`，生成节点返回 `undefined` |
-| `getNodeSource(document, node)`                          | 返回节点对应的源码；生成节点返回空字符串                                                  |
-| `isSyntaxNode(node)`                                     | 判断节点是否来自源码语法树                                                                |
-| `snapshotSelection(document, id, kind?)`                 | 记录树类型、节点类型与源码区间；节点没有非空区间时返回 `undefined`                        |
-| `restoreSelectedId(document, snapshot, kind?)`           | 在新文档中按类型与区间寻找最接近的节点；默认沿用快照的树类型                              |
-| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | 按类型与区间把展开集合映射到新文档；没有区间的节点会被丢弃                                |
+| 函数                                                     | 行为                                                                                                 |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `findAstTreeNode(document, id, kind)`                    | 按 id 在指定树中查找节点；id 为空或不存在时返回 `undefined`                                          |
+| `getNodeRange(node)`                                     | 返回节点区间；语法节点读取 `range`，语义节点读取 `origin` 的 `start`/`end`，生成节点返回 `undefined` |
+| `getNodeSource(document, node)`                          | 返回节点对应的源码；生成节点返回空字符串                                                             |
+| `isSyntaxNode(node)`                                     | 判断节点是否来自源码语法树                                                                           |
+| `snapshotSelection(document, id, kind?)`                 | 记录树类型、节点类型与源码区间；节点没有非空区间时返回 `undefined`                                   |
+| `restoreSelectedId(document, snapshot, kind?)`           | 在新文档中按类型与区间寻找最接近的节点；默认沿用快照的树类型                                         |
+| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | 按类型与区间把展开集合映射到新文档；没有区间的节点会被丢弃                                           |
 
 `SelectionSnapshot` 保存 `kind`、`id`、`type`、`start` 与 `end`。`restoreSelectedId` 默认使用 `snapshot.kind`；传入不同的 `kind` 会返回 `undefined`，避免把一棵树的选中项套到另一棵树上。
 

@@ -7,10 +7,6 @@ description: Theme variables, labels, heading anchors, plugins, and component ov
 
 The library emits stable `wikitext-*` classes and a set of CSS variables. Page structure, labels, heading anchors, and component appearance can all be adjusted without patching the library.
 
-:::warning Upgrading from 0.1
-Starting with 0.2.0 the prefix for library classes, CSS variables, and data attributes changed from `wtr-` to `wikitext-`: `.wtr-view` → `.wikitext-view`, `--wtr-text` → `--wikitext-text`, `[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`, and the default heading anchor prefix `wtr-heading-` → `wikitext-heading-`. The old prefix is no longer emitted; host styles and selectors must be updated.
-:::
-
 ## Styles
 
 Import the page stylesheet once:
@@ -198,7 +194,7 @@ Overrides have the following precedence:
 />
 ```
 
-`components` maps by HAST tag name such as `p`, `table`, `img`, or `a`. Components receive sanitized DOM props, the HAST `node`, the `document`, and optionally the semantic `node` and `origin`. Do not spread non-DOM props onto native elements.
+`components` maps by HAST tag name such as `p`, `table`, `img`, or `a`. Components receive sanitized DOM props, the HAST `node`, the `snapshot`, and optionally the semantic `node` and `origin`. Do not spread non-DOM props onto native elements.
 
 ### Semantic components
 
@@ -250,7 +246,7 @@ function SectionLink() {
 }
 ```
 
-- `useWikitextContext()` provides `document`, indexes, component maps, `idPrefix`, `mapId`, `mapHref`, and `onRenderError`.
+- `useWikitextContext()` provides `snapshot`, indexes, component maps, `idPrefix`, `mapId`, `mapHref`, and `onRenderError`.
 - `useWikitextLabels()` reads labels from the current render snapshot.
 - `useWikitextIds()` provides `toDomId` and `toHref`.
 

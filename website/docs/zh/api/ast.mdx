@@ -19,8 +19,8 @@ import {
   getTemplateParameters,
   getFileParameters,
   normalizeSource,
-  serializeWikitextParsedSnapshot,
-  restoreWikitextParsedSnapshot,
+  serializeWikitextSnapshot,
+  restoreWikitextSnapshot,
   type KnownWikitextDiagnosticCode,
   type WikitextNodeBase,
 } from "react-wikitext/ast";
@@ -177,8 +177,8 @@ const normalized = normalizeSource(raw, maxSourceLength);
 解析快照：
 
 ```ts
-const payload = serializeWikitextParsedSnapshot(document);
-const restored = restoreWikitextParsedSnapshot(payload);
+const payload = serializeWikitextSnapshot(document);
+const restored = restoreWikitextSnapshot(payload);
 ```
 
 渲染快照：

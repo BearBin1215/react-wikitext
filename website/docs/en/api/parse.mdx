@@ -68,7 +68,7 @@ interface WikitextParseOptions {
 
 Effective budgets merge by precedence: per-call options override factory `defaults`, and `defaults` override the shared defaults. CRLF / CR is normalized to LF before parsing, and budgets are checked after normalization. Budgets must be positive integers; `0`, negative numbers, fractions, `NaN`, and `Infinity` all throw `INVALID_CONFIG`.
 
-`retainSyntax` only decides whether the upstream token syntax tree is published on the snapshot, and significantly increases memory and build cost. Source text, semantic node `position`, and `origin.range` always exist, and query helpers never read the syntax tree; enable it only when you need to inspect upstream tokens.
+`retainSyntax` only decides whether the upstream token syntax tree is published on the snapshot, and significantly increases memory and build cost. Source text, the `origin` span on every semantic node (`sourceId` + `[start, end)`), and query helpers are always available; line/column is computed on demand by `getSourcePosition`. Enable it only when you need to inspect upstream tokens.
 
 ### resolveOptions
 
@@ -82,6 +82,10 @@ Returns the effective budgets, `pageName`, and `retainSyntax` for a parse withou
 
 ```ts
 interface WikitextParsedSnapshot {
+  kind: "parsed";
+  id: string;
+  activeSourceId: WikitextSourceId;
+  graph: WikitextSourceGraph;
   source: string;
   ast: WikitextRoot;
   syntax?: WikitextSyntaxRoot;

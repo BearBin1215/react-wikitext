@@ -202,11 +202,7 @@ const provider: WikitextTemplateProvider = {
 
 ## 调度与缓存
 
-- 求值按确定顺序推进：需要未编译模板时记录需求并推迟本轮；调度器按 provider 快照去重、按 `getMany` 批大小或并发上限获取，再按固定任务地址提交。
-- 未选中的分支、未读取的参数与未使用的默认值不会触发获取。
-- 缓存分三层：模板获取结果、模板语法程序、页面语法编译；条目数与字节数同时受限。
-- 并发编译共享同一 provider 快照的未完成获取；取消某次编译只移除该订阅者，全部订阅者取消后才中断底层请求。
-- 修改 `cache` / `fetch` / `limits` 需要创建新的编译器实例。
+求值按确定顺序推进，未选中的分支不会触发获取；缓存按用途分层，并发编译共享同一 provider 快照的未完成请求。缓存键、批大小、并发与取消语义见[展开 `/expand`](../api/expand.mdx#缓存与调度)。
 
 ## 来源与定位
 
@@ -221,10 +217,8 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 });
 ```
 
-- 来源图登记页面原文、LF 文本、模板原文、有效正文与展开结果之间的片段关系与调用记录。
-- 嵌套调用各自保存自身文本源、作用域、父调用与全部输出出现位置；同一模板的源码范围可以对应多个展开位置。
-- 精确映射只用于可证明的边界对应；函数结果、生成内容与被删除片段返回 `enclosing-invocation` 或未映射。
-- 映射结果包含多段匹配、未映射子范围与覆盖率；达到上限时 `truncated` 为 `true`。
+- 来源图登记页面原文、LF 文本、模板原文、有效正文与展开结果之间的片段关系与调用记录；嵌套调用各自保存作用域、父调用与全部输出位置。
+- 映射精度、未映射子范围与覆盖率规则见[展开 `/expand`](../api/expand.mdx#来源图与定位)。
 
 ## 支持的语法与函数
 
@@ -246,16 +240,10 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 
 ## 预算与失败
 
-默认值与完整说明见[展开 `/expand`](../api/expand.mdx)。
+默认值、预算行为与取消语义见[展开 `/expand`](../api/expand.mdx)，错误码的完整清单见[错误与诊断](../api/errors.mdx)。
 
-- 单次调用超长时保留调用并记录 `LENGTH_BUDGET_EXCEEDED`。
-- 整段展开超过 `budget.maxExpandedLength` 时抛 `EXPANSION_TOO_LARGE`。
-- `failureMode: "throw"` 下可恢复失败与预算超限直接抛错。
 - 默认模式下，最终源码解析失败会退回原始快照，`status` 为 `"fallback"`；`attemptedSourceId` 指向被放弃的展开源。
-- 通过 `AbortSignal` 取消编译；原始原因保存在错误的 `cause` 中。
-- 原始解析失败、硬资源上限与不兼容 parser 始终失败。
-
-常见错误码包括 `INVALID_EXPAND_OPTIONS`、`INVALID_PROVIDER`、`TEMPLATE_NOT_FOUND`、`TEMPLATE_RESOLVE_FAILED`、`TEMPLATE_PARSE_FAILED`、`TEMPLATE_LOOP`、`UNSUPPORTED_CALL`、`FINAL_PARSE_FAILED`、`ABORTED`、`DISPOSED`。
+- 原始解析失败、硬资源上限、取消与不兼容 parser 始终失败，不受 `failureMode` 影响。
 
 ## 未展开的调用如何显示
 

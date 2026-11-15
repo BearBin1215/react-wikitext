@@ -62,6 +62,8 @@ playground 的约束：
 | `tests/pipeline/` | 准备阶段插件、工作树隔离、id 重分配、缓存失效、policy、图片授权、诊断与序列化恢复 |
 | `tests/unified/` | unified 插件组合、VFile 状态、树替换、诊断阶段与高层准备的等价性 |
 | `tests/expand/` | 展开语义、失败与回退、预算、取消、与准备阶段的集成、上游 oracle 对比 |
+| `tests/preview/` | 防抖与请求身份、旧结果保留、取消、执行器与序列化恢复一致性 |
+| `tests/normalize/` | 块级/行内归一化边界、深度预算与生成文本的来源规则 |
 | `tests/devtools/` | `AstTree`、`NodeInspector`、选择恢复与调试树的无障碍与交互 |
 | `tests/components/`、`tests/playground/` | 组件行为，以及 playground 只能通过 package 公共入口导入 |
 | `tests/oracle/` | 浏览器语法树与 Node 完整版的 range、稳定 fixture 的 `toHtml` 对比 |
@@ -84,7 +86,7 @@ playground 的约束：
 ### 4.3 性能报告
 
 - `pnpm bench` 生成 `test-results/bench/report.json` 与 `summary.md`，随后校验报告。运行错误、缺少必测阶段或空报告直接失败。
-- 必测阶段：`parse`、`prepare`（含 `prepare-clone` / `prepare-plugin` / `prepare-convert` / `prepare-rehype` / `prepare-assemble`）、`serialize`、`restore`、`render`、`expand`（含 `normalize` / `page-syntax` / `template` / `evaluate` / `fetch` / `assemble` / `final-syntax` / `build`）与模板表 `copy`。
+- 必测阶段与阶段名以 `tests/performance/validate-report.mjs` 和基准配置为准；新增阶段需要同步校验器。
 - 阶段计时来自 `src/instrumentation.ts` 的 `WikitextStageSink`，默认关闭；基准通过编译与准备的 `profile` 选项按调用传入采样器，不存在模块级状态。
 - 耗时变化只进入摘要，不设固定门槛。共享 CI 只适合同环境相对比较；更换机器或依赖后应重新建立基线。
 - 性能目标与规模策略见[总体架构](./architecture.md#8-性能与规模)。

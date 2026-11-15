@@ -158,15 +158,15 @@ const restoredNode = findAstTreeNode(next, restoredId, kind);
 const expanded = remapExpandedIds(document, next, expandedIds, kind);
 ```
 
-| Function                                                 | Behavior                                                                                                                    |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `findAstTreeNode(document, id, kind)`                    | Finds a node by id in the selected tree; returns `undefined` for an empty or missing id                                     |
-| `getNodeRange(node)`                                     | Returns the node range; syntax nodes use `range`, semantic nodes use `origin.range`, and generated nodes return `undefined` |
-| `getNodeSource(document, node)`                          | Returns the node source; generated nodes return an empty string                                                             |
-| `isSyntaxNode(node)`                                     | Reports whether a node comes from the source syntax tree                                                                    |
-| `snapshotSelection(document, id, kind?)`                 | Records tree kind, type, and source range; returns `undefined` without a non-empty range                                    |
-| `restoreSelectedId(document, snapshot, kind?)`           | Finds the closest node by type and range; defaults to the snapshot's tree kind                                              |
-| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | Maps expanded ids to the new document by type and range; range-less nodes are dropped                                       |
+| Function                                                 | Behavior                                                                                                                                 |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `findAstTreeNode(document, id, kind)`                    | Finds a node by id in the selected tree; returns `undefined` for an empty or missing id                                                  |
+| `getNodeRange(node)`                                     | Returns the node range; syntax nodes use `range`, semantic nodes use `origin.start`/`origin.end`, and generated nodes return `undefined` |
+| `getNodeSource(document, node)`                          | Returns the node source; generated nodes return an empty string                                                                          |
+| `isSyntaxNode(node)`                                     | Reports whether a node comes from the source syntax tree                                                                                 |
+| `snapshotSelection(document, id, kind?)`                 | Records tree kind, type, and source range; returns `undefined` without a non-empty range                                                 |
+| `restoreSelectedId(document, snapshot, kind?)`           | Finds the closest node by type and range; defaults to the snapshot's tree kind                                                           |
+| `remapExpandedIds(oldDocument, newDocument, ids, kind?)` | Maps expanded ids to the new document by type and range; range-less nodes are dropped                                                    |
 
 `SelectionSnapshot` stores `kind`, `id`, `type`, `start`, and `end`. `restoreSelectedId` uses `snapshot.kind` by default; passing a different `kind` returns `undefined` so a selection from one tree is not applied to another.
 

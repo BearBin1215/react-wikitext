@@ -8,7 +8,7 @@ description: Common display, build, and error-code issues, plus a fixed way to n
 The following checks usually locate the problem:
 
 1. Read the placeholder label: `labels` distinguishes "not evaluated", "blocked", and "unknown structure".
-2. Read `document.diagnostics`: each record has `stage`, `code`, and a source position.
+2. Read `snapshot.diagnostics`: each record has `stage`, `code`, and a source position.
 3. Reduce to the smallest source and options; remove custom plugins and components to reproduce.
 
 If you are unsure whether a placeholder is expected, compare it with the [default output in the overview](./introduction.mdx#default-output) and [syntax support](./syntax-support.mdx).
@@ -74,6 +74,6 @@ When reporting, include:
 - The smallest wikitext source and `pageName`.
 - Entry, parse options, and prepare options (redacted if needed).
 - Library version, `parserVersion`, React, and bundler versions.
-- `document.diagnostics` plus the error `code`, `stage`, and `cause`.
+- `snapshot.diagnostics` plus the error `code`, `stage`, and `cause`.
 
 More channels are listed in [Contributing and feedback](../project/contributing.mdx).

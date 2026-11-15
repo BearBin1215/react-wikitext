@@ -126,7 +126,7 @@ Magic words inside templates, functions, and arguments do not affect TOC or cate
 
 ## Verifying behavior
 
-1. Inspect `document.diagnostics` for `stage` and `code`.
+1. Inspect `snapshot.diagnostics` for `stage` and `code`.
 2. Use `flattenNodes` from `/ast` to inspect the semantic tree and compare it with the prepared HAST.
 3. Use `labels` to distinguish "not evaluated", "blocked", and "unknown structure".
 4. This page describes behavior under the default configuration; after upgrading, rely on actual diagnostics and rendering.

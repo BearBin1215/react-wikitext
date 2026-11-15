@@ -128,6 +128,7 @@ The returned `snapshot` is already a normal parsed snapshot; **do not parse agai
 - Values must be strings; an empty string is a valid empty template.
 - The table is validated and copied once at construction and reused by later compilations. Update it by creating a new `revision`; do not mutate the old object.
 - Call titles are normalized by the parser (`{{Box}}` → `Template:Box`); the table lookup itself is exact and never rewrites your keys.
+- Imports from other namespaces, or under a custom parser config, must use the exact full title that is requested.
 
 ## Pure functions
 
@@ -192,11 +193,7 @@ const provider: WikitextTemplateProvider = {
 
 ## Scheduling and caching
 
-- Evaluation advances in deterministic rounds; uncompiled templates are recorded as demands and deferred, then fetched in batches by `getMany` or within the concurrency cap and committed at fixed task addresses.
-- Untaken branches, unread parameters and unused defaults never trigger fetches.
-- Caches cover fetch results, template syntax programs and page syntax compilations; both entry count and bytes are bounded.
-- Concurrent compiles share unfinished fetches for the same provider snapshot; cancelling one only removes that subscriber.
-- Changing `cache`, `fetch` or `limits` requires a new compiler instance.
+Evaluation advances in deterministic rounds, untaken branches never trigger fetches, and caches cover fetch results, template syntax programs, and page syntax compilations. Cache keys, batch sizes, concurrency, and cancellation semantics live in [Expansion `/expand`](../api/expand.mdx#caching-and-scheduling).
 
 ## Sources and lookup
 
@@ -211,10 +208,8 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 });
 ```
 
-- The source graph records page input, LF text, template source, effective body and expanded text, plus piece relations and invocation records.
-- Nested calls keep their own source, scope, parent and every output occurrence; one template range can map to multiple expanded positions.
-- Exact mapping is only claimed for provable boundary correspondence; function results, generated characters and deleted ranges are `enclosing-invocation` or unmapped.
-- Results include multiple matches, unmapped subranges and coverage; `truncated` marks the limit.
+- The source graph records piece relations and invocation records across page input, LF text, template source, effective body, and expanded text; nested calls keep their own scope, parent, and every output occurrence.
+- Mapping precision, unmapped subranges, and coverage rules live in [Expansion `/expand`](../api/expand.mdx#source-graph-and-lookup).
 
 ## Supported syntax and functions
 
@@ -236,16 +231,10 @@ These calls are preserved with diagnostics by default:
 
 ## Budgets and failures
 
-See [Expansion `/expand`](../api/expand.mdx) for defaults and full details.
+Defaults, budget behavior, and cancellation live in [Expansion `/expand`](../api/expand.mdx); the full error-code list is in [Errors and diagnostics](../api/errors.mdx).
 
-- An over-long single call is preserved with `LENGTH_BUDGET_EXCEEDED`.
-- The whole expanded text over `budget.maxExpandedLength` throws `EXPANSION_TOO_LARGE`.
-- `failureMode: "throw"` turns recoverable failures and budget limits into errors.
 - By default a failed final parse falls back to the original snapshot with `status: "fallback"`; `attemptedSourceId` points at the abandoned expanded source.
-- Cancel via `AbortSignal`; the original reason is kept in `error.cause`.
-- Original parse failures, hard resource limits and incompatible parsers always fail.
-
-Common codes: `INVALID_EXPAND_OPTIONS`, `INVALID_PROVIDER`, `TEMPLATE_NOT_FOUND`, `TEMPLATE_RESOLVE_FAILED`, `TEMPLATE_PARSE_FAILED`, `TEMPLATE_LOOP`, `UNSUPPORTED_CALL`, `FINAL_PARSE_FAILED`, `ABORTED`, `DISPOSED`.
+- Original parse failures, hard resource limits, cancellation, and incompatible parsers always fail, regardless of `failureMode`.
 
 ## How preserved calls render
 
@@ -255,5 +244,5 @@ Preserved templates, functions and parameters keep their [placeholder structure]
 
 - Include filtering covers mixed and nested combinations with regression tests, but is not a full site-level tag state machine.
 - No Lua and no built-in site API client.
-- No title normalization option; hosts curate template keys.
+- There is no option to configure title normalization; the parser decides the key, and hosts curate the table.
 - Categories, references and TOC in expanded output still follow normal rendering rules.

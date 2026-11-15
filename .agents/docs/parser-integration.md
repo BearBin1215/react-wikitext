@@ -34,7 +34,7 @@
 
 ## 2. 加载方式
 
-浏览器包是 IIFE，加载后挂到 `globalThis.Parser`，没有 ESM export。上游 `package.json` 声明 `"sideEffects": false`，因此打包器会认为它“没有可用导出、也没有副作用”。副作用导入、`void NS` 或只读取命名空间属性都不能保证模块执行。
+浏览器包是 IIFE，加载后赋值给 `globalThis.Parser`，没有 ESM export。上游 `package.json` 声明 `"sideEffects": false`，因此打包器会认为它“没有可用导出、也没有副作用”。副作用导入、`void NS` 或只读取命名空间属性都不能保证模块执行。
 
 当前实现位于 `src/parse/loadParser.ts`：
 
@@ -153,7 +153,7 @@ closed, closing, selfClosing, subtype, extension
 ### 4.2 关键 token 事实
 
 - HTML 是扁平的 `html` 开/闭 token，`closing` 可读；不要假设它有嵌套子内容。
-- 表格表头在缺少 `|-` 时以 `td[subtype=th]` 直接挂在 `table` 下；`caption` 是 `td[subtype=caption]`。
+- 表格表头在缺少 `|-` 时以 `td[subtype=th]` 直接作为 `table` 的子节点；`caption` 是 `td[subtype=caption]`。
 - 列表标记 `list` / `dd` 的文本带尾随空格，正文是兄弟节点。
 - 一个 text token 可以跨多个段落；拆分在语义归一化阶段完成，不在语法树层拆。
 - `#REDIRECT` 只有位于第一行才是 `redirect`。
@@ -162,36 +162,9 @@ closed, closing, selfClosing, subtype, extension
 
 ### 4.3 Range 重建
 
-浏览器 token 没有 range，`toString()` 返回该节点对应的 LF 源码片段。`buildSyntaxTree` 按父子文本顺序重建：
+`buildSyntaxTree` 用父节点文本与 `child.toString()` 的顺序查找重建 range：重复文本必须从上次 cursor 继续查找，`indexOf` 返回 `-1` 时保留 cursor。根节点长度必须等于归一化源码长度。零长度节点的锚点规则由实现与 range fixture 固定，修改时以 `tests/parser/` 的 oracle 为准。
 
-1. 根节点 range = `[0, source.length]`，父文本 = 整个 source。
-2. 对每个父节点：
-   - `cursor = 0`；
-   - 依次遍历子节点；
-   - 取 `childText = child.toString()`；
-   - 非空子节点：`rel = parentText.indexOf(childText, cursor)`；
-   - 计算 `childRange = [parentStart + rel, parentStart + rel + childText.length]`；
-   - `cursor = rel + childText.length`；
-   - 递归时把父文本切到子节点片段，`parentStart` 换成 `childRange[0]`。
-3. 空文本子节点按零长度锚点规则处理，默认 `[parentStart + cursor, parentStart + cursor]`。
-4. `image-parameter` 的 `name` 与值分属不同 token 且不带 `=`；参数以 `=` 开头时，子 token 从等号之后开始搜索。
-
-保护措施：
-
-- `indexOf` 返回 `-1` 时不能直接使用；当前实现回退到 cursor 并继续构建。该类偏差由 oracle 对比发现，不写入公共文档的警告字段。
-- 同一文本重复出现时，顺序查找 + cursor 是正确性的关键；不要从 0 开始查找。
-- 根节点 `toString()` 长度应等于归一化 source 长度；不等时由 oracle 测试发现。
-
-零长度节点锚点：
-
-1. `heading-trail` → 父节点末尾。
-2. `html-attrs` / `ext-attrs` → 开标签 `>` 或 `/>` 的位置。
-3. `ext-inner` → 闭标签起点或自闭合位置。
-4. `attr-value` → 引号外侧。
-5. 最后一个空 `text` → 父节点末尾。
-6. 无法确定时保留 cursor。
-
-`findNodeAtOffset`、编辑器选中和 playground 选择快照都跳过零长度节点的恢复；选择快照本身可以为零长度节点生成。
+`image-parameter` 的 `name` 与值分属不同 token 且不带 `=`；参数以 `=` 开头时，子 token 从等号之后搜索。
 
 ### 4.4 属性提取
 
@@ -205,13 +178,7 @@ closed, closing, selfClosing, subtype, extension
   └─ *-attr-dirty（空白）
 ```
 
-提取规则：
-
-- 只处理 `*-attrs` 直接子级中名称符合 `*-attr` 的 token。
-- `name` 取 `*-attr` 的 `name` 并转小写。
-- `value` 取 `attr-value` 子节点文本，做一次 HTML 实体解码；没有 `attr-value` 或为空时记为 `null`。
-- `range` 取 `*-attr` 的 range；找不到时回退到所属父节点 range。
-- 不在提取阶段做安全判断；清洗与白名单在 HAST 阶段完成。
+提取规则：`name` 取 `*-attr` 的 `name` 并转小写；`value` 取 `attr-value` 文本并做一次实体解码，缺少值时记为 `null`；`range` 取属性 token 的 range，缺失时回退到父节点。提取阶段不做安全判断，白名单在 HAST 阶段执行。
 
 ### 4.5 文本与实体
 
@@ -238,7 +205,7 @@ closed, closing, selfClosing, subtype, extension
 - `maxSyntaxNodes`、`maxDepth`：传入 adapter 构造；adapter 返回后再次校验。
 - `maxSemanticNodes`：语义 AST 构建并分配 id 后检查。
 
-有效值按优先级合并：单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。四项预算都必须是正整数；`0`、负数、小数与非有限值统一抛 `INVALID_CONFIG`。工厂把 `maxSyntaxNodes` 与 `maxDepth` 作为独立对象传给 `context.limits`；默认适配器转交 `buildSyntaxTree`，在计数或深度超限时停止后续构造。构造器未收到预算时使用共享默认值。工厂随后仍校验返回树的结构、range 与预算；忽略 `limits` 的自定义 adapter 继续可用，但返回超预算树仍会被拒绝。超限统一抛 `WikitextParseError("SOURCE_TOO_COMPLEX")` 或 `SOURCE_TOO_LONG`。`parser.resolveOptions()` 与快照的 `meta.limits` 暴露同一份生效值。
+有效值按优先级合并：单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。这些预算都必须是正整数；`0`、负数、小数与非有限值统一抛 `INVALID_CONFIG`。工厂把 `maxSyntaxNodes` 与 `maxDepth` 作为独立对象传给 `context.limits`；默认适配器转交 `buildSyntaxTree`，在计数或深度超限时停止后续构造。构造器未收到预算时使用共享默认值。工厂随后仍校验返回树的结构、range 与预算；忽略 `limits` 的自定义 adapter 继续可用，但返回超预算树仍会被拒绝。超限统一抛 `WikitextParseError("SOURCE_TOO_COMPLEX")` 或 `SOURCE_TOO_LONG`。`parser.resolveOptions()` 与快照的 `meta.limits` 暴露同一份生效值。
 
 上游 token 解析会先同步完成，传入构造预算只能提前停止本包语法树构造，不能取消上游解析；调高预算也不表示支持任意深度。准备阶段对插件处理后的工作树再次执行固定预算（值与语义见[文档站 prepare 页面](../../website/docs/zh/api/prepare.mdx)）；恢复渲染快照使用独立的固定 HAST 预算。同步解析无法中途取消；调用方需要 Worker、缓存或降低上限。
 
@@ -264,9 +231,9 @@ Node 完整版只用于测试，提供 `json()` 原生 range 和 `toHtml()`：
 4. 检查 `Parser.parse` 签名、默认 maxStage、config 必需字段是否变化。
 5. 检查 token 类型、props 白名单、`toString()` 行为是否变化。
 6. 检查 HTML/表格/扩展属性子 token 结构是否变化（`*-attr`、`attr-value`、`closing`、`image-parameter`）。
-7. 检查文本归一化行为（CRLF、实体、换行）是否变化；跑 CRLF fixture。
-8. 跑全部 range fixture，与 Node 版原生 range 对比。
-9. 跑渲染 fixture、pipeline/unified 测试与 playground e2e；更新 HTML 配对/表格隐式行 fixture。
+7. 检查文本归一化行为（CRLF、实体、换行）是否变化；运行 CRLF fixture。
+8. 运行全部 range fixture，与 Node 版原生 range 对比。
+9. 运行渲染 fixture、pipeline/unified 测试与 playground e2e；更新 HTML 配对/表格隐式行 fixture。
 10. 构建生产 consumer 并运行 `pnpm test:consumer:browser`，确认 Vite/webpack 的页面与 Worker 在压缩产物中仍能解析；只检查字符串不足以证明 parser 可用。
 11. 检查 Node 版 `toHtml` oracle 输出是否变化；不要用它覆盖表格语义。
 12. 更新 `MEDIAWIKI_CONFIG` 快照、`PARSER_VERSION`、`NOTICE`、`THIRD_PARTY_LICENSES` 与 README 版本号。

@@ -41,7 +41,7 @@ description: 解析与准备的成本、预算上限、Worker、缓存与按入�
 | HAST 节点      | 50,000 |
 | HAST 深度      | 1,000  |
 
-这些值是防护阈值，不是性能目标。触发时准备阶段直接失败；库产生的合法快照总能被 `restoreWikitextRenderSnapshot` 恢复。
+这些值用于防护，不代表性能目标。触发时准备阶段直接失败；库产生的合法快照总能被 `restoreWikitextRenderSnapshot` 恢复。
 
 ### 模板展开
 
@@ -53,25 +53,25 @@ description: 解析与准备的成本、预算上限、Worker、缓存与按入�
 
 ## 把解析放到 Worker
 
-库不提供 Worker，但快照是普通数据，可以直接跨线程传递：
+库不创建 Worker 实例；`/worker` 提供在 Worker 内运行的 handler 与消息协议，线程、打包与 URL 由宿主负责。快照是普通数据，也可以直接跨线程传递：
 
 ```ts
 // worker.ts
 import { parseWikitext } from "react-wikitext/parse";
-import { serializeWikitextParsedSnapshot } from "react-wikitext/ast";
+import { serializeWikitextSnapshot } from "react-wikitext/ast";
 
 self.onmessage = (event: MessageEvent<string>) => {
   const document = parseWikitext(event.data, { pageName: "Example" });
-  self.postMessage(serializeWikitextParsedSnapshot(document));
+  self.postMessage(serializeWikitextSnapshot(document));
 };
 ```
 
 ```ts
 // main.ts
-import { restoreWikitextParsedSnapshot } from "react-wikitext/ast";
+import { restoreWikitextSnapshot } from "react-wikitext/ast";
 import { prepareWikitext } from "react-wikitext/hast";
 
-const document = restoreWikitextParsedSnapshot(payload);
+const document = restoreWikitextSnapshot(payload);
 const prepared = prepareWikitext(document);
 ```
 
@@ -100,14 +100,14 @@ const prepared = prepareWikitext(document);
 
 ## 按入口拆分打包
 
-| 入口      | 加载解析器 | 加载 React | 典型用途             |
-| --------- | ---------- | ---------- | -------------------- |
-| 根入口    | 是         | 是         | 客户端直接渲染       |
-| `/parse`  | 是         | 否         | 解析、Worker、构建期 |
-| `/expand` | 是         | 否         | 模板展开             |
-| `/view`   | 否         | 是         | 只渲染准备好的快照   |
-| `/hast`   | 否         | 否         | 准备、序列化         |
-| `/ast`    | 否         | 否         | AST 查询与数据处理   |
+| 入口      | 加载解析器     | 加载 React | 典型用途             |
+| --------- | -------------- | ---------- | -------------------- |
+| 根入口    | 是             | 是         | 客户端直接渲染       |
+| `/parse`  | 是             | 否         | 解析、Worker、构建期 |
+| `/expand` | 否（宿主注入） | 否         | 模板展开             |
+| `/view`   | 否             | 是         | 只渲染准备好的快照   |
+| `/hast`   | 否             | 否         | 准备、序列化         |
+| `/ast`    | 否             | 否         | AST 查询与数据处理   |
 
 只做展示时，客户端可以动态加载 `/view`，避免把解析器带进首屏包：
 

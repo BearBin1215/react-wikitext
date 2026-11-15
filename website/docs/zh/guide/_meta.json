@@ -10,7 +10,7 @@
   { "type": "file", "name": "syntax-support", "label": "支持矩阵" },
   { "type": "file", "name": "links-and-images", "label": "链接与图片" },
   { "type": "file", "name": "templates", "label": "模板展开" },
-  { "type": "file", "name": "customization", "label": "样式与组件" },
+  { "type": "file", "name": "customization", "label": "样式与组件定制" },
   { "type": "section-header", "label": "进阶" },
   { "type": "file", "name": "custom-parser", "label": "自定义解析器" },
   { "type": "file", "name": "performance", "label": "性能与预算" },

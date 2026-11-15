@@ -31,30 +31,13 @@ playground 负责：
 - 内建的 SSR/RSC 数据流、登录、存储、协作、编辑器 SDK。
 - 大文档虚拟列表；大文档通过解析/准备预算与宿主 Worker 控制规模。
 - 单元格内嵌套 wikitext 表格，以及行首空格 preformatted 的完整语义。
-- 自定义展开函数 hook、嵌套来源映射、展开组合快照序列化与独立构建期展开后端。
+- 自定义展开函数 hook、展开组合快照序列化与独立构建期展开后端。
 
 模板与部分解析器函数可以在渲染前展开，但展开只使用宿主注入的源码，属于[可选前置阶段](#32-可选展开与编译器)，不改变默认处理链。未完成能力统一登记在[路线图](./roadmap.md)。
 
 ## 2. 系统上下文
 
-```text
-source
-  │
-  ▼
-┌──────────────────────────── 库 ────────────────────────────┐
-│ /expand: 模板来源 + 语法树求值 ──▶ 展开源码（可选）         │
-│ /parse: parser adapter ──▶ 源码语法树 ──▶ wiki 语义 AST     │
-│ /hast:  clone + plugins + resolver ──▶ HAST ──▶ sanitize    │
-│ /view:  组件映射 + 实例 id + 错误边界 ──▶ React             │
-└─────────────────────────────────────────────────────────────┘
-  ▲                    ▲                         ▲
-  │ /unified 插件       │ playground              │ 其他 HAST consumer
-  │ (注入 parser)       │ (语义/语法树检查)        │
-  │                    │                         │
-playground (React + Vite + Worker, 内部验收台)
-```
-
-Worker 只属于 playground 调度层；库的解析与准备 API 保持同步，另提供异步准备接口。调用方负责 Worker、缓存、取消与过期结果丢弃。
+库按解析、语义、准备与视图分层，外部通过子路径使用；playground 只通过公共入口消费库。阶段划分与入口职责见下一节。
 
 ## 3. 处理管线
 
@@ -91,7 +74,7 @@ Worker 只属于 playground 调度层；库的解析与准备 API 保持同步�
 - 默认对可恢复失败保留对应调用并记录 `expand` 阶段诊断；最终源码解析失败退回原始 LF 快照并保留 `attemptedSourceId`，`failureMode: "throw"` 改为整次抛错。原始解析失败、硬资源上限、取消与不兼容 parser 始终失败。
 - 诊断使用带来源的主 `location`：模板体失败指向模板有效正文，页面调用位置作为相关来源；调用记录、片段关系与语义节点 origin 共用同一来源图。嵌套调用各自登记作用域、父调用与全部输出出现位置。
 - 求值分轮进行：纯计算先推进，未编译模板记录需求并推迟本轮；调度器按 provider 快照去重、按 `getMany` 或 `get` 批量获取，再按固定任务地址提交并重新求值。输出、调用状态与诊断不依赖网络返回顺序。
-- 缓存分三层：模板获取结果按 provider 版本与标题；模板语法程序按 parser 身份、预算、页面上下文与归一化内容；页面语法编译按输入内容与预算。容量同时受条目与字节约束。
+- 缓存按用途分层：模板获取按 provider 快照 `key`+`revision`+标题；模板语法程序按 `parser.key`+快照 `key`/`revision`+标题+页面名；页面语法编译按 `parser.key`+生效预算+输入 `key`/`revision`。容量同时受条目与字节约束。
 - 支持范围、预算、缓存与错误语义见[文档站 expand 页面](../../website/docs/zh/api/expand.mdx)。
 
 ### 3.3 解析与语义归一化
@@ -134,61 +117,13 @@ HAST 使用标准 `element`、`text`、`root` 节点。语义关联记录在可�
 
 ## 4. 模块划分与依赖
 
-```text
-src/
-  ast/          model、labels、errors、limits、position、query、helpers、file-options、
-                serialize、ids、sourceGraph/（源目录、片段关系、调用记录、映射、定位与
-                序列化）；无 React、DOM，也不加载默认 parser
-  normalize/    build、blocks、block-policy、inline、lists、tables、html、html-block、text、
-                fields、context（含单一源码行索引与块级深度预算）；
-                只依赖 ast 的普通数据与查询
-  parser/       解析编排与自定义 adapter 工厂（组合 normalize/build，纯数据）；
-                不加载默认 parser
-  parse/        loadParser（IIFE）、默认 adapter、buildSyntax、ranges、attributes、index；
-                仅此层加载默认 parser
-  expand/       编译器：compiler、options、assemble、provider、cache、scheduler、title、
-                evaluate、switch、functions、include、syntax、types、index；依赖 parse 与 ast，
-                不依赖 React、HAST、view
-  hast/         types、primitives、toHast、extensions、prepare、stages、settings、workingAst、
-                budget、finalize、toc、references、rel、sanitize、tableLayout、serialize、
-                vfile、index；无 React、parser、normalize
-  preview/      useWikitextPreview、executor 协议与 worker transport；
-                只依赖 React 与 hast 的恢复函数
-  worker/       消息协议、handler 与 attach；依赖 expand、hast，不依赖 React
-  unified/      createWikitextProcessor 与 VFile data 读取 helper；
-                无 React、parser
-  view/         WikitextView、WikitextFragment、context、bridge、render、错误边界、类型
-  devtools/     AstTree、NodeInspector、tree、selection、展开/搜索 hooks 与文案；
-                只依赖 ast 的普通数据、查询与 React
-  configs/      默认配置与配置类型；无 React、parser
-  shared/       HTML 标签表、HAST 与 URL 谓词；无解析、清洗或 React 依赖
-  styles/       view.css、devtools.css、tokens.css；页面渲染与调试组件样式、主题 token；
-                源码使用原生嵌套，构建时展开
-  types/        上游深层导入与 VFile 的 ambient 声明
-  instrumentation.ts  阶段计时 sink 类型；通过 `profile` 选项按实例传入，默认关闭
-  Wikitext.tsx  根入口的源码组件；依赖 parse、hast、view
-  index.ts      根入口：view + Wikitext + 精选语义类型
-```
-
-playground 的结构：
-
-```text
-playground/src/
-  editor/       CodeMirror 编辑器与 range 装饰
-  catalog/      输入源与场景配置合并后的唯一清单（sources / scenes / index）
-  parse/        protocol（DTO）、runParse（纯执行与解析选项）、useParseScheduler（防抖、
-                Worker/主线程回退、过期结果）；不持有输入源身份
-  session/      唯一状态来源：reducer、usePlaygroundSession、selectors、persistence（URL 与草稿）
-  harness/      示例 resolver/组件、复现生成、选项到 props 映射、剪贴板
-  ui/           场景菜单与参数栏、顶栏、状态栏、诊断、API、复现面板与文案
-  state/        PlaygroundOptions 类型与 URL 编解码、系统主题
-```
+目录按职责划分：`ast/` 是模型、查询、来源图与序列化；`normalize/` 负责语义构建；`parser/` 与 `parse/` 分别承担编排与默认适配器；`expand/` 是编译器；`hast/` 负责准备与清洗；React 相关入口是 `view/`、`preview/` 与 `worker/`；其余为 `devtools/`、`configs/`、`shared/` 与 `styles/`。文件级结构以 `src/` 为准，不在文档中维护。
 
 依赖方向：
 
 - `ast/model` 及其纯数据/工具模块是基础层；`parser/` 是唯一组合 `normalize/build` 的模块，`/ast` 与 `/parse` 都从它导出工厂。`normalize` 只依赖 ast 的普通数据与查询，不依赖 React、DOM 或 parser。
 - `parser` 只依赖 `ast` 与 `normalize`；`parse` 可以依赖 `ast`、`configs` 与 `parser`；只有 `parse/loadParser.ts` 加载 IIFE。
-- `expand` 依赖 `ast` 与 `parse`，可以加载 parser；不依赖 React、`hast`、`unified` 或 `view`。
+- `expand` 依赖 `ast` 与 `parser` 的类型（`WikitextParser` 由调用方注入），不 import `parse`、`loadParser`、React、`hast`、`unified` 或 `view`；它不加载默认 IIFE。
 - `hast` 依赖 `ast`、`shared` 与打包的 unified/hast 工具；不依赖 parser、`normalize`、React 或 `/ast` 桶。
 - `unified` 依赖 `hast` 的共享阶段模块与 `ast`，不隐式创建默认 parser。
 - `view` 依赖 `ast`、`shared`、React 与打包的 `hast-util-to-jsx-runtime`（`@types/hast` 只用于类型），不 import `parse`、`configs` 或 `loadParser`，也不通过值导入获取清洗实现。
@@ -208,7 +143,7 @@ playground/src/
 - 解析快照 `WikitextParsedSnapshot`：`kind: "parsed"`、快照 id、活动 source id、来源图、活动源码、语义 AST、可选源码语法树、meta 与诊断。它是原始事实，准备阶段不会修改。
 - 渲染快照 `WikitextRenderSnapshot`：`kind: "render"`，继承同一来源图与活动源码，另含插件处理后的语义工作树、最终 HAST、逻辑标题锚点、meta（含已解析 policy、labels 与 `authorizedImages`）与合并诊断。
 - 编译结果 `WikitextCompilation`：状态、输入/实际输出/失败尝试的 source id、解析快照、依赖清单与统计；诊断与来源图只保存在其 `snapshot`。
-- 序列化只输出普通对象；恢复函数校验 schema、`meta` 形状与固定 HAST 预算，渲染快照恢复后重新执行清洗与最终整理。快照内的 `policy`、`labels` 与 `authorizedImages` 属于可信边界：重新清洗只用于重建派生结构，不能把第三方 HAST 变成可信内容。序列化不是安全证明，只应接收本库产生的可信数据。
+- 序列化只输出普通对象；恢复函数校验 schema、`meta` 形状与固定 HAST 预算，渲染快照恢复后重新执行清洗与最终整理。快照内的 `policy`、`labels` 与 `authorizedImages` 属于可信边界：重新清洗只用于重建派生结构，不能把第三方 HAST 变成可信内容。序列化不能作为安全证明，只应接收本库产生的可信数据。
 
 源码映射与标识：
 
@@ -272,10 +207,9 @@ playground/src/
 
 - 解析预算覆盖源码长度、语法/语义节点数与深度，均可按解析选项覆盖；默认值见[文档站 parse 页面](../../website/docs/zh/api/parse.mdx)。有效语法节点与深度预算会传给默认适配器，用于在构造阶段提前停止；上游 token 解析仍会同步完成，不能保证中途取消。自定义适配器可以忽略该预算，工厂仍会校验返回的语法树。
 - 展开预算覆盖求值深度、调用次数与展开长度；模板源码与 include 过滤后的有效源码都受源码长度上限约束。默认值见[文档站 expand 页面](../../website/docs/zh/api/expand.mdx)。
-- 展开缓存分三层：模板获取结果按 provider 版本与标题、模板语法程序按 parser 与页面上下文、页面语法编译按输入内容与预算；容量同时受条目与字节约束。循环检测按词法 frame 路径判断。
 - 准备阶段对插件处理后的工作树再次执行固定的节点数与深度预算，防止插件扩大树规模；最终 HAST 与恢复渲染快照共用同一组固定 HAST 预算，prepare 的合法产物总能被 restore 接受。最终 HAST 节点数超限时，先省略语义 wiki 表格行末的库生成空补位格并记录警告；省略后仍超限、深度超限或无法省略时失败。
 - 归一化只建立一次源码行索引（与位置换算共用行起点），列表按二分定位行与节点窗口；块级深度由 `NormalizeContext.maxDepth` 统一约束，超限抛 `SOURCE_TOO_COMPLEX` 而不是静默截断或抛原生 `RangeError`。
-- 公共快照不保存 `flat`、Map 或父指针；`flattenNodes` 与按 id 索引通过 `WeakMap` 惰性创建，视图的语义/HAST 索引在渲染时按 document 重新建立，跨传输后可重建。
+- 公共快照不保存 `flat`、Map 或父指针；`flattenNodes` 与按 id 索引通过 `WeakMap` 惰性创建，视图的语义/HAST 索引在渲染时按 `snapshot` 重新建立，跨传输后可重建。
 - 准备阶段克隆语义树，保护原始快照；同一解析快照可用不同 resolver/labels/policy 多次准备。
 - 同步 parser 无法中途取消；`/preview` 提供防抖、请求身份、旧结果保留与过期结果丢弃，Worker 执行器复用宿主创建的 Worker 与同一协议。
 - 编译器 API 是异步的，支持 `signal`；等待 provider 时可以取消，同步 parser 执行期间不能保证立即停止。大规模展开仍应由宿主放入 Worker。
@@ -287,11 +221,10 @@ playground/src/
 ## 9. 运行时与交付边界
 
 - 浏览器优先；解析、归一化与 HAST 转换均不依赖 DOM，可在 Node 测试环境执行。
-- React 兼容范围 18.2–19；ESM + CJS 双产物；CI 含 React 18 运行时 job 与 Node 20/22/24 解析矩阵。
 - `wikiparser-node` 与 React 保持 external，因此只有它们是运行时依赖；unified、vfile、HAST 清洗与 JSX 工具及其传递依赖打包进库产物，作为开发依赖安装。CJS 产物强制按浏览器条件解析，不残留 `node:*` 内置模块引用。打包范围与原因见 `tsdown.config.ts`。
 - parser 精确锁定单一版本，不提供兼容区间；浏览器加载后 `globalThis.Parser` 是单例，多版本并存会互相覆盖，当前不支持。`loadParser` 在模块执行后立即捕获。
-- 根入口的 `Wikitext`、`/parse` 与 `/expand` 会加载 parser；`/view` 加载 React；`/ast`、`/hast`、`/unified` 与 `/configs` 既不加载 parser 也不加载 React。
-- CodeMirror 与 Worker 只在 playground 中使用，不进入库核心。
+- 只有根入口的 `Wikitext` 与 `/parse` 加载默认 parser；`/expand`、`/worker` 与 `/unified` 接收宿主注入的 parser；`/ast`、`/hast`、`/configs` 不接触 parser。加载 React 的入口是根入口、`/view`、`/devtools` 与 `/preview`。
+- CodeMirror 只在 playground 中使用；Worker 由宿主创建，`/worker` 只提供 handler 与协议，不进入默认渲染链。
 - 交付物是 `dist/` 库产物；playground 不构建、不部署、不发布。
 - 不内建 SSR/RSC 数据流：React 入口是客户端组件（产物带 `"use client"`），服务端渲染通过 `/parse` + `/hast` 预准备快照、再用 `/view` 恢复实现。
 - npm 包由 `dist/` 与许可证文件组成；发布流程见 `.github/workflows/publish.yml`，合规要求见[开发约定](./development.md)。

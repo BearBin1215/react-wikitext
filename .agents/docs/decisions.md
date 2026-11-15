@@ -20,21 +20,21 @@
 
 **理由**：上游 token 形态与公共语义 API 解耦；段落、列表项、表格行与 HTML 配对在语义阶段形成，React 层不再扫描源码；HAST 能复用 rehype、`hast-util-sanitize` 与 JSX runtime，同时保持准备结果可序列化、可进入 Worker、可交给其他消费方；`/ast`、`/hast`、`/unified` 不依赖 React 与 parser，可分别测试与缓存。
 
-**约束**：语义转换必须保留 `position` / `origin`，生成节点不伪造位置；实体只在语义转换时解码一次；不引入 mdast，也不声称任意 remark 插件可处理 wikitext。
+**约束**：语义转换必须保留 `origin`（`sourceId` + `start`/`end`），生成节点不伪造来源；不另存第二份行列；实体只在语义转换时解码一次；不引入 mdast，也不声称任意 remark 插件可处理 wikitext。
 
 **被否方案**：语法树直接转 HAST（显示与语义工具仍依赖上游 token）；先统一为 mdast（模板/参数/文件/扩展需要大量自定义节点，不能自然获得 remark 生态）。
 
 ## 3. 解析器与渲染入口解耦
 
-**决策**：固定 `wikiparser-node@1.48.2` 浏览器 IIFE；默认适配器、IIFE 加载与配置快照只属于根入口的 `Wikitext`、`/parse` 与 `/expand`。只渲染已准备文档的宿主使用 `/view`，该入口不加载 parser。
+**决策**：固定 `wikiparser-node@1.48.2` 浏览器 IIFE；默认适配器、IIFE 加载与配置快照只属于根入口的 `Wikitext` 与 `/parse`；`/expand`、`/worker` 与 `/unified` 接收宿主注入的 parser。只渲染已准备文档的宿主使用 `/view`，该入口不加载 parser。
 
 **理由**：源码组件必须解析源码，放在根入口符合库的主用途；只渲染的宿主仍可通过 `/view` 避免全局 `Parser` 初始化；解析器接口与默认实现分离，自定义 adapter 可输出相同语法树而不加载 IIFE；配置在工厂创建时快照，避免每次解析隐式修改全局配置。
 
-**约束**：精确锁定单一版本，不提供兼容区间，也不支持多版本并存或隔离加载；`loadParser` 在模块加载时捕获 `globalThis.Parser`，宿主页面已有同名全局会被覆盖，1.0 明确声明该全局污染限制；解析前统一 LF，不提供原源码 offset 映射；Node 完整版只用于 oracle；替换 parser 需要单独验证语法事实与 oracle 基线。
+**约束**：精确锁定单一版本，不提供兼容区间，也不支持多版本并存或隔离加载；`loadParser` 在模块加载时捕获 `globalThis.Parser`，宿主页面已有同名全局会被覆盖，1.0 明确声明该全局污染限制；解析前统一 LF；CRLF 与展开造成的位置差异由来源图的 `normalize`/`invocation`/`value` 片段显式记录，经 `mapSourceSpan` 映射，禁止直接对原文 `slice`；Node 完整版只用于 oracle；替换 parser 需要单独验证语法事实与 oracle 基线。
 
 ## 4. 强类型语义 AST 与来源
 
-**决策**：使用判别联合与明确的节点族；`unknown` 表示除扩展标签外的未识别结构，原类型保存在 `parserType`。节点带 `id`、可选 `position` 与 `origin`；快照不保存 `flat`、Map 或父指针。
+**决策**：使用判别联合与明确的节点族；`unknown` 表示除扩展标签外的未识别结构，原类型保存在 `parserType`。节点带 `id` 与可选 `origin`；快照不保存 `flat`、Map、父指针，也不保存第二份行列。
 
 **理由**：消费方可按 `node.type` 窄化访问字段，减少断言与上游细节泄露；模板参数、文件说明作为真实子树，避免在同一内容上维护多份派生字段；惰性索引避免序列化重复整棵树，也允许 Worker/JSON 后重建；id 在插件复制/插入后重新分配，保证快照内唯一。
 
@@ -48,13 +48,13 @@
 
 **约束**：同步准备遇到异步插件抛 `ASYNC_PLUGIN_IN_SYNC_PATH`，不静默忽略；插件后的语义树重新检查节点数与深度并重分配 id，查询缓存随之失效；`/unified` 不再导出 raw 插件，宿主无法把插件排在清洗之后；`toc` 只在准备设置中出现一次；处理器每次运行创建新的 VFile，运行之间不共享状态。
 
-**被否方案**：保留三个公开 raw 插件并依赖调用方排序；在 finalize 上增加运行时标记来事后检测乱序（无法检测原地修改）；任意命名生命周期、隐藏全局插件或 middleware 注册表。
+**被否方案**：保留公开的 raw 插件并依赖调用方排序；在 finalize 上增加运行时标记来事后检测乱序（无法检测原地修改）；任意命名生命周期、隐藏全局插件或 middleware 注册表。
 
 ## 6. resolver 只返回数据
 
 **决策**：链接 resolver 返回 `{ href?, label?, target? } | null | undefined`；图片 resolver 返回 `{ src, alt?, width?, height? } | null | undefined`。resolver 不返回 ReactNode。
 
-**理由**：HAST 转换不依赖 React，准备结果可序列化、可进入 Worker、可交给其他渲染器；富 React label 通过 `semanticComponents.link` 覆盖，转换层只接收普通数据；三个 resolver 共用同一条空值规则：`undefined` 表示没有意见、交给默认行为，`null` 表示明确不处理（链接不生成导航，图片保持占位），对象表示自定义数据，避免依赖真假值推断。图片 resolver 接受 `undefined`，与链接 resolver 保持对称。
+**理由**：HAST 转换不依赖 React，准备结果可序列化、可进入 Worker、可交给其他渲染器；富 React label 通过 `semanticComponents.link` 覆盖，转换层只接收普通数据；各个 resolver 共用同一条空值规则：`undefined` 表示没有意见、交给默认行为，`null` 表示明确不处理（链接不生成导航，图片保持占位），对象表示自定义数据，避免依赖真假值推断。图片 resolver 接受 `undefined`，与链接 resolver 保持对称。
 
 **约束**：`context.document` 是原始解析快照，`context.ast` 与 `context.node` 是本次工作树；resolver 返回的 URL 与插件写入的 URL 都经过最终验证；只有 resolver 返回并通过校验的图片 `src` 被授权，默认不启用插件图片。
 
@@ -92,11 +92,9 @@
 
 ## 11. 模板展开作为可选前置阶段
 
-> 2026-11-12 更新：本条的接口与若干约束已被[实时预览与模板展开整体改造](./plans/2026-11-12-realtime-preview-implementation.md)替代。`/expand` 现在提供 `createWikitextCompiler` 与 provider 快照；模板展开支持跨编辑缓存、嵌套来源映射、批量获取、并发与取消。下方“无跨调用缓存”“嵌套调用复用顶层记录”“不提供展开组合快照序列化”等约束不再成立；保留本节用于记录当时的取舍。
+**决策**：提供独立的异步 `/expand` 阶段，公共入口是 `createWikitextCompiler`；模板源码由 `provider.open()` 在每次编译开始时固定一个快照提供（离线用 `createTemplateTableProvider`）。编译器在源码语法树上按不可变 frame 求值，把展开结果重新解析为 `WikitextParsedSnapshot`，并用同一来源图记录输入、模板原文、有效正文、展开产物、片段关系与调用记录。默认不启用；可恢复失败保留调用并记录诊断，最终解析失败退回原始 LF 快照，`failureMode: "throw"` 整次抛错。
 
-**决策**：提供独立的异步 `/expand` 阶段；模板源码由宿主的模板表 provider 或远程 provider 提供。库在内部保留的语法树上求值，再把展开后的源码重新解析为 `WikitextParsedSnapshot`。默认不启用；可恢复失败保留调用并记录诊断，最终解析失败退回原始快照，`failureMode: "throw"` 整次抛错。
-
-**理由**：展开结果仍然是 wikitext，只有重新解析，参数和函数生成的表格、标题、列表与链接才能进入正常语义阶段，避免在展开器里复制结构解析；默认不启用可以让不需要模板的宿主保持零成本；模板来源、站点配置和外部函数属于宿主环境，由宿主注入模板表或回调比库内抓取更可控；离线内容与预加载的模板集合直接传数据，省去查表回调与辅助函数，指南也不必把远程请求当作基本用法；每次调用复制模板表，使一次展开的结果不受调用期间修改影响，模板表优先让静态覆盖与按需获取可以混用；原始快照与展开快照分开保存，记录和诊断分别使用原始页面坐标与展开源码坐标，回退时可以完整恢复。
+**理由**：展开结果仍然是 wikitext，只有重新解析，参数和函数生成的表格、标题、列表与链接才能进入正常语义阶段；默认不启用让不需要模板的宿主保持零成本；模板来源与站点配置属于宿主环境，provider 比库内抓取更可控；单一来源图让页面坐标、模板坐标与展开坐标可以互相映射，避免调用方维护多套偏移。
 
 **约束**：只支持无站点依赖的纯 wikitext 子集；`#invoke`、站点状态函数、模板重定向与完整标题规范化不在库内实现；模板表按请求标题精确匹配，不匹配短标题、别名或省略 `Template:` 前缀的键，键由宿主整理；循环检测按词法 frame 路径判断，参数值在调用方作用域求值，因此 `{{T|{{T|x}}}}` 不视为循环而模板体自递归仍被检测；不提供自定义函数 hook 或独立 Node/构建期后端；同步 parser 执行期间不能保证立即取消（Worker 可以终止执行域）；实时调度使用 `/preview`，主线程与 Worker 结果等价。
 
@@ -123,10 +121,9 @@
 
 ## 12.1 兼容基线与技术决定
 
-- **预算超限**：维持整页失败（`SOURCE_TOO_COMPLEX`），不提供截断节点；宿主应使用 Worker 与明确的长度上限。理由是截断会伪造结构与来源，难以保证 1.x 的兼容性。
-- **运行时基线**：产物 target 为 ES2022，依赖 `structuredClone`；Node 侧要求 `>=20.19`（下限来自 `wikiparser-node` 及其传递依赖，启用 `engine-strict` 时需 `>=22.13`），浏览器侧按现代常青浏览器作为基线。暂不提供 `structuredClone` fallback，因为快照格式要求保留 `undefined` 与普通对象语义。
-- **parser 全局**：保留单一 IIFE 与 `globalThis.Parser` 捕获；不支持多版本并存或隔离加载，1.0 明确声明该限制。
-- **`style`**：采用安全子集而非整体丢弃；非法声明逐条丢弃并产生诊断。
+- 预算超限时整页失败（`SOURCE_TOO_COMPLEX`），不截断节点；截断会伪造结构与来源。
+- 产物 target 为 ES2022，依赖 `structuredClone`，不提供 fallback（快照需要保留 `undefined` 与普通对象语义）。Node 与浏览器基线以 `package.json` 与 CI 为准。
+- parser 全局约束见[解析器与渲染入口解耦](#3-解析器与渲染入口解耦)；`style` 子集规则见[渲染规范](./rendering-spec.md#103-属性)。
 
 ## 13. 已知风险
 
@@ -142,7 +139,7 @@
 | 多版本 parser 覆盖全局 | 导入后立即捕获 + 文档明确不支持并存 |
 | 展开源码不可信 | 重新解析 + 现有语义清洗 + 不执行 HTML、不内建 Lua |
 | 展开递归或结果膨胀 | 循环检测 + 深度、调用次数与长度预算 + Worker |
-| 展开结果坐标错位 | `original` / `document` 双快照 + 记录范围 + 诊断映射 |
+| 展开结果坐标错位 | 单一来源图 + 带 `sourceId` 的 span + 诊断主 `location` + `mapSourceSpan` 覆盖率 |
 | ESM-only 工具在 CJS 失败 | 强制打包 + `isolate-ast/hast/unified.cjs` + 类型 consumer |
 | CJS 产物取到 `node:*` 分支 | tsdown `inputOptions.platform = "browser"` + `check-cjs-externals.mjs` |
 | 恢复快照被当作不可信输入 | 明确 policy/labels/authorizedImages 属于可信边界；文档与类型注释同源 |
@@ -182,30 +179,16 @@
 
 **决策**：
 
-- **IIFE 方案**：保留精确版本的 `wikiparser-node` npm 依赖与当前运行时读取锚点，本轮不 vendor。生产 consumer 的页面与 Worker 用压缩产物实际执行来验证；升级后如果这些验收失败且问题无法在现有方案内解决，再评估 vendor 或其他入口。
-- **打包器支持范围**：正式支持并持续验收 Vite 与 webpack 5。其他打包器“可能可用”，但不承诺配置或兼容性；只有出现真实宿主需求、可复现问题和持续测试能力时才进入支持范围。
-- **解析器替换**：本轮不替换 `wikiparser-node@1.48.2`，保留精确锁定、升级清单与 oracle。只有核心语法需求被上游能力阻塞，或性能、维护、加载风险无法在现有实现中解决时才重新选型；届时必须比较语法覆盖、range、许可证、包体积与迁移成本。
-- **非默认 parser 接入**：官方流程是使用现有 adapter，并从 `/ast` 导入 `createWikitextParser`，避免通过 `/parse` 初始化默认 parser。文档说明 LF、UTF-16 range、position、属性、token 类型与嵌套规则，并明确 adapter 的语法子集不等同于完整 wikitext 支持。
-- **模板与站点扩展接管**：使用现有分阶段接口，不增加注册中心或隐式求值：异步前置用 `/expand`，语义/HAST 阶段用插件与 handlers，视图阶段用 `semanticComponents.template` / `parserFunction` / `extension` / `reference`。`undefined` 回退内建转换，`null` 丢弃节点；自定义组件与插件属于可信边界。
-- **文档中的用法分层**：指南分别演示展开、插件/handlers 与语义组件接管，说明优先级、回退与可信边界，避免把模板接管错写成 `extension`。
+- 保留精确版本的 `wikiparser-node` IIFE，不 vendor；升级以生产 consumer 的浏览器执行为准。
+- 正式支持 Vite 与 webpack 5，其他打包器不承诺。替换 parser 需要重新比较语法覆盖、range、许可证、包体积与迁移成本。
 
-**理由**：这些边界直接影响构建、加载与安全；把它们写成可重新评估的决定，比在路线图保留没有截止条件的待办更清晰。浏览器执行验收比字符串检查更能证明压缩后仍可用。
+**约束**：改变支持范围、parser 版本或打包策略需要可复现证据；新增打包器支持不能只凭一次本地成功。
 
-**约束**：改变支持范围、parser 版本或打包策略需要附上可复现证据；新增打包器支持不能只凭一次本地成功。
+## 17. 按需重构
 
-## 17. 维护性重构的按需原则
-
-以下事项不设待办，只在触发条件出现时重新评估：
-
-- **扩展标签能力表**：新增或调整具体扩展标签时，按 raw / block / semantic / renderer 分列记录能力；不合并各阶段标签集合。`<references>` 位置控制已实现。
-- **playground 跨树 range API**：出现语法树侧源码定位需求时再提供；语义树查询与选择恢复已覆盖常见场景。
-- **view dispatch 与 `as never`**：新增组件映射或分派缺陷需要改动时，再改为可检查的类型边界；不按文件长度重构。
-- **fragment 容器与样式**：保留透明布局容器与 `display: contents`；block 模式产生 `div` 但不提供外层盒子。需要 padding、border 或布局的宿主使用自己的容器。
-- **handler 覆盖层**：正式保留覆盖内建类型的能力；`undefined` 回退，`null` 丢弃。只有出现“禁止覆盖内建转换”的宿主需求时才增加权限或覆盖层。
-- **展开器扩展**：新增函数或自定义 hook 时，按 `program/`（参数读取策略）与 `evaluate/`（求值与来源片段）的职责扩展；不重新引入共享可变标题栈。
-- **标签结束扫描重复实现**：记录为局部维护规则，触及相关模块时再统一包含引号的结束扫描语义。
-
-**理由**：这些事项目前没有需求支持；把它们记成触发条件可以避免“清空路线图”式的无收益重构，同时保留未来决策依据。
+- 不按文件长度重构；新增扩展标签能力、跨树 range 需求或组件分派缺陷时再改。
+- `WikitextFragment` 保留透明布局容器（`display: contents`）；block 模式产生 `div`，不提供外层盒子。
+- handler 覆盖层保留：`undefined` 回退内建转换，`null` 丢弃节点。
 
 ## 18. 补位格预算降级
 
@@ -222,7 +205,7 @@
 **决策**：
 
 - `<Wikitext>` 增加 `onPrepared`；`onError` 只接收 `WikitextError`；`fallback` 是唯一接管口，提供后不再渲染内置错误容器。默认错误文案使用 `prepareOptions.labels.renderFailed`。
-- 四个错误类保持子类结构，但作为同一份定义从根入口与功能入口导出；`WikitextPrepareError.stage` 与诊断共用 `WikitextStage`；`KnownWikitextDiagnosticCode` 公开导出。`severity` 定义为内容受损程度，不代表调用失败。
+- 错误类保持子类结构，但作为同一份定义从根入口与功能入口导出；`WikitextPrepareError.stage` 与诊断共用 `WikitextStage`；`KnownWikitextDiagnosticCode` 公开导出。`severity` 定义为内容受损程度，不代表调用失败。
 - 解析快照 `meta.limits` 记录实际生效预算，`WikitextParser.resolveOptions()` 暴露同一份值；预算必须是正整数。
 - `MEDIAWIKI_CONFIG` 深冻结；新增 `createMediaWikiConfig` 做深层覆盖并返回校验后的副本。
 - 运行时拒绝把渲染快照交给准备阶段、把解析快照交给视图。
@@ -236,19 +219,15 @@
 
 **被否方案**：只做改名而不改变入口模型；把 `labels` 移出快照（服务端与客户端需要各自提供同一份文案，与当前快照自洽性冲突）；把 `<Wikitext>` 改成默认异步（需要 React 19 的 `use()`，与当前 React 18.2 下限冲突）。
 
-## 20. 类名与 CSS 变量前缀统一为 `wikitext-`（0.2.0）
+## 20. 公开前缀
 
-**决策**：自有类名、CSS 变量与内部 data 标记的前缀从 `wtr-` 改为 `wikitext-`，即 `.wtr-view` → `.wikitext-view`、`--wtr-text` → `--wikitext-text`、`[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`、默认标题锚点前缀 `wtr-heading-` → `wikitext-heading-`。内部标记 `dataWtrToc` / `dataWtrReferences` 同步改为 `dataWikitextToc` / `dataWikitextReferences`。不保留旧前缀别名。
-
-**理由**：`wtr` 是前身名 `wikitext-ast-renderer` 的首字母缩写；仓库早期 `README.md` 与 `.agents/docs/api.md` 曾把它当作包名和导入路径，`446c2cc` 统一措辞时只改了文字，标识符未同步。`wikitext-` 与包名核心词一致，读者不需要记第二套缩写，也不绑定 React，将来非 React 视图可以复用同一份样式。`rw-` 语义过载（read-write、rewrite、row），`rwt-` 与 `wtr-` 只差字母序、迁移期最容易肉眼混淆，`wt-` 过于通用，`wx-` 在中文语境与微信 API 冲突，均被否。类名是高度重复的固定字符串，gzip 后的长度代价可忽略。
-
-**约束**：`wikitext-` 同时覆盖类名、CSS 变量与 data 属性，宿主覆盖变量和深色主题选择器需要一并改写。class 集合仍是公开 DOM 承诺的一部分，改名属于 0.x 次版本的破坏性变更；`mw-`、`catlinks`、`reference` 等 MediaWiki 兼容类名不变。内部 data 标记与 Parsoid 的 `data-wikitext` 共享词根，但完整名称不同，清洗仍以精确名单排除源码注入。
+公开 class、CSS 变量与 data 属性使用 `wikitext-` 前缀，不保留旧前缀别名；`mw-*`、`catlinks`、`reference` 等 MediaWiki 兼容类名不变。内部 data 标记与 Parsoid 的 `data-wikitext` 共享词根但名称不同，清洗按精确名单排除源码注入。
 
 ## 21. 调试组件作为独立 `/devtools` 入口
 
 **决策**：将 playground 的 AST 调试树与节点检查器迁入 `src/devtools`，以 `react-wikitext/devtools` 与 `react-wikitext/devtools.css` 发布。公开 `AstTree`、`NodeInspector`、`AstTreeDocument`、`AstTreeKind`、`AstTreeNode`、选择恢复辅助函数、节点区间/源码查询与文案默认值。`AstTree` 接受解析快照或渲染快照；`NodeInspector` 删除未使用的 `tree` 属性；`AstTree` 的树类型属性命名为 `kind`，受控选中用 `string | null` 表示，非受控选中按树类型分别保存并在文档更新后按类型与区间恢复。
 
-**理由**：调试面板已有真实实现，但只存在于 playground，消费方无法使用；直接导出内部名称会把 `Devtree` 一类实现术语带进公共 API。解析快照与渲染快照的结构足够接近，统一为 `AstTreeDocument` 后，两种快照都能检查。选择与展开状态在重新解析后会失效，公开按类型与 range 恢复的辅助函数，宿主不必复制 playground 的恢复逻辑。独立入口让 `/devtools` 只加载 React 与 `/ast`，根入口、`/view` 与 `/hast` 不增加依赖。
+**理由**：调试面板已有真实实现，但只存在于 playground，消费方无法使用；直接导出内部名称会把 `Devtree` 一类实现术语带进公共 API。解析快照与渲染快照的结构足够接近，统一为 `AstTreeDocument` 后，解析快照与渲染快照都能检查。选择与展开状态在重新解析后会失效，公开按类型与 range 恢复的辅助函数，宿主不必复制 playground 的恢复逻辑。独立入口让 `/devtools` 只加载 React 与 `/ast`，根入口、`/view` 与 `/hast` 不增加依赖。
 
 **被否方案**：从根入口或 `/view` 直接导出（把调试代码带进正式渲染入口）；只导出组件而不导出恢复辅助函数（消费方仍需复制内部逻辑）；在组件内部忽略受控属性（无法与编辑器或 URL 状态同步）。
 
@@ -268,8 +247,8 @@
 
 **决策**：`/preview` 负责防抖、请求身份、旧结果保留与过期丢弃，`/worker` 只提供消息处理器、由宿主创建 Worker。playground 继续使用自有 Worker 调度与协议（解析一次、按选项多次准备），不迁移到 `/preview`。阶段计时由 `profile` 选项按实例注入，编译器与准备管线各自持有，默认关闭。
 
-**理由**：公共 executor 的契约是“编译并准备、返回渲染快照”，而 playground 需要在解析后按渲染选项反复准备，其协议还携带配置键、预算与展开开关。把两种所有权合并进公共 API，会让内部工具的需求反向塑造库本体。阶段计时按实例传入，不共享模块状态，并发编译或并发准备不会串扰；关闭时只多一次判断。
+**理由**：公共 executor 的约定是“编译并准备、返回渲染快照”，而 playground 需要在解析后按渲染选项反复准备，其协议还携带配置键、预算与展开开关。把公共调度与内部工具的职责合并进同一个公共 API，会让内部工具的需求反向塑造库本体。阶段计时按实例传入，不共享模块状态，并发编译或并发准备不会串扰；关闭时只多一次判断。
 
-**被否方案**：让 executor 返回解析快照（`WikitextView` 无法直接使用，公共契约变模糊）；继续使用模块级 sink（并发采样串扰，且需要文档提醒宿主不要开启）；playground 改为每次选项变化重编译（失去准备缓存演示，且更慢）。
+**被否方案**：让 executor 返回解析快照（`WikitextView` 无法直接使用，公共约定变得模糊）；继续使用模块级 sink（并发采样串扰，且需要文档提醒宿主不要开启）；playground 改为每次选项变化重编译（失去准备缓存演示，且更慢）。
 
 **约束**：`profile` 只接收普通函数，不能跨 Worker 传递；阶段名由 `WikitextStageName` 统一，编译器与准备阶段共用一张表。playground 与库的接口只允许公共入口，不能从 `src/` 直接导入。

@@ -126,7 +126,7 @@ export default function Demo() {
 
 ## 如何确认实际行为
 
-1. 检查 `document.diagnostics` 的 `stage` 与 `code`。
+1. 检查 `snapshot.diagnostics` 的 `stage` 与 `code`。
 2. 用 `/ast` 的 `flattenNodes` 查看语义树，并与准备结果中的 HAST 对照。
 3. 用 `labels` 区分“未求值”“已拦截”“未知结构”等占位文案。
 4. 本页描述默认配置下的行为；升级版本后，以实际诊断与渲染结果为准。

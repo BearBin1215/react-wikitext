@@ -53,25 +53,25 @@ These are guardrails, not performance targets. Preparation fails when they are e
 
 ## Parse in a worker
 
-There is no built-in worker, but snapshots are plain data and can cross threads:
+The library does not create workers; `/worker` provides a handler and message protocol to run inside a worker you own. Snapshots are plain data and can also cross threads directly:
 
 ```ts
 // worker.ts
 import { parseWikitext } from "react-wikitext/parse";
-import { serializeWikitextParsedSnapshot } from "react-wikitext/ast";
+import { serializeWikitextSnapshot } from "react-wikitext/ast";
 
 self.onmessage = (event: MessageEvent<string>) => {
   const document = parseWikitext(event.data, { pageName: "Example" });
-  self.postMessage(serializeWikitextParsedSnapshot(document));
+  self.postMessage(serializeWikitextSnapshot(document));
 };
 ```
 
 ```ts
 // main.ts
-import { restoreWikitextParsedSnapshot } from "react-wikitext/ast";
+import { restoreWikitextSnapshot } from "react-wikitext/ast";
 import { prepareWikitext } from "react-wikitext/hast";
 
-const document = restoreWikitextParsedSnapshot(payload);
+const document = restoreWikitextSnapshot(payload);
 const prepared = prepareWikitext(document);
 ```
 
@@ -100,14 +100,14 @@ A cache key must cover every input that affects output:
 
 ## Bundle by entry
 
-| Entry      | Parser | React | Typical use                   |
-| ---------- | ------ | ----- | ----------------------------- |
-| Root entry | Yes    | Yes   | Client-side source rendering  |
-| `/parse`   | Yes    | No    | Parsing, workers, build time  |
-| `/expand`  | Yes    | No    | Template expansion            |
-| `/view`    | No     | Yes   | Render a prepared snapshot    |
-| `/hast`    | No     | No    | Preparation and serialization |
-| `/ast`     | No     | No    | AST queries and data work     |
+| Entry      | Parser           | React | Typical use                   |
+| ---------- | ---------------- | ----- | ----------------------------- |
+| Root entry | Yes              | Yes   | Client-side source rendering  |
+| `/parse`   | Yes              | No    | Parsing, workers, build time  |
+| `/expand`  | No (host parser) | No    | Template expansion            |
+| `/view`    | No               | Yes   | Render a prepared snapshot    |
+| `/hast`    | No               | No    | Preparation and serialization |
+| `/ast`     | No               | No    | AST queries and data work     |
 
 For display-only clients, load `/view` dynamically so the parser stays out of the initial bundle:
 

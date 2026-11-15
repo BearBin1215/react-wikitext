@@ -51,7 +51,7 @@ Field definitions are in [Preparation `/hast`](../api/prepare.mdx).
 - `meta` records the effective policy, labels, heading strategy, and authorized images.
 - `WikitextView` accepts only a render snapshot, never source text.
 
-Both snapshots carry the same source graph, so semantic nodes, diagnostics, and HAST attributes share one set of text sources and spans. Queries must still use the right snapshot: do not look up ids from a render snapshot in the original parse snapshot.
+Queries must use the right snapshot: do not look up ids from a render snapshot in the original parse snapshot.
 
 ## Why two stages
 
@@ -77,19 +77,19 @@ Each output can be traced back to its source, which makes issues easier to debug
 
 ## Entry boundaries
 
-| Entry       | Loads parser     | Loads React | Typical use                                   |
-| ----------- | ---------------- | ----------- | --------------------------------------------- |
-| Root entry  | Yes              | Yes         | Render source on the client                   |
-| `/view`     | No               | Yes         | Render a prepared snapshot                    |
-| `/parse`    | Yes              | No          | Server, worker, cache                         |
-| `/expand`   | No (host parser) | No          | Expand templates before parse                 |
-| `/preview`  | No               | Yes         | Debounce, request versions and stale results  |
-| `/worker`   | Yes              | No          | Compile and prepare inside a worker           |
-| `/hast`     | No               | No          | Prepare, serialize, restore                   |
-| `/ast`      | No               | No          | AST queries and data pipelines                |
-| `/unified`  | No               | No          | Fixed-order processor with an injected parser |
-| `/configs`  | No               | No          | Site config constants and override builder    |
-| `/devtools` | No               | Yes         | Debug parse results and render snapshots      |
+| Entry       | Loads parser       | Loads React | Typical use                                   |
+| ----------- | ------------------ | ----------- | --------------------------------------------- |
+| Root entry  | Yes                | Yes         | Render source on the client                   |
+| `/view`     | No                 | Yes         | Render a prepared snapshot                    |
+| `/parse`    | Yes                | No          | Server, worker, cache                         |
+| `/expand`   | No (host parser)   | No          | Expand templates before parse                 |
+| `/preview`  | No                 | Yes         | Debounce, request versions and stale results  |
+| `/worker`   | No (host compiler) | No          | Compile and prepare inside a worker           |
+| `/hast`     | No                 | No          | Prepare, serialize, restore                   |
+| `/ast`      | No                 | No          | AST queries and data pipelines                |
+| `/unified`  | No                 | No          | Fixed-order processor with an injected parser |
+| `/configs`  | No                 | No          | Site config constants and override builder    |
+| `/devtools` | No                 | Yes         | Debug parse results and render snapshots      |
 
 [Entry points](../api/index.mdx) describes each subpath's responsibilities and loading boundaries. For a symbol-by-symbol list, see the export notes on each entry page.
 
@@ -99,18 +99,18 @@ React entries use hooks such as `useId` and `useMemo`, so they only run in Clien
 
 ## Glossary
 
-| Term            | Meaning                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| wikitext        | MediaWiki-style page source                                                                          |
-| Parse snapshot  | The semantic result of source plus site config (`WikitextParsedSnapshot`)                            |
-| Render snapshot | The result after plugins, HAST conversion, sanitization, and finalization (`WikitextRenderSnapshot`) |
-| Source graph    | Text sources, piece relations, and invocation records carried inside a snapshot                      |
-| Resolver        | Host callbacks such as `resolveLink` and `resolveImage`                                              |
-| Template table  | The `/expand` template provider implementation that maps titles to source                            |
-| Remote provider | A custom `provider.open()` snapshot that fetches templates in batches                                |
-| Handler         | A `prepareOptions.handlers` function converting a custom semantic node to HAST                       |
-| Policy          | URL, tag, and class rules in `prepareOptions.policy`                                                 |
-| Labels          | `prepareOptions.labels`, every user-visible placeholder and hint                                     |
+| Term            | Meaning                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| wikitext        | MediaWiki-style page source                                                                                                                     |
+| Parse snapshot  | The semantic result of source plus site config (`WikitextParsedSnapshot`)                                                                       |
+| Render snapshot | The result after plugins, HAST conversion, sanitization, and finalization (`WikitextRenderSnapshot`)                                            |
+| Source graph    | Text sources, piece relations, and invocation records carried inside a snapshot                                                                 |
+| Resolver        | Host callbacks such as `resolveLink` and `resolveImage` that map wiki addresses to site URLs; not to be confused with wikitext parser functions |
+| Template table  | The `/expand` template provider implementation that maps titles to source                                                                       |
+| Remote provider | A custom `provider.open()` snapshot that fetches templates in batches                                                                           |
+| Handler         | A `prepareOptions.handlers` function converting a custom semantic node to HAST                                                                  |
+| Policy          | URL, tag, and class rules in `prepareOptions.policy`                                                                                            |
+| Labels          | `prepareOptions.labels`, every user-visible placeholder and hint                                                                                |
 
 ## Next steps
 

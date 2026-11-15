@@ -72,22 +72,11 @@ export function Article() {
 
 ## 入口
 
-| 子路径                        | 用途                                            |
-| ----------------------------- | ----------------------------------------------- |
-| `react-wikitext`              | 源码组件 `Wikitext` 与视图组件 `WikitextView`   |
-| `react-wikitext/view`         | 只渲染已准备好的快照（不加载解析器）            |
-| `react-wikitext/parse`        | 解析器与解析选项                                |
-| `react-wikitext/ast`          | 语义模型、查询、序列化与自定义解析器            |
-| `react-wikitext/hast`         | `prepareWikitext`、插件、resolver、策略与文案   |
-| `react-wikitext/expand`       | 编译器、模板 provider 与展开类型                |
-| `react-wikitext/preview`      | 基于宿主 executor 的防抖预览调度                |
-| `react-wikitext/worker`       | 编译并准备的 worker handler                     |
-| `react-wikitext/unified`      | 固定顺序的 unified 处理器，收尾清洗由库内部追加 |
-| `react-wikitext/configs`      | 站点配置快照与覆盖构造器                        |
-| `react-wikitext/devtools`     | AST 树、节点检查器与选择恢复辅助函数            |
-| `react-wikitext/styles.css`   | 页面渲染样式                                    |
-| `react-wikitext/tokens.css`   | 仅主题变量                                      |
-| `react-wikitext/devtools.css` | 调试组件样式                                    |
+| 子路径                | 用途                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-wikitext`      | 源码组件 `Wikitext` 与视图组件 `WikitextView`                                                                                                                       |
+| `react-wikitext/view` | 只渲染已准备好的快照（不加载解析器）                                                                                                                                |
+| 其余子路径            | `/parse`、`/ast`、`/hast`、`/expand`、`/preview`、`/worker`、`/unified`、`/configs`、`/devtools` 与样式文件，见[入口总览](https://react-wikitext.pages.dev/zh/api/) |
 
 根入口是主入口。服务端预准备、Worker 解析或只做渲染的宿主应当使用 `react-wikitext/view`，这个入口不会加载默认解析器。各子路径的公共类型与导出见文档[入口](https://react-wikitext.pages.dev/zh/api/)。
 

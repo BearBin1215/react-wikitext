@@ -7,10 +7,6 @@ description: 主题变量、文案、标题锚点、插件与组件覆盖点。
 
 库输出稳定的 `wikitext-*` 类名与一组 CSS 变量。页面结构、文案、标题锚点和组件外观都可以在不改源码的情况下调整。
 
-:::warning 从 0.1 升级
-0.2.0 起自有类名、CSS 变量与 data 属性的前缀由 `wtr-` 改为 `wikitext-`：`.wtr-view` → `.wikitext-view`，`--wtr-text` → `--wikitext-text`，`[data-wtr-theme="dark"]` → `[data-wikitext-theme="dark"]`，默认标题锚点前缀 `wtr-heading-` → `wikitext-heading-`。旧前缀不再输出，宿主样式与选择器需要同步替换。
-:::
-
 ## 样式
 
 引入一次页面样式：
@@ -198,7 +194,7 @@ for (const heading of prepared.headings) {
 />
 ```
 
-`components` 按 HAST 标签名映射，键可以是 `p`、`table`、`img`、`a` 等。组件会收到经过安全校验的属性、`node`（HAST 元素）、`document`、可选的 `semantic` 节点与 `origin`。不要把非 DOM 属性直接展开到原生元素上。
+`components` 按 HAST 标签名映射，键可以是 `p`、`table`、`img`、`a` 等。组件会收到经过安全校验的属性、`node`（HAST 元素）、`snapshot`、可选的 `semantic` 节点与 `origin`。不要把非 DOM 属性直接展开到原生元素上。
 
 ### 语义组件
 
@@ -250,7 +246,7 @@ function SectionLink() {
 }
 ```
 
-- `useWikitextContext()` 提供 `document`、索引、组件表、`idPrefix`、`mapId`、`mapHref` 与 `onRenderError`。
+- `useWikitextContext()` 提供 `snapshot`、索引、组件表、`idPrefix`、`mapId`、`mapHref` 与 `onRenderError`。
 - `useWikitextLabels()` 读取当前渲染快照的文案。
 - `useWikitextIds()` 提供 `toDomId` 与 `toHref`。
 

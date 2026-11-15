@@ -155,7 +155,7 @@ interface WikitextResolvedImage {
 - Dimensions are clamped to 1–4096 and the final `<img>` always has `loading="lazy"`.
 - `context.document` is the original parse snapshot; `context.ast` and `context.node` belong to the working tree.
 
-Resolvers return plain data, not React elements. To take over appearance, use the view's [`semanticComponents`](./react.mdx#semantic-components).
+Resolvers return plain data, not React elements. To take over appearance, use the view's [`semanticComponents`](./view.mdx#semantic-components).
 
 ## Security policy
 
@@ -206,6 +206,10 @@ Defaults:
 
 ```ts
 interface WikitextRenderSnapshot {
+  kind: "render";
+  id: string;
+  activeSourceId: WikitextSourceId;
+  graph: WikitextSourceGraph;
   source: string;
   ast: WikitextRoot;
   hast: import("hast").Root;

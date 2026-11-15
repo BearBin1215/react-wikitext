@@ -68,7 +68,7 @@ interface WikitextParseOptions {
 
 有效预算按优先级合并：单次解析选项覆盖创建时 `defaults`，`defaults` 覆盖共享默认值。解析前统一把 CRLF / CR 归一化为 LF，预算在归一化后检查。预算必须是正整数；`0`、负数、小数、`NaN` 与 `Infinity` 都会抛 `INVALID_CONFIG`。
 
-`retainSyntax` 只决定上游 token 语法树是否放进公共快照，会显著增加内存与构建成本。源码文本、语义节点的 `position` 与 `origin.range` 始终存在，查询函数也不读取语法树；只有需要检查上游 token 时才开启。
+`retainSyntax` 只决定上游 token 语法树是否放进公共快照，会显著增加内存与构建成本。源码文本、语义节点的 `origin`（`sourceId` + `[start, end)`）始终存在，行列由 `getSourcePosition` 按需计算；查询函数也不读取语法树。只有需要检查上游 token 时才开启。
 
 ### resolveOptions
 
@@ -82,6 +82,10 @@ parser.resolveOptions(options?): WikitextResolvedParseOptions
 
 ```ts
 interface WikitextParsedSnapshot {
+  kind: "parsed";
+  id: string;
+  activeSourceId: WikitextSourceId;
+  graph: WikitextSourceGraph;
   source: string;
   ast: WikitextRoot;
   syntax?: WikitextSyntaxRoot;
