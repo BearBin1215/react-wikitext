@@ -1,5 +1,6 @@
 import { decodeHTML } from "entities";
 import { sanitize, type Schema } from "hast-util-sanitize";
+import parseInlineStyle from "inline-style-parser";
 import type { Properties, Root } from "hast";
 import type { WikitextAttribute, WikitextResolvedPolicy } from "../ast/model";
 import type { WikitextDiagnostic } from "../ast/model";
@@ -11,8 +12,15 @@ import { TOC_DATA_PROPERTY } from "./toc";
 // URL 校验前需要移除控制字符，因此正则直接匹配这些码点。
 // oxlint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001F\u007F-\u009F]/gu;
-const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
-const ALLOWED_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+// 协议白名单只有一份：URL 校验使用带冒号的形式，HAST schema 使用不带冒号的形式。
+const EXTERNAL_PROTOCOLS = ["http", "https", "mailto"] as const;
+const IMAGE_PROTOCOLS = ["http", "https"] as const;
+const ALLOWED_EXTERNAL_PROTOCOLS: ReadonlySet<string> = new Set(
+  EXTERNAL_PROTOCOLS.map((protocol) => `${protocol}:`),
+);
+const ALLOWED_IMAGE_PROTOCOLS: ReadonlySet<string> = new Set(
+  IMAGE_PROTOCOLS.map((protocol) => `${protocol}:`),
+);
 
 function clean(value: string): string {
   return decodeHTML(value).replace(CONTROL_CHARS, "").trim();
@@ -260,25 +268,21 @@ export interface SanitizedStyle {
 export function sanitizeStyleValue(input: string): SanitizedStyle {
   const kept: string[] = [];
   const dropped: string[] = [];
-  for (const declaration of input.split(";")) {
-    const trimmed = declaration.trim();
-    if (!trimmed) {
+  // 交给 CSS 解析器处理，引号或函数内的分号、冒号不会被错误分割。
+  for (const declaration of parseInlineStyle(input, { silent: true })) {
+    if (declaration.type !== "declaration") {
       continue;
     }
-    const colon = trimmed.indexOf(":");
-    if (colon <= 0) {
-      dropped.push(trimmed);
-      continue;
-    }
-    const name = trimmed.slice(0, colon).trim().toLowerCase();
-    const value = trimmed.slice(colon + 1).trim();
+    const name = declaration.property.trim().toLowerCase();
+    const value = declaration.value.trim();
     if (
-      !SAFE_STYLE_PROPERTIES.has(name) ||
+      !name ||
       !value ||
+      !SAFE_STYLE_PROPERTIES.has(name) ||
       UNSAFE_STYLE_VALUE.test(value) ||
       /!important/iu.test(value)
     ) {
-      dropped.push(trimmed);
+      dropped.push(`${declaration.property}: ${declaration.value}`);
       continue;
     }
     kept.push(`${name}: ${value}`);
@@ -481,8 +485,8 @@ function createHastSanitizeSchema(policy: WikitextResolvedPolicy): Schema {
     clobber: [],
     clobberPrefix: "",
     protocols: {
-      href: ["http", "https", "mailto"],
-      src: ["http", "https"],
+      href: [...EXTERNAL_PROTOCOLS],
+      src: [...IMAGE_PROTOCOLS],
     },
     required: {},
     strip: [...policy.stripTags],

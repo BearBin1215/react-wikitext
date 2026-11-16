@@ -124,9 +124,10 @@ export default defineConfig({
   },
   deps: {
     neverBundle: ["react", "react-dom", /^react\//, /^wikiparser-node(\/|$)/],
-    // unified/hast 工具是 ESM-only；CJS 产物需要连同传递依赖一起打包。
+    // 运行时工具依赖会内联进产物；其中 unified/hast 工具是 ESM-only，CJS 产物需要连同传递依赖一起打包。
     alwaysBundle: [
       "entities",
+      "inline-style-parser",
       "unified",
       "vfile",
       "hast-util-sanitize",

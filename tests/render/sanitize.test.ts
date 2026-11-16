@@ -88,6 +88,12 @@ describe("sanitizedAttributesToProps", () => {
     });
   });
 
+  it("keeps semicolons and colons inside quoted style values", () => {
+    expect(
+      sanitizedAttributesToProps([{ name: "style", value: 'font-family: "Foo;Bar"; color: red' }]),
+    ).toEqual({ style: 'font-family: "Foo;Bar"; color: red' });
+  });
+
   it("filters invalid class tokens, dir and lang values", () => {
     expect(
       sanitizedAttributesToProps([
