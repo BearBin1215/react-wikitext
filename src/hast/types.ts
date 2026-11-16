@@ -165,6 +165,7 @@ export const DEFAULT_PREPARE_POLICY: WikitextResolvedPolicy = Object.freeze({
   allowSourceImages: false,
   externalLinkTarget: null,
   extraTags: Object.freeze<string[]>([]),
+  // 安全策略与归一化标签分类刻意保持分离：调整分类不应隐式改变默认剥离的标签列表。
   stripTags: Object.freeze([
     "script",
     "style",

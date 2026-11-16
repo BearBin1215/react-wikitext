@@ -1,4 +1,5 @@
 import { WikitextError } from "../errors";
+import { createLineIndex, type LineIndex } from "../position";
 import { isSpanWithin } from "./span";
 import {
   isWikitextParentNode,
@@ -29,7 +30,7 @@ const DEFAULT_NODE_LIMIT = 128;
 interface SourceIndex {
   readonly sources: ReadonlyMap<WikitextSourceId, WikitextTextSource>;
   readonly segments: ReadonlyMap<WikitextSourceId, readonly number[]>;
-  readonly lines: Map<WikitextSourceId, readonly number[]>;
+  readonly lines: Map<WikitextSourceId, LineIndex>;
   readonly all: readonly WikitextTextSource[];
 }
 
@@ -70,33 +71,14 @@ function indexOf(graph: WikitextSourceGraph): SourceIndex {
   return built;
 }
 
-function lineStarts(index: SourceIndex, source: WikitextTextSource): readonly number[] {
+function lineIndexOf(index: SourceIndex, source: WikitextTextSource): LineIndex {
   const cached = index.lines.get(source.id);
   if (cached) {
     return cached;
   }
-  const starts: number[] = [0];
-  for (let offset = 0; offset < source.text.length; offset++) {
-    if (source.text[offset] === "\n") {
-      starts.push(offset + 1);
-    }
-  }
-  index.lines.set(source.id, starts);
-  return starts;
-}
-
-function lineAt(starts: readonly number[], offset: number): number {
-  let low = 0;
-  let high = starts.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if (starts[middle]! <= offset) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return low;
+  const built = createLineIndex(source.text);
+  index.lines.set(source.id, built);
+  return built;
 }
 
 /** 读取文本源；未知 id 返回 undefined。 */
@@ -140,12 +122,8 @@ export function getSourcePosition(
 ): WikitextSourcePosition {
   const index = indexOf(graph);
   const source = assertSpan(index, span);
-  const starts = lineStarts(index, source);
-  const point = (offset: number) => {
-    const line = lineAt(starts, offset);
-    return { line: line + 1, column: offset - starts[line]! + 1, offset };
-  };
-  return { start: point(span.start), end: point(span.end) };
+  const lines = lineIndexOf(index, source);
+  return { start: lines.point(span.start), end: lines.point(span.end) };
 }
 
 /** 读取范围内的源码文本；范围非法时返回空字符串。 */

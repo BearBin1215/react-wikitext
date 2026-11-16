@@ -21,6 +21,7 @@ import {
   type WikitextRoot,
 } from "../ast/model";
 import { WIKITEXT_LABEL_KEYS, type WikitextLabels } from "../ast/labels";
+import { isRecord, isStringArray } from "../shared/guards";
 
 /** 可序列化的渲染快照，带有 schema 版本。 */
 export interface SerializedWikitextRenderSnapshot {
@@ -88,14 +89,6 @@ const POLICY_LISTS = ["extraTags", "stripTags"] as const;
 
 function invalid(message: string): never {
   throw new WikitextError("INVALID_DOCUMENT", message);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function assertPolicy(value: unknown): asserts value is WikitextResolvedPolicy {

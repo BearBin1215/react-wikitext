@@ -5,6 +5,7 @@ import type { VFile } from "vfile";
 import { isWikitextParentNode, type WikitextNode, type WikitextRoot } from "@/ast/model";
 import { findNodeById, flattenNodes, getSourceText } from "@/ast";
 import {
+  DEFAULT_PREPARE_POLICY,
   WikitextPrepareError,
   type WikitextPrepareOptions,
   prepareWikitext,
@@ -13,6 +14,7 @@ import {
   serializeWikitextRenderSnapshot,
 } from "@/hast";
 import { WikitextError } from "@/ast/errors";
+import { BANNED_HTML_TAGS, DROP_HTML_TAGS } from "@/shared/html-tags";
 import { WikitextView } from "@/view";
 import { configWithHtmlTags } from "../helpers/configs";
 import { parse } from "../helpers/parse";
@@ -323,6 +325,12 @@ describe("prepare pipeline", () => {
     const tampered = JSON.parse(JSON.stringify(serialized));
     tampered.hast.children = [deep];
     expect(renderRestoreError(tampered).code).toBe("INVALID_DOCUMENT");
+  });
+
+  it("keeps the default strip list aligned with the banned and dropped tags", () => {
+    expect(new Set(DEFAULT_PREPARE_POLICY.stripTags)).toEqual(
+      new Set([...BANNED_HTML_TAGS, ...DROP_HTML_TAGS]),
+    );
   });
 
   it("honors extraTags and stripTags", () => {

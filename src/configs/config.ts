@@ -1,14 +1,7 @@
 import { WikitextParseError } from "../ast/errors";
+import { isRecord, isStringArray } from "../shared/guards";
 import { MEDIAWIKI_CONFIG } from "./mediawiki";
 import type { ParserConfig } from "./types";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
 
 /** 站点配置的深层可选覆盖；数组与元组整体替换，对象逐字段合并。 */
 export type ParserConfigOverrides = DeepPartial<ParserConfig>;

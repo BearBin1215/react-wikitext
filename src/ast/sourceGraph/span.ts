@@ -1,8 +1,5 @@
+import { isRecord } from "../../shared/guards";
 import type { WikitextSourceSpan } from "./types";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * 判断值是否具备 span 的最小形状：来源 id、安全整数与有序列。

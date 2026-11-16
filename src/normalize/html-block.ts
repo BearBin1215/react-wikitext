@@ -5,11 +5,8 @@ import {
   BLOCK_CONTENT_TAGS,
   INLINE_CONTENT_BLOCK_TAGS,
   RAW_TEXT_BLOCK_TAGS,
-  classifyHtmlTag,
-  htmlTagName,
-  isClosingHtml,
-  isSelfClosingHtml,
-} from "./html";
+} from "../shared/html-tags";
+import { classifyHtmlTag, htmlTagName, isClosingHtml, isSelfClosingHtml } from "./html";
 import { needsBlockNormalization } from "./block-policy";
 import {
   normalizeInlinePieces,

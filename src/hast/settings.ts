@@ -1,6 +1,7 @@
 import { WikitextPrepareError } from "../ast/errors";
 import { resolveWikitextLabels, WIKITEXT_LABEL_KEYS, type WikitextLabels } from "../ast/labels";
 import type { WikitextHeadingIdStrategy, WikitextResolvedPolicy } from "../ast/model";
+import { isRecord, isStringArray } from "../shared/guards";
 import {
   DEFAULT_PREPARE_POLICY,
   type WikitextHastHandlers,
@@ -36,10 +37,6 @@ const POLICY_FLAGS = [
 const POLICY_LISTS = ["extraTags", "stripTags"] as const;
 const LINK_TARGETS = new Set(["_blank", "_self"]);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function invalidOption(message: string): never {
   throw new WikitextPrepareError("PREPARE_FAILED", `Invalid prepare option: ${message}`, {
     stage: "prepare",
@@ -69,10 +66,7 @@ function validatePolicy(value: unknown): void {
   }
   for (const list of POLICY_LISTS) {
     const current = value[list];
-    if (
-      current !== undefined &&
-      !(Array.isArray(current) && current.every((item) => typeof item === "string"))
-    ) {
+    if (current !== undefined && !isStringArray(current)) {
       invalidOption(`"policy.${list}" must be an array of strings.`);
     }
   }

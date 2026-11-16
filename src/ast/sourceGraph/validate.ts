@@ -1,3 +1,4 @@
+import { isRecord } from "../../shared/guards";
 import { WikitextError } from "../errors";
 import { isSpanWithin } from "./span";
 import {
@@ -28,10 +29,6 @@ const PRECISIONS: ReadonlySet<string> = new Set(["exact", "enclosing-invocation"
 
 function invalid(message: string): never {
   throw new WikitextError("INVALID_DOCUMENT", message);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function assertSink(

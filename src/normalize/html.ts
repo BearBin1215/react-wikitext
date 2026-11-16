@@ -1,104 +1,32 @@
 import type { WikitextSyntaxNode } from "../ast/model";
+import {
+  BANNED_HTML_TAGS,
+  BLOCK_HTML_TAGS,
+  DROP_HTML_TAGS,
+  INLINE_HTML_TAGS,
+  VOID_HTML_TAGS,
+} from "../shared/html-tags";
 
 type HtmlKind = "void" | "inline" | "block" | "banned" | "drop" | "unknown";
 
-const INLINE_TAGS = new Set([
-  "b",
-  "strong",
-  "i",
-  "em",
-  "u",
-  "s",
-  "del",
-  "ins",
-  "sub",
-  "sup",
-  "code",
-  "small",
-  "big",
-  "span",
-  "mark",
-  "abbr",
-  "q",
-  "ruby",
-  "rb",
-  "rt",
-  "rp",
-  "bdi",
-  "bdo",
-  "cite",
-  "dfn",
-  "kbd",
-  "samp",
-  "data",
-  "time",
-  "var",
-  "font",
-]);
-
-const BLOCK_TAGS = new Set([
-  "div",
-  "p",
-  "blockquote",
-  "center",
-  "pre",
-  "ul",
-  "ol",
-  "dl",
-  "table",
-  "caption",
-  "tr",
-  "td",
-  "th",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "li",
-  "dt",
-  "dd",
-]);
-
-/** 供行级扫描（例如判断列表续行）复用，避免标签词表在多个位置各写一份。 */
-export const BLOCK_TAG_SOURCE = [...BLOCK_TAGS].join("|");
-
-const VOID_TAGS = new Set(["br", "wbr", "hr", "img"]);
-
-const BANNED_TAGS = new Set([
-  "script",
-  "style",
-  "iframe",
-  "object",
-  "embed",
-  "form",
-  "input",
-  "button",
-  "textarea",
-  "select",
-  "option",
-  "svg",
-  "math",
-]);
-
-const DROP_TAGS = new Set(["meta", "link"]);
+/** 块级标签的正则表达式片段，供行级扫描（例如判断列表续行）复用。 */
+export const BLOCK_TAG_SOURCE = [...BLOCK_HTML_TAGS].join("|");
 
 export function classifyHtmlTag(tag: string): HtmlKind {
   const name = tag.toLowerCase();
-  if (DROP_TAGS.has(name)) {
+  if (DROP_HTML_TAGS.has(name)) {
     return "drop";
   }
-  if (BANNED_TAGS.has(name)) {
+  if (BANNED_HTML_TAGS.has(name)) {
     return "banned";
   }
-  if (VOID_TAGS.has(name)) {
+  if (VOID_HTML_TAGS.has(name)) {
     return "void";
   }
-  if (INLINE_TAGS.has(name)) {
+  if (INLINE_HTML_TAGS.has(name)) {
     return "inline";
   }
-  if (BLOCK_TAGS.has(name)) {
+  if (BLOCK_HTML_TAGS.has(name)) {
     return "block";
   }
   return "unknown";
@@ -148,38 +76,7 @@ export function isBlockHtmlStart(node: WikitextSyntaxNode): boolean {
   return kind === "block" || kind === "banned" || (kind === "void" && tag === "hr");
 }
 
-/** 这些块级标签的内容按行内渲染，避免在 tr/td/p 内生成段落。 */
-export const INLINE_CONTENT_BLOCK_TAGS = new Set([
-  "p",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "li",
-  "dt",
-  "dd",
-  "td",
-  "th",
-  "caption",
-]);
-
-/** pre 保留原始空白，不按 wiki 结构解析。 */
-export const RAW_TEXT_BLOCK_TAGS = new Set(["pre"]);
-
-export const BLOCK_CONTENT_TAGS = new Set([
-  "ul",
-  "ol",
-  "dl",
-  "table",
-  "tr",
-  "div",
-  "center",
-  "blockquote",
-]);
-
-export const BLOCK_EXT_TAGS = new Set([
+export const BLOCK_EXT_TAGS: ReadonlySet<string> = new Set([
   "pre",
   "references",
   "gallery",
@@ -193,4 +90,4 @@ export const BLOCK_EXT_TAGS = new Set([
 ]);
 
 /** 独立成行时仍按行内展示的扩展标签；其余未专门支持的扩展会成为块级源码卡片。 */
-export const INLINE_EXT_TAGS = new Set(["nowiki", "math"]);
+export const INLINE_EXT_TAGS: ReadonlySet<string> = new Set(["nowiki", "math"]);

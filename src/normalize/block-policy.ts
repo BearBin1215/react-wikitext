@@ -10,10 +10,6 @@ const BLOCK_NODE_TYPES: ReadonlySet<string> = new Set([
   "redirect",
 ]);
 
-function extensionName(node: WikitextSyntaxNode): string {
-  return (typeof node.props.name === "string" ? node.props.name : "").toLowerCase();
-}
-
 /**
  * 该语法节点是否必须按块级归一化：块级结构、块级扩展、块级或禁止的 HTML。
  */
@@ -22,7 +18,7 @@ function isBlockLevelNode(node: WikitextSyntaxNode): boolean {
     return true;
   }
   if (node.type === "ext") {
-    return BLOCK_EXT_TAGS.has(extensionName(node));
+    return BLOCK_EXT_TAGS.has(htmlTagName(node));
   }
   if (node.type === "html") {
     const kind = classifyHtmlTag(htmlTagName(node));
