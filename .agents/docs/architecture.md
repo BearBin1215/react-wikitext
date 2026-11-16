@@ -121,10 +121,10 @@ HAST 使用标准 `element`、`text`、`root` 节点。语义关联记录在可�
 
 依赖方向：
 
-- `ast/model` 及其纯数据/工具模块是基础层；`parser/` 是唯一组合 `normalize/build` 的模块，`/ast` 与 `/parse` 都从它导出工厂。`normalize` 只依赖 ast 的普通数据与查询，不依赖 React、DOM 或 parser。
+- `ast/model` 及其纯数据/工具模块是基础层；`parser/` 是唯一组合 `normalize/build` 的模块，`/ast` 与 `/parse` 都从它导出工厂。`normalize` 只依赖 ast 的普通数据与查询，以及 `shared` 的 HTML 标签词表；不依赖 React、DOM 或 parser。
 - `parser` 只依赖 `ast` 与 `normalize`；`parse` 可以依赖 `ast`、`configs` 与 `parser`；只有 `parse/loadParser.ts` 加载 IIFE。
-- `expand` 依赖 `ast` 与 `parser` 的类型（`WikitextParser` 由调用方注入），不 import `parse`、`loadParser`、React、`hast`、`unified` 或 `view`；它不加载默认 IIFE。
-- `hast` 依赖 `ast`、`shared` 与打包的 unified/hast 工具；不依赖 parser、`normalize`、React 或 `/ast` 桶。
+- `expand` 依赖 `ast`、`parser` 的类型（`WikitextParser` 由调用方注入），以及上游 `dist/vendor/expr.js` 的纯函数求值器；不 import `parse`、`loadParser`、React、`hast`、`unified` 或 `view`，也不加载默认 IIFE。
+- `hast` 依赖 `ast`、`shared`、打包的 unified/hast 工具与 `inline-style-parser`；不依赖 parser、`normalize`、React 或 `/ast` 桶。
 - `unified` 依赖 `hast` 的共享阶段模块与 `ast`，不隐式创建默认 parser。
 - `view` 依赖 `ast`、`shared`、React 与打包的 `hast-util-to-jsx-runtime`（`@types/hast` 只用于类型），不 import `parse`、`configs` 或 `loadParser`，也不通过值导入获取清洗实现。
 - `devtools` 依赖 `ast` 的普通数据与查询以及 React，不依赖 parser、`normalize`、`hast`、`unified` 或 `view`；playground 通过公共入口复用这些组件。

@@ -67,9 +67,9 @@ const compiler = expand.createWikitextCompiler({
 const compilation = await compiler.compile({
   key: "page",
   revision: "1",
-  text: "{{T}}",
+  text: "{{T}} {{#expr:2e3}}",
 });
-assert.equal(compilation.snapshot.source, "hello");
+assert.equal(compilation.snapshot.source, "hello 2000");
 assert.equal(compilation.status, "complete");
 assert.equal(compilation.snapshot.graph.sources.length > 0, true);
 await compiler.dispose();

@@ -226,6 +226,9 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 - `#len`、`#sub`、`#replace`、`#titleparts`、`#padleft`、`#padright`、`#urlencode`、`#urldecode`。
 - `#lc`、`#uc`、`#lcfirst`、`#ucfirst`、`#trim`、`#tag`。
 - `{{!}}` 与 `{{=}}`。
+
+`#expr` 支持与 MediaWiki 相同的运算符和优先级：`div` 是 `/` 的别名，`%` 不是 MediaWiki 运算符。结果格式化为最多 14 位有效数字；计算错误或结果为非有限数时，会产生 `EXPRESSION_ERROR`。
+
 - 模板与函数输出的隐式换行。
 
 按需计算：模板名、参数名与条件表达式只在所属作用域需要时求值。字符串长度与截取按 Unicode 码点计算，源码 offset 仍按 UTF-16 表示。

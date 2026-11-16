@@ -29,6 +29,7 @@ import {
   codePointLength,
   errorOutput,
   evaluateExpression,
+  isErrorOutput,
   pad,
   replaceText,
   substring,
@@ -179,13 +180,6 @@ function implicitNewline(text: string, previousChar: string, heading: boolean): 
   const visible = text.replace(/^(?:<!--[\s\S]*?-->)+/u, "");
   const structural = heading ? /^(?:\{\||[:;#*=])/u : /^(?:\{\||[:;#*])/u;
   return structural.test(visible);
-}
-
-/** 判断可见输出是否带站点错误标记；`#iferror` 只依据可见输出。 */
-function isErrorOutput(text: string): boolean {
-  return /<(?:strong|span|p|div)\s+(?:[^\s>]+\s+)*?class="\s*(?:[^"\s>]+\s+)*?error(?:\s[^">]*)?"/u.test(
-    text,
-  );
 }
 
 function stringProp(node: WikitextSyntaxNode, key: string): string | undefined {

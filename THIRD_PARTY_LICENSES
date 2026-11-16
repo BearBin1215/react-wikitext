@@ -11,8 +11,11 @@ Copyright (C) 2022 Bhsd
 License: GPL-3.0-or-later
 Source: https://github.com/bhsd-harry/wikiparser-node
 Usage: npm dependency; the browser IIFE bundle (bundle/bundle.min.js) is loaded
-by the library and consumers. The upstream code is not modified. The GPL-3.0
-text in LICENSE covers this component as well.
+by the library and consumers, and the `/expand` entry imports
+dist/vendor/expr.js at runtime. The upstream code is not modified. The GPL-3.0
+text in LICENSE covers this component as well. dist/vendor/expr.js is a
+standalone MIT-licensed evaluator derived from t7ru/mediawiki-expr and keeps its
+own notice.
 
 entities 8.x
 ------------

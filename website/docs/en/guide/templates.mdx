@@ -226,6 +226,9 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 - `#len`, `#sub`, `#replace`, `#titleparts`, `#padleft`, `#padright`, `#urlencode`, `#urldecode`.
 - `#lc`, `#uc`, `#lcfirst`, `#ucfirst`, `#trim`, `#tag`.
 - `{{!}}` and `{{=}}`.
+
+`#expr` supports the same operators and precedence as MediaWiki: `div` is an alias for `/`, and `%` is not a MediaWiki operator. Results are formatted with at most 14 significant digits; calculation errors and non-finite values produce `EXPRESSION_ERROR`.
+
 - Implicit newlines for template and function output.
 
 Evaluation is lazy: template names, parameter names and conditions are evaluated only when their scope needs them. String lengths and slices count Unicode code points; source offsets remain UTF-16.

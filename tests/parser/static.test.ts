@@ -139,6 +139,11 @@ describe("layer boundaries", () => {
       expect(source).not.toMatch(/from\s+["']unified["']/u);
       expect(source).not.toMatch(/from\s+["']vfile["']/u);
     }
+    for (const { file, specifier } of valueReferences("src/expand")) {
+      if (specifier.startsWith("wikiparser-node")) {
+        expect(specifier, `${file}: ${specifier}`).toBe("wikiparser-node/dist/vendor/expr.js");
+      }
+    }
   });
 
   it("does not export the expand entry from the root entry", () => {

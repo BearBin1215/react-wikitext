@@ -44,17 +44,33 @@ const TEMPLATES: Record<string, string> = {
 };
 
 describe("pure parser functions", () => {
-  it("evaluates arithmetic and comparisons", async () => {
+  it("evaluates arithmetic, precedence and functions", async () => {
     expect((await expand("{{#expr:1 + 2 * 3}}")).snapshot.source).toBe("7");
     expect((await expand("{{#expr:1 / 4 round 2}}")).snapshot.source).toBe("0.25");
+    expect((await expand("{{#expr:1.4 + 1.4 round 0}}")).snapshot.source).toBe("3");
+    expect((await expand("{{#expr:2^3^2}}")).snapshot.source).toBe("64");
+    expect((await expand("{{#expr:2e3}}")).snapshot.source).toBe("2000");
+    expect((await expand("{{#expr:5 div 2}}")).snapshot.source).toBe("2.5");
+    expect((await expand("{{#expr:5 fmod 2}}")).snapshot.source).toBe("1");
+    expect((await expand("{{#expr:123 round -1}}")).snapshot.source).toBe("120");
     expect((await expand("{{#ifexpr:3 > 2|yes|no}}")).snapshot.source).toBe("yes");
     expect((await expand("{{#expr:1 and 2 or 0}}")).snapshot.source).toBe("1");
     expect((await expand("{{#expr:not 0}}")).snapshot.source).toBe("1");
     expect((await expand("{{#expr:pi > 3}}")).snapshot.source).toBe("1");
-    expect((await expand("{{#expr:1 / 0}}")).expansion.status).toBe("partial");
-    expect(
-      (await expand("{{#expr:1 / 0}}")).expansion.diagnostics.map((entry) => entry.code),
-    ).toContain("EXPRESSION_ERROR");
+  });
+
+  it("keeps the compact number format and reports expression errors", async () => {
+    expect((await expand("{{#expr:1 / 3}}")).snapshot.source).toBe("0.33333333333333");
+    expect((await expand("{{#expr:0.1 + 0.2}}")).snapshot.source).toBe("0.3");
+    const failed = await Promise.all(
+      ["{{#expr:1 / 0}}", "{{#expr:1e300 * 1e300}}", "{{#expr:5 % 2}}"].map((source) =>
+        expand(source),
+      ),
+    );
+    for (const result of failed) {
+      expect(result.expansion.status).toBe("partial");
+      expect(result.expansion.diagnostics.map((entry) => entry.code)).toContain("EXPRESSION_ERROR");
+    }
   });
 
   it("supports common string functions", async () => {

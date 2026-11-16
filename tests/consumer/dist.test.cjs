@@ -149,9 +149,9 @@ const compiler = expandApi.createWikitextCompiler({
   }),
 });
 compiler
-  .compile({ key: "page", revision: "1", text: "{{T}}" })
+  .compile({ key: "page", revision: "1", text: "{{T}} {{#expr:2e3}}" })
   .then(async (compilation) => {
-    assert.equal(compilation.snapshot.source, "hello");
+    assert.equal(compilation.snapshot.source, "hello 2000");
     assert.equal(compilation.status, "complete");
     assert.equal(providerCalls, 0, "table entries must not call a remote provider");
     await compiler.dispose();

@@ -82,6 +82,8 @@ describe("upstream expansion oracle", () => {
       "{{#switch:x|{{Missing}}|#default|d}}",
       "{{#iferror:x<nowiki>y</nowiki>}}",
       "{{#iferror:<nowiki>x</nowiki>}}",
+      "{{#expr:-2^2}}",
+      "{{#expr:1 = 1}}",
       "{{Two|1=v|{{Missing}}=x}}",
       "{{Mixed}}",
       "{{OpenNoinclude}}",

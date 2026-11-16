@@ -240,6 +240,7 @@ HTML 标记、属性 token、表格语法 token、列表标记等语法标记不
 - 展开结果和模板源码都不跳过语义归一化、HAST 转换与最终清洗。
 - `{{!}}` 与 `{{=}}` 在展开阶段变成普通字符，因此不会改变参数分隔，也不会产生额外的占位节点。
 - 纯函数范围包括 `#if`、`#ifeq`、`#switch`、`#iferror`、`#expr`、`#ifexpr`、`#len`、`#sub`、`#replace`、`#titleparts`、`#padleft`、`#padright`、`#urlencode`、`#urldecode`、`#lc`、`#uc`、`#lcfirst`、`#ucfirst` 与 `#tag`；表达式错误产生 `EXPRESSION_ERROR`。`#invoke`、`#time`、`#ifexist` 等站点状态函数保留原文并产生 `UNSUPPORTED_CALL`。
+- `#expr` 复用上游的 MediaWiki 表达式求值器：支持 `+ - * / div mod fmod ^ round e`、比较运算、`and`/`or`/`not` 与数学函数；`^` 左结合，`round` 的优先级低于 `+`/`-`，`div` 是 `/` 的别名。`%` 不是 MediaWiki 运算符，按表达式错误处理。结果格式化为最多 14 位有效数字的紧凑数字字符串；结果为非有限数时同样产生 `EXPRESSION_ERROR`。
 - 展开诊断在视图层没有专门组件；宿主通过 `snapshot.diagnostics` 与 `snapshot.graph.invocations` 定位保留调用。
 
 ### 7.4 引用
