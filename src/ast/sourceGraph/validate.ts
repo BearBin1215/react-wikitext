@@ -16,7 +16,7 @@ const ROLES: ReadonlySet<string> = new Set([
   "expanded",
 ]);
 const KINDS: ReadonlySet<string> = new Set(["template", "parserFunction", "argument"]);
-const STATUSES: ReadonlySet<string> = new Set(["expanded", "preserved", "failed"]);
+const STATUSES: ReadonlySet<string> = new Set(["expanded", "preserved"]);
 const SEGMENT_KINDS: ReadonlySet<string> = new Set([
   "copy",
   "normalize",
@@ -118,6 +118,7 @@ function assertInvocation(value: unknown, sources: ReadonlyMap<string, WikitextT
 /**
  * 校验来源图：版本、源目录、片段与调用引用。
  * @param value 来自序列化快照或等价结构的数据。
+ * @throws 形状、版本或引用不合法时抛 `WikitextError`（`INVALID_DOCUMENT`）。
  */
 export function validateSourceGraph(value: unknown): asserts value is WikitextSourceGraph {
   if (!isRecord(value)) {

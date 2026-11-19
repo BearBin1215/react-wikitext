@@ -71,14 +71,16 @@ export interface WikitextSourceSegment {
 /** 调用类别。 */
 export type WikitextInvocationKind = "template" | "parserFunction" | "argument";
 
-/** 调用状态；`preserved` 表示原文保留，`failed` 表示依赖或预算是失败原因。 */
-export type WikitextInvocationStatus = "expanded" | "preserved" | "failed";
+/** 调用状态；依赖缺失或超出预算等不可恢复程度较低的失败记为 `preserved`，原因写入 `reason`。 */
+export type WikitextInvocationStatus = "expanded" | "preserved";
 
 /** 单次调用的来源记录。 */
 export interface WikitextInvocation {
   /** 快照内唯一；嵌套调用各自一条记录。 */
   readonly id: string;
+  /** 调用类别。 */
   readonly kind: WikitextInvocationKind;
+  /** 调用的目标名；模板为模板名，解析器函数为函数名，参数为参数名。 */
   readonly name: string;
   /** 词法作用域身份；参数 thunk 捕获它，循环检测按它计算。 */
   readonly scopeId: string;
@@ -88,13 +90,15 @@ export interface WikitextInvocation {
   readonly sourceId: WikitextSourceId;
   /** 调用在所属文本源中的范围。 */
   readonly start: number;
+  /** 范围终点（不含），与 {@link WikitextSourceSpan} 的约定一致。 */
   readonly end: number;
+  /** 调用状态：`expanded` 已展开输出，`preserved` 原文保留。 */
   readonly status: WikitextInvocationStatus;
-  /** 输出在展开结果中的全部出现位置；被保留或失败时为空。 */
+  /** 输出在展开结果中的全部出现位置；被保留时为空。 */
   readonly outputs: readonly WikitextSourceSpan[];
   /** 被调用模板的规范化标题。 */
   readonly templateTitle?: string;
-  /** 保留或失败的原因码。 */
+  /** 保留的原因码。 */
   readonly reason?: string;
 }
 
@@ -111,10 +115,15 @@ export interface WikitextSourceGraph {
 
 /** 一个匹配结果：输入范围与它对应的目标范围。 */
 export interface WikitextMappingMatch {
+  /** 输入范围。 */
   readonly from: WikitextSourceSpan;
+  /** 对应的目标范围。 */
   readonly to: WikitextSourceSpan;
+  /** 对应精度。 */
   readonly precision: WikitextMappingPrecision;
+  /** 产生该对应的调用；与 {@link WikitextInvocation} 的 id 对应。 */
   readonly invocationId?: string;
+  /** 输出出现位置身份；同一片段多次展开时各不相同。 */
   readonly occurrenceId?: string;
 }
 
