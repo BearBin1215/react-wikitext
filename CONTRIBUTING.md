@@ -18,9 +18,11 @@ pnpm install
 | `pnpm test` | 运行 Vitest 全量测试 |
 | `pnpm build` | 构建库产物到 `dist/` |
 | `pnpm docs:dev` | 本地预览 Rspress 文档站 |
-| `pnpm release` | 递增版本、提交、打 tag 并推送 |
+| `pnpm release` | 交互式递增版本、生成 Release 文案、提交、打 tag、推送并创建 GitHub Release |
 
 全部命令列在 `package.json` 的 `scripts` 里。构建参数、测试分工、CI 步骤与发布流程以配置文件为准；配置文件无法表达的验收与合规约定见[开发约定](.agents/docs/development.md)。
+
+`pnpm release` 由 release-it 创建 GitHub Release，需要设置 `GH_TOKEN`（本地可执行 `export GH_TOKEN=$(gh auth token)`）；未设置时会退化为在浏览器中手动创建。
 
 ## 样式
 

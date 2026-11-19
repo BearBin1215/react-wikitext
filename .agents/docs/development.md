@@ -8,8 +8,8 @@
 
 - 命令、运行时范围与包入口：`package.json` 的 `scripts`、`engines`、`exports`、`files`、`packageManager`
 - 构建与开发服务器：`tsdown.config.ts`、`vite.config.ts`、`vitest.config.ts`
-- 流水线与发布：`.github/workflows/ci.yml`、`.github/workflows/publish.yml`、`bump.config.ts`、`changelogithub.config.ts`
-- 静态检查：`.oxlintrc.json`、`.oxfmtrc.json`、`tsconfig.json`、`tsconfig.build.json`
+- 流水线与发布：`.github/workflows/ci.yml`、`.github/workflows/publish.yml`、`.release-it.ts`
+- 静态检查：`.oxlintrc.json`、`.oxfmtrc.json`、`tsconfig.json`、`tsconfig.build.json`、`tsconfig.react18.json`
 - 验收实现：`tests/`、`playwright.consumer.config.ts`、`vitest.bench.config.ts`
 
 本文只写这些文件里查不到的内容：改动时要遵守什么、报告怎么解读、验收结果如何判定。系统边界与模块依赖见[总体架构](./architecture.md)，parser 加载细节见[解析器接入](./parser-integration.md)，提交前清单见 [CONTRIBUTING](../../CONTRIBUTING.md)。

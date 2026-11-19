@@ -19,14 +19,11 @@ jobs:
       url: https://www.npmjs.com/package/react-wikitext
 
     permissions:
-      contents: write # 创建 GitHub Release
+      contents: read
       id-token: write # OIDC 凭证，npm 用它换取短期发布权限与 provenance
 
     steps:
-      # Release 文案需要完整历史与 tag
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
 
@@ -70,9 +67,3 @@ jobs:
       # prepublishOnly 会重新执行 pnpm build
       - name: Publish to npm
         run: npm publish --tag "${{ steps.release.outputs.dist_tag }}"
-
-      # 按 Conventional Commits 生成分组文案并创建 Release
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm exec changelogithub --to "$GITHUB_REF_NAME"
