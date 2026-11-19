@@ -102,6 +102,15 @@ interface PageProgramEntry {
  * 实例固定 parser 与 provider；缓存、依赖索引与统计归实例所有。每次 compile
  * 使用独立的来源图、预算与取消域，模板获取按确定需求分批进行。
  * @param options 编译器配置。
+ * @throws 配置缺失或非法时抛 `WikitextExpandError`（`INVALID_EXPAND_OPTIONS`）。
+ * @example
+ * ```ts
+ * const compiler = createWikitextCompiler({
+ *   parser: createWikiparser(),
+ *   provider: createTemplateTableProvider({ key: "site", revision: "r1", templates }),
+ * });
+ * const compilation = await compiler.compile({ key: "page", revision: "r1", text });
+ * ```
  */
 export function createWikitextCompiler(options: WikitextCompilerOptions): WikitextCompiler {
   if (!options || typeof options !== "object") {

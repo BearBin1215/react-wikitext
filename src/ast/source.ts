@@ -17,6 +17,8 @@ export interface NormalizedSource {
  * 把 CRLF 与 CR 统一为 LF；后续所有坐标都以返回的文本为基准。
  * @param source 原始源码。
  * @param maxSourceLength 归一化后的长度上限。
+ * @throws 源码不是字符串时抛 `WikitextParseError`（`PARSE_FAILED`）；
+ *   归一化后超过长度上限时抛 `WikitextParseError`（`SOURCE_TOO_LONG`）。
  */
 export function normalizeSource(
   source: string,

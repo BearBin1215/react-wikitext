@@ -76,7 +76,7 @@ export function getSourceText(
   return getSpanText(snapshot.graph, node.origin);
 }
 
-/** 读取节点转换后的语义文本，不做实体解码。 */
+/** 读取节点转换后的语义文本；文本节点的值已由解析阶段做过一次实体解码，这里不再重复解码。 */
 export function toPlainText(node: WikitextNode): string {
   switch (node.type) {
     case "text":

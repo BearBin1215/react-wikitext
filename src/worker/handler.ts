@@ -112,6 +112,12 @@ export function createWikitextWorkerHandler(
  * 宿主负责创建 Worker 与决定 URL、打包方式与 CSP；这里只处理消息协议。
  * @param scope worker 全局作用域。
  * @param options 编译器与准备选项。
+ * @returns 取消消息监听的函数。
+ * @example
+ * ```ts
+ * // worker 入口（自托管 worker 脚本）
+ * const stop = attachWikitextWorker(self, { compiler });
+ * ```
  */
 export function attachWikitextWorker(
   scope: WikitextWorkerScopeLike,

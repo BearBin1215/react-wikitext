@@ -22,9 +22,13 @@ interface ParseLimitOptions {
 
 /** 合并后生效的解析预算。 */
 export interface ResolvedParseLimits {
+  /** 归一化后的源码长度上限。 */
   readonly maxSourceLength: number;
+  /** 源码语法树的节点数上限。 */
   readonly maxSyntaxNodes: number;
+  /** 语义树的节点数上限。 */
   readonly maxSemanticNodes: number;
+  /** 语法树与语义树的嵌套深度上限。 */
   readonly maxDepth: number;
 }
 

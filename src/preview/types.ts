@@ -3,7 +3,9 @@ import type { WikitextCompileBudget, WikitextInput } from "../expand/types";
 
 /** 预览请求的有效编译选项；只描述可以跨线程传递的普通数据。 */
 export interface WikitextPreviewCompileOptions {
+  /** 页面上下文名；省略时使用输入键。 */
   readonly pageName?: string;
+  /** 单次编译的展开预算。 */
   readonly budget?: WikitextCompileBudget;
   /** 是否要求执行端保留上游语法树。 */
   readonly retainSyntax?: boolean;
@@ -13,7 +15,9 @@ export interface WikitextPreviewCompileOptions {
 export interface WikitextPreviewRequest {
   /** 单调递增的请求身份；用于忽略乱序结果。 */
   readonly requestId: string;
+  /** 页面原始输入与版本。 */
   readonly input: WikitextInput;
+  /** 有效编译选项；省略时使用执行端默认值。 */
   readonly options?: WikitextPreviewCompileOptions;
   /** 协作式取消；执行的同步 parser 不能被抢占。 */
   readonly signal?: AbortSignal;
@@ -28,13 +32,19 @@ export type WikitextPreviewExecutor = (
   request: WikitextPreviewRequest,
 ) => Promise<WikitextRenderSnapshot>;
 
-/** 预览调度状态。 */
+/**
+ * 预览调度状态。
+ *
+ * `idle` 没有排队请求，`scheduled` 已排队等待防抖，`running` 执行中，
+ * `ready` 有可展示结果，`error` 最近一次执行失败。
+ */
 export type WikitextPreviewStatus = "idle" | "scheduled" | "running" | "ready" | "error";
 
 /** `useWikitextPreview` 的选项。 */
 export interface WikitextPreviewOptions {
   /** 当前编辑器输入；`revision` 必须随内容变化。 */
   readonly input: WikitextInput;
+  /** 执行编译与准备的执行器；主线程可用 `createWikitextCompiler` 包装，Worker 场景用 `createWikitextWorkerExecutor` 提供。 */
   readonly executor: WikitextPreviewExecutor;
   /** 同一输入键后续编辑的防抖时间，默认 250ms；首次输入立即执行。 */
   readonly debounceMs?: number;
@@ -53,6 +63,7 @@ export interface WikitextPreviewResult {
   readonly inputRevision: string;
   /** 展示快照对应的输入版本；旧快照时与 `inputRevision` 不同。 */
   readonly displayedRevision?: string;
+  /** 最近一次失败的错误；由下一次成功或失败的结果替换。 */
   readonly error?: Error;
   /** 跳过防抖立即执行。 */
   readonly run: () => void;

@@ -30,6 +30,7 @@ export interface WikitextCompileBudget {
 export interface WikitextCompileCallOptions {
   /** 页面上下文名；省略时使用输入键。 */
   readonly pageName?: string;
+  /** 协作式取消信号；排队与等待会被停止，正在运行的同步 parser 不受影响。 */
   readonly signal?: AbortSignal;
   /**
    * 已定义的可恢复失败如何处理：
@@ -40,6 +41,7 @@ export interface WikitextCompileCallOptions {
   readonly retainSyntax?: boolean;
   /** 解析预算与其他解析选项；`pageName` 由本层提供。 */
   readonly parseOptions?: Omit<WikitextParseOptions, "pageName">;
+  /** 单次编译的展开预算；省略时使用编译器默认值。 */
   readonly budget?: WikitextCompileBudget;
 }
 
@@ -75,10 +77,15 @@ export interface WikitextCompilerLimitsOptions {
 
 /** 创建编译器时的选项；实例配置固定，更换配置需要创建新实例。 */
 export interface WikitextCompilerOptions {
+  /** 执行语法编译与语义构建的解析器。 */
   readonly parser: WikitextParser;
+  /** 模板来源；每次编译打开一个固定版本的快照。 */
   readonly provider: WikitextTemplateProvider;
+  /** 模板获取与语法程序的缓存容量。 */
   readonly cache?: WikitextCompilerCacheOptions;
+  /** 获取层的并发与批大小。 */
   readonly fetch?: WikitextCompilerFetchOptions;
+  /** 来源图与诊断的资源上限。 */
   readonly limits?: WikitextCompilerLimitsOptions;
   /** 可选的阶段计时接收器；省略时不计量。 */
   readonly profile?: WikitextStageSink;
@@ -88,8 +95,9 @@ export interface WikitextCompilerOptions {
 export interface WikitextCompilerStats {
   /** 完成的编译次数。 */
   readonly compiles: number;
-  /** 模板语法程序的命中与未命中。 */
+  /** 模板语法程序的缓存命中次数。 */
   readonly programCacheHits: number;
+  /** 模板语法程序的缓存未命中次数。 */
   readonly programCacheMisses: number;
   /** 实际编译模板语法程序的次数。 */
   readonly programCompilations: number;
@@ -113,6 +121,8 @@ export interface WikitextCompiler {
    *
    * 一次编译固定使用同一个 provider 快照；诊断与来源图只保存在返回的
    * `snapshot` 上，外层只描述状态、依赖与统计。
+   * 不可恢复错误或 `failureMode: "throw"` 时，返回的 Promise 以
+   * `WikitextExpandError` 拒绝；provider 抛出的原生错误原样透传。
    * @param input 页面原始输入与版本。
    * @param options 单次编译选项。
    */

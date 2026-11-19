@@ -5,8 +5,11 @@ import type { WikitextPreviewCompileOptions } from "../preview/types";
 
 /** worker 的错误负载；只包含可序列化字段。 */
 export interface WikitextWorkerErrorPayload {
+  /** 失败类别；`WikitextError` 提供错误码，其他错误省略。 */
   readonly code?: string;
+  /** 错误类名，例如 `WikitextParseError`。 */
   readonly name: string;
+  /** 面向开发者的错误说明。 */
   readonly message: string;
   /** 失败位置与快照诊断使用同一 span 模型。 */
   readonly location?: WikitextSourceSpan;

@@ -98,7 +98,10 @@ export function findAstTreeNode(
   return buildTreeIndex(root).byId.get(id)?.node;
 }
 
-/** 记录当前选中节点的类型与区间，供文档变化后恢复。 */
+/**
+ * 记录当前选中节点的类型与区间，供文档变化后恢复。
+ * 空 id 或节点没有可用的源码区间时返回 `undefined`。
+ */
 export function snapshotSelection(
   document: AstTreeDocument,
   id: string | null | undefined,
@@ -115,7 +118,7 @@ export function snapshotSelection(
   return { kind, id, type: node.type, start: range[0], end: range[1] };
 }
 
-/** 在新文档中寻找与快照最接近的节点，返回它的 id。 */
+/** 在新文档中寻找与快照最接近的节点；无快照或找不到接近节点时返回 `undefined`。 */
 export function restoreSelectedId(
   document: AstTreeDocument,
   snapshot: SelectionSnapshot | undefined,

@@ -3,7 +3,10 @@ import { useWikitextContext } from "./context";
 import { renderHastNodes } from "./render";
 import type { WikitextFragmentProps } from "./types";
 
-/** 在 `<WikitextView>` 上下文内渲染准备结果中的片段。 */
+/**
+ * 在 `<WikitextView>` 上下文内渲染准备结果中的片段。
+ * 传入的节点必须属于当前渲染的文档，跨文档的节点会在渲染时抛出普通 `Error`。
+ */
 export function WikitextFragment({
   nodes,
   mode = "inline",

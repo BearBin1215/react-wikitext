@@ -16,7 +16,11 @@ import {
 import { validateSourceGraph } from "./sourceGraph/validate";
 import type { WikitextSourceGraph, WikitextSourceSpan } from "./sourceGraph/types";
 
-/** 可序列化的解析快照，带有 schema 版本与判别类型。 */
+/**
+ * 可序列化的解析快照，带有 schema 版本与判别类型。
+ *
+ * 字段与 {@link WikitextParsedSnapshot} 一一对应，仅把身份字段放宽为字符串。
+ */
 export interface SerializedWikitextParsedSnapshot {
   readonly kind: "parsed";
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
@@ -172,6 +176,7 @@ function assertOrigins(root: WikitextRoot, graph: WikitextSourceGraph): void {
 /**
  * 校验并恢复解析快照；结构或版本不对时抛出 `WikitextError`。
  * @param value 来自 `serializeWikitextSnapshot` 或等价结构的数据。
+ * @throws 形状、判别类型或 schema 版本不兼容时抛 `WikitextError`（`INVALID_DOCUMENT`）。
  */
 export function restoreWikitextSnapshot(value: unknown): WikitextParsedSnapshot {
   if (!value || typeof value !== "object") {

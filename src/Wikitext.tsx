@@ -14,6 +14,7 @@ export type WikitextFailureStage = "parse" | "prepare";
 
 /** `<Wikitext>` 的错误回调信息。 */
 export interface WikitextErrorInfo {
+  /** 失败发生的阶段；`"parse"` 或 `"prepare"`。 */
   readonly stage: WikitextFailureStage;
 }
 

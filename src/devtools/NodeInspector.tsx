@@ -16,7 +16,9 @@ export interface NodeInspectorProps {
   readonly node?: AstTreeNode;
   /** 覆盖面板文案。 */
   readonly labels?: Partial<NodeInspectorLabels>;
+  /** 追加到根元素的类名。 */
   readonly className?: string;
+  /** 根元素的内联样式。 */
   readonly style?: CSSProperties;
 }
 

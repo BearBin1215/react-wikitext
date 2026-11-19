@@ -23,7 +23,11 @@ import {
 import { WIKITEXT_LABEL_KEYS, type WikitextLabels } from "../ast/labels";
 import { isRecord, isStringArray } from "../shared/guards";
 
-/** 可序列化的渲染快照，带有 schema 版本。 */
+/**
+ * 可序列化的渲染快照，带有 schema 版本。
+ *
+ * 字段与 {@link WikitextRenderSnapshot} 一一对应，仅把身份字段放宽为字符串。
+ */
 export interface SerializedWikitextRenderSnapshot {
   readonly kind: "render";
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
@@ -199,6 +203,7 @@ function assertMeta(value: unknown): asserts value is WikitextRenderMeta {
  * 恢复时会按快照内的 policy 重新清洗，以重建引用 id、目录与标题锚点等派生结构，
  * 而不是把任意第三方 HAST 变成可信内容。不要用它处理不可信输入。
  * @param value 来自 `serializeWikitextRenderSnapshot` 或等价结构的数据。
+ * @throws 形状、判别类型或 schema 版本不兼容时抛 `WikitextError`（`INVALID_DOCUMENT`）。
  */
 export function restoreWikitextRenderSnapshot(value: unknown): WikitextRenderSnapshot {
   if (!isRecord(value)) {

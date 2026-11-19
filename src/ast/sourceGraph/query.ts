@@ -115,6 +115,7 @@ function assertSpan(index: SourceIndex, span: WikitextSourceSpan): WikitextTextS
  * 计算范围在所属文本源中的行列坐标。
  * @param graph 来源图。
  * @param span 目标范围。
+ * @throws 范围的源不存在或越界时抛 `WikitextError`（`INVALID_DOCUMENT`）。
  */
 export function getSourcePosition(
   graph: WikitextSourceGraph,
@@ -202,6 +203,7 @@ interface Candidate {
  * @param graph 来源图。
  * @param span 输入范围。
  * @param options 目标源、结果上限与是否允许粗粒度片段。
+ * @throws 输入范围的源不存在或越界时抛 `WikitextError`（`INVALID_DOCUMENT`）。
  */
 export function mapSourceSpan(
   graph: WikitextSourceGraph,

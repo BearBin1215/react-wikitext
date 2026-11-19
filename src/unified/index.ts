@@ -85,9 +85,12 @@ export interface WikitextProcessor {
   useWikitext(...plugins: WikitextTreePlugins<WikitextRoot>): WikitextProcessor;
   /** 追加处理 HAST 的插件；在清洗与最终整理之前运行。 */
   useHast(...plugins: WikitextTreePlugins<Root>): WikitextProcessor;
-  /** 异步运行；插件可以返回 Promise。 */
+  /** 异步运行；插件可以返回 Promise。失败时以 `WikitextPrepareError` 拒绝。 */
   run(source: string): Promise<WikitextRenderSnapshot>;
-  /** 同步运行；遇到异步插件时抛 `ASYNC_PLUGIN_IN_SYNC_PATH`。 */
+  /**
+   * 同步运行；遇到异步插件时抛 `ASYNC_PLUGIN_IN_SYNC_PATH`。
+   * 其余失败统一包装为 `WikitextPrepareError`。
+   */
   runSync(source: string): WikitextRenderSnapshot;
 }
 
@@ -202,6 +205,8 @@ function readRenderDocument(file: VFile): WikitextRenderSnapshot {
  * 与直接拼装 unified 插件相比，最终清洗阶段由库内部追加，宿主插件永远在清洗之前运行；
  * 因此不需要、也无法把插件排在最终整理之后。
  * @param options 解析器、解析选项与准备设置。
+ * @throws 缺少 options 或 parser 时抛 `WikitextPrepareError`（`PREPARE_FAILED`）；
+ *   准备设置非法时同样抛出。
  */
 export function createWikitextProcessor(options: WikitextProcessorOptions): WikitextProcessor {
   if (!options || typeof options !== "object") {

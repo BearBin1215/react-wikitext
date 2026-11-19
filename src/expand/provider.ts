@@ -7,7 +7,9 @@ export interface WikitextProviderContext {
   readonly key: string;
   /** 页面版本。 */
   readonly revision: string;
+  /** 页面名；可用于访问控制或日志。 */
   readonly pageName?: string;
+  /** 取消信号；编译取消或结果不再需要时中止。 */
   readonly signal?: AbortSignal;
 }
 
@@ -31,6 +33,7 @@ export interface WikitextTemplateRequest {
   readonly callerTitle?: string;
   /** 实际调用所在的文本源与范围。 */
   readonly location: WikitextSourceSpan;
+  /** 取消信号；编译取消或结果不再需要时中止。 */
   readonly signal?: AbortSignal;
 }
 
@@ -62,7 +65,9 @@ export interface WikitextTemplateSnapshot {
   readonly key: string;
   /** 内容版本；进入缓存键。 */
   readonly revision: string;
+  /** 读取单个模板；标题不存在时返回 `null`。 */
   readonly get: WikitextTemplateGetter;
+  /** 可选的批量读取；未提供时编译器按批逐个调用 `get`。 */
   readonly getMany?: WikitextTemplateBatchGetter;
   /** 释放本次会话；成功、失败与取消都会调用，且只调用一次。 */
   readonly release?: () => void | Promise<void>;
@@ -72,6 +77,7 @@ export interface WikitextTemplateSnapshot {
 export interface WikitextTemplateProvider {
   /** provider 身份；用于诊断与缓存分组。 */
   readonly key: string;
+  /** 为一次编译打开固定版本的快照；同一快照在整个编译期间复用。 */
   open(
     context: WikitextProviderContext,
   ): WikitextTemplateSnapshot | Promise<WikitextTemplateSnapshot>;
@@ -125,6 +131,8 @@ function templateEntries(table: unknown): Iterable<readonly [unknown, unknown]> 
  *
  * 构造时校验并复制一次，之后每次编译复用同一份副本；更新表必须构造新版本。
  * @param options 来源键、内容版本与模板表。
+ * @throws 键或版本不是非空字符串、模板表不是字符串映射时抛
+ *   `WikitextExpandError`（`INVALID_PROVIDER`）。
  */
 export function createTemplateTableProvider(
   options: TemplateTableProviderOptions,

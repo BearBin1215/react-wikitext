@@ -31,7 +31,9 @@ export interface WikitextSourceAttributes {
   readonly "data-wikitext-node"?: string;
   /** 直接活动来源的文本源身份。 */
   readonly "data-wikitext-source"?: string;
+  /** 来源区间的起点（含），UTF-16 offset。 */
   readonly "data-wikitext-start"?: string;
+  /** 来源区间的终点（不含），UTF-16 offset。 */
   readonly "data-wikitext-end"?: string;
 }
 
@@ -46,10 +48,13 @@ export interface WikitextHtmlComponentProps
   readonly semantic?: WikitextNode;
   /** 该 HTML 元素对应的源码来源。 */
   readonly origin?: WikitextOrigin;
+  /** 子内容；由桥接层渲染当前元素时传入。 */
   readonly children?: ReactNode;
   /** 链接与图片常用的安全属性。 */
   readonly href?: string;
+  /** 图片地址；由清洗层从源码属性或 resolver 结果写入。 */
   readonly src?: string;
+  /** 图片替代文字。 */
   readonly alt?: string;
 }
 
@@ -115,7 +120,7 @@ export interface WikitextExtensionComponentProps extends WikitextSemanticCompone
 
 /** 未知节点语义组件的属性。 */
 export interface WikitextUnknownComponentProps extends WikitextSemanticComponentProps<WikitextUnknown> {
-  /** 上游 token 类型。 */
+  /** 上游 token 类型；即语义节点 `WikitextUnknown.parserType` 的值。 */
   readonly parsedType: string;
   /** 是否按块级展示。 */
   readonly block: boolean;
@@ -159,7 +164,9 @@ export interface WikitextViewProps {
   readonly dir?: "ltr" | "rtl";
   /** 标题 id 的前缀；未传时由 React 生成的实例 id 提供，保证多实例不冲突。 */
   readonly idPrefix?: string;
+  /** 追加到容器根元素的类名；与 `containerProps.className` 合并。 */
   readonly className?: string;
+  /** 传给容器元素的其他属性；`children` 会被组件替换，`className` 会并入根元素类名。 */
   readonly containerProps?: Omit<HTMLAttributes<HTMLDivElement>, "dangerouslySetInnerHTML">;
   /** 单个块渲染失败时的回调；不传时由错误边界显示占位内容。 */
   readonly onRenderError?: (error: Error, info: { node: WikitextNode }) => void;
@@ -171,5 +178,6 @@ export interface WikitextFragmentProps {
   readonly nodes: readonly WikitextNode[];
   /** 片段外层的展示方式，默认行内。 */
   readonly mode?: "inline" | "block";
+  /** 外层元素的类名；行内模式提供时包一层 `span`，块级模式包一层 `div`，未提供时行内模式不包外层。 */
   readonly className?: string;
 }

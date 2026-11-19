@@ -28,7 +28,10 @@ export interface WikitextHastMeta {
   readonly generated?: boolean;
   /** 引用在文档中的序号；仅 `reference` 节点提供。 */
   readonly number?: number;
-  /** Cite 1.43 的全局引用 key；仅 `reference` 节点提供。 */
+  /**
+   * 引用在页面内的全局序号，从 1 开始；命名引用首次定义时分配并在后续复用。
+   * 用于拼出 MediaWiki Cite 1.43 风格的锚点 id；仅 `reference` 节点提供。
+   */
   readonly key?: number;
   /** 命名引用的 name；仅 `reference` 节点提供。 */
   readonly name?: string;
@@ -42,6 +45,7 @@ export interface WikitextHastMeta {
 
 /** HAST 节点上的 wiki 数据。 */
 export interface WikitextHastData {
+  /** wiki 来源信息；由本库转换器写入，插件写入的值不构成信任边界。 */
   wikitext?: WikitextHastMeta;
 }
 
@@ -54,8 +58,8 @@ export type WikitextHastHandler<Node extends WikitextNode = WikitextNode> = (
 /**
  * 自定义语义节点的 HAST 转换函数表。
  *
- * 内建节点键按 {@link WikitextNodeMap} 推导出具体的节点类型；自定义节点应通过
- * 模块扩展写入 `WikitextNodeMap`，即可获得同样的推导。返回 `undefined` 表示继续
+ * 内建节点键按 `WikitextNodeMap`（从 `react-wikitext/ast` 导出）推导出具体的节点类型；
+ * 自定义节点应通过模块扩展写入它，即可获得同样的推导。返回 `undefined` 表示继续
  * 使用内建转换；返回 `null` 表示显式丢弃该节点。
  */
 export type WikitextHastHandlers = {
@@ -139,21 +143,24 @@ export type WikitextImageResolver = (
   context: WikitextResolverContext<WikitextFile>,
 ) => WikitextResolvedImage | null | undefined;
 
-/** 准备阶段的安全策略，未提供的字段使用默认值。 */
+/** 准备阶段的安全策略，未提供的字段使用 `DEFAULT_PREPARE_POLICY` 中的默认值。 */
 export interface WikitextPreparePolicy {
-  /** 是否允许相对链接。 */
+  /** 是否允许相对链接，默认 `true`。 */
   readonly allowRelativeLinks?: boolean;
-  /** 是否允许相对图片地址。 */
+  /** 是否允许相对图片地址，默认 `false`。 */
   readonly allowRelativeImages?: boolean;
-  /** 是否允许插件插入的图片。 */
+  /** 是否允许插件插入的图片，默认 `false`。 */
   readonly allowPluginImages?: boolean;
-  /** 是否允许源码 HTML 中的 `<img>`。 */
+  /** 是否允许源码 HTML 中的 `<img>`，默认 `false`。 */
   readonly allowSourceImages?: boolean;
-  /** 外部链接的打开方式；null 表示不写 target。 */
+  /** 外部链接的打开方式；null 表示不写 target，默认 `null`。 */
   readonly externalLinkTarget?: "_blank" | "_self" | null;
-  /** 在基础白名单之外额外允许的标签。 */
+  /** 在基础白名单之外额外允许的标签，默认空。 */
   readonly extraTags?: readonly string[];
-  /** 即使出现在白名单中也要移除的标签。 */
+  /**
+   * 即使出现在白名单中也要移除的标签；默认移除 `script`、`style`、`iframe`、
+   * 表单控件、`svg`、`math` 等可执行或嵌入内容，完整列表见 `DEFAULT_PREPARE_POLICY`。
+   */
   readonly stripTags?: readonly string[];
 }
 
@@ -223,7 +230,14 @@ export interface WikitextToHastInput extends Omit<
   readonly tocSettings?: WikitextResolvedTocSettings;
 }
 
-/** 目录处理模式：`none` 表示 `__NOTOC__`，`marker` 有显式 `__TOC__`，`force` 表示 `__FORCETOC__`，`auto` 交给阈值判断。 */
+/**
+ * 目录处理模式。
+ *
+ * - `none`：出现 `__NOTOC__`（或选项 `toc: false`），完全不生成目录。
+ * - `marker`：出现显式 `__TOC__`，目录放在标记位置。
+ * - `force`：出现 `__FORCETOC__`，只要有标题就在第一个标题前插入目录。
+ * - `auto`：没有魔术字，按 `minHeadings` 阈值判断是否生成。
+ */
 export type WikitextTocMode = "none" | "marker" | "force" | "auto";
 
 /** 目录选项：自动生成阈值与列数。 */
@@ -236,12 +250,15 @@ export interface WikitextTocOptions {
 
 /** 补齐默认值后的目录选项。 */
 export interface WikitextTocSettings {
+  /** 自动目录所需的最少标题数。 */
   readonly minHeadings: number;
+  /** 目录列数。 */
   readonly columns: 1 | 2 | 3;
 }
 
 /** 补齐默认值并合并行为开关后的目录设置。 */
 export interface WikitextResolvedTocSettings extends WikitextTocSettings {
+  /** 目录是否启用；`false` 表示 `__NOTOC__` 或选项关闭。 */
   readonly enabled: boolean;
 }
 
@@ -259,7 +276,7 @@ export interface WikitextToHastResult {
  */
 export type WikitextPluginList = readonly unknown[];
 
-/** 准备阶段接受的插件列表。 */
+/** 准备阶段的选项。 */
 export interface WikitextPrepareOptions {
   /** 可选的阶段计时接收器；省略时不计量。 */
   readonly profile?: WikitextStageSink;

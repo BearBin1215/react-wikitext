@@ -35,11 +35,11 @@ export interface WikitextParseOptions {
   readonly pageName?: string;
   /** 归一化后的源码上限，默认 100_000 字符。 */
   readonly maxSourceLength?: number;
-  /** 源码语法树的节点数上限，默认 {@link DEFAULT_MAX_SYNTAX_NODES}。 */
+  /** 源码语法树的节点数上限，默认 50_000。 */
   readonly maxSyntaxNodes?: number;
   /** 语义树的节点数上限，默认 50_000。 */
   readonly maxSemanticNodes?: number;
-  /** 树的嵌套深度上限，默认 {@link DEFAULT_MAX_DEPTH}。 */
+  /** 树的嵌套深度上限，默认 1_000。 */
   readonly maxDepth?: number;
   /**
    * 是否把上游 token 语法树放进公共快照，默认关闭。

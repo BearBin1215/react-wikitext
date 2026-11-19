@@ -56,7 +56,7 @@ function sanitizeUrl(
 
 /** 链接地址的校验选项。 */
 export interface SanitizeHrefOptions {
-  /** 是否允许相对地址。 */
+  /** 是否允许相对地址，默认 `false`（拒绝相对地址）。 */
   readonly allowRelative?: boolean;
 }
 
@@ -74,7 +74,7 @@ export function sanitizeHref(value: string, options: SanitizeHrefOptions = {}): 
 
 /** 图片地址的校验选项。 */
 export interface SanitizeImageOptions {
-  /** 是否允许相对地址。 */
+  /** 是否允许相对地址，默认 `false`（拒绝相对地址）。 */
   readonly allowRelative?: boolean;
 }
 
@@ -259,12 +259,18 @@ const SAFE_STYLE_PROPERTIES = new Set([
 const UNSAFE_STYLE_VALUE =
   /(?:url\s*\(|image-set\s*\(|cross-fade\s*\(|image\s*\(|expression\s*\(|@import|var\s*\(|env\s*\(|behavior\s*:|[\\<>])/iu;
 
+/** 内联样式的过滤结果。 */
 export interface SanitizedStyle {
+  /** 保留声明拼接后的样式文本；全部声明被丢弃时省略。 */
   readonly value?: string;
+  /** 被丢弃的原始声明，按源码顺序。 */
   readonly dropped: readonly string[];
 }
 
-/** 解析并过滤内联样式声明；只保留白名单属性与安全值。 */
+/**
+ * 解析并过滤内联样式声明；只保留白名单属性与安全值。
+ * 含 `url(` 等可执行或远程加载值、`!important` 的声明整条丢弃，并记录在结果的 `dropped` 中。
+ */
 export function sanitizeStyleValue(input: string): SanitizedStyle {
   const kept: string[] = [];
   const dropped: string[] = [];

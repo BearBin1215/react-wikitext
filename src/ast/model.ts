@@ -24,16 +24,16 @@ export const RENDER_SCHEMA_VERSION = 4 as const;
 export const COMPILATION_SCHEMA_VERSION = 1 as const;
 
 /**
- * parser 内部的偏移区间，按 `[start, end)` 的 UTF-16 offset 表示。
+ * parser 侧的偏移区间，按 `[start, end)` 的 UTF-16 offset 表示。
  *
- * 它只出现在源码语法树等 parser 内部结构；diagnostic、origin、resolver 请求、
+ * 用于源码语法树等 parser 侧结构；diagnostic、origin、resolver 请求、
  * 组件属性与公共查询统一使用 {@link WikitextSourceSpan}。
  */
 export type WikitextRange = readonly [start: number, end: number];
 
 /** 源码中的单个坐标；行列从 1 开始，offset 从 0 开始。 */
 export type { WikitextPoint } from "./sourceGraph/types";
-/** 一段源码的起止坐标；由所属文本源按需计算。 */
+/** 一段源码的起止坐标（`WikitextSourcePosition` 的别名）；由所属文本源按需计算。 */
 export type WikitextPosition = WikitextSourcePosition;
 
 /** 语义节点与源码语法节点的对应关系；生成的节点可以没有 origin。 */
@@ -101,16 +101,23 @@ export type WikitextDiagnosticCode = KnownWikitextDiagnosticCode | (string & {})
 
 /** 诊断的附带位置；主位置仍是 `location`，这里只补充相关来源。 */
 export interface WikitextRelatedLocation {
+  /** 相关来源的范围。 */
   readonly location: WikitextSourceSpan;
+  /** 说明该位置与主位置的关系。 */
   readonly message: string;
+  /** 产生该位置的阶段；省略时与主诊断相同。 */
   readonly stage?: WikitextStage;
 }
 
 /** 管线产生的诊断信息，用于定位解析、转换或清洗问题。 */
 export interface WikitextDiagnostic {
+  /** 诊断码；已知词表见 {@link KnownWikitextDiagnosticCode}，插件也可提供自定义 rule id。 */
   readonly code: WikitextDiagnosticCode;
+  /** 产生诊断的处理阶段。 */
   readonly stage: WikitextStage;
+  /** 严重程度；呈现方式由宿主决定。 */
   readonly severity: WikitextDiagnosticSeverity;
+  /** 面向开发者的说明文本；不适合直接展示给最终用户。 */
   readonly message: string;
   /** 主位置：真实失败位置所在的文本源与范围。 */
   readonly location?: WikitextSourceSpan;
@@ -146,12 +153,19 @@ export type WikitextPrimitive = string | number | boolean;
  * 用途是调试上游 token；语义节点的位置、区间与查询不依赖它。
  */
 export interface WikitextSyntaxNode {
+  /** 节点 id；由适配器生成，在同一棵语法树内唯一。 */
   readonly id: string;
+  /** 上游 token 类型。 */
   readonly type: string;
+  /** 源码区间，按 `[start, end)` 的 UTF-16 offset。 */
   readonly range: WikitextRange;
+  /** 区间的行列坐标。 */
   readonly position: WikitextPosition;
+  /** token 的标量属性。 */
   readonly props: Readonly<Record<string, WikitextPrimitive>>;
+  /** token 携带的 HTML 属性。 */
   readonly attributes: readonly WikitextSyntaxAttribute[];
+  /** 子节点。 */
   readonly children: readonly WikitextSyntaxNode[];
 }
 
@@ -161,7 +175,8 @@ export interface WikitextSyntaxRoot extends WikitextSyntaxNode {
 }
 
 /**
- * 语义节点的公共字段；自定义节点可以扩展它并注册到 {@link WikitextNodeMap}。
+ * 语义节点的公共字段；自定义节点可以扩展它并注册到 `WikitextNodeMap`
+ * （从 `react-wikitext/ast` 导出）。
  * @example
  * ```ts
  * interface Callout extends WikitextNodeBase<"callout"> {
@@ -175,6 +190,7 @@ export interface WikitextSyntaxRoot extends WikitextSyntaxNode {
  * ```
  */
 export interface WikitextNodeBase<TType extends string = string> {
+  /** 节点类型名；与 `WikitextNodeMap` 的键对应。 */
   readonly type: TType;
   /** 在一份快照内唯一；不承诺跨编辑稳定。 */
   readonly id: string;
@@ -184,6 +200,7 @@ export interface WikitextNodeBase<TType extends string = string> {
    * 行列坐标由 `getSourcePosition` 从所属文本源计算，不在节点上另存一份。
    */
   readonly origin?: WikitextOrigin;
+  /** 宿主或插件附加的自定义数据。 */
   readonly data?: Readonly<Record<string, unknown>>;
 }
 
@@ -222,6 +239,7 @@ export type WikitextLinkKind = "internal" | "external" | "bareExternal";
 
 /** 链接。 */
 export interface WikitextLink extends WikitextParentBase<"link"> {
+  /** 链接类别，取值见 {@link WikitextLinkKind}。 */
   readonly kind: WikitextLinkKind;
   /** 完整目标；内部链接包含页面与片段，外链即 URL。 */
   readonly target: string;
@@ -233,9 +251,13 @@ export interface WikitextLink extends WikitextParentBase<"link"> {
 
 /** 文件参数。 */
 export interface WikitextFileParameter {
+  /** 参数名，例如 `width`、`right`；说明文字不进入参数列表。 */
   readonly name: string;
+  /** 参数值；已做实体解码并去掉首尾空白。 */
   readonly value: string;
+  /** 是否以 `键=值` 形式显式书写。 */
   readonly explicit: boolean;
+  /** 参数在源码中的来源。 */
   readonly origin?: WikitextOrigin;
 }
 
@@ -248,7 +270,9 @@ export interface WikitextFile extends WikitextParentBase<"file"> {
   readonly name: string;
   /** 非说明文字的结构化参数。 */
   readonly parameters: readonly WikitextFileParameter[];
+  /** 说明文字的来源；对应说明子树与参数的划分方式。 */
   readonly captionKind: WikitextFileCaptionKind;
+  /** 文件标签上解析出的 HTML 属性。 */
   readonly attributes: readonly WikitextAttribute[];
   /** 独占一行时使用块级展示。 */
   readonly block?: boolean;
@@ -297,7 +321,9 @@ export interface WikitextTableCell extends WikitextParentBase<"tableCell"> {
 
 /** 模板或解析器函数的参数。 */
 export interface WikitextTemplateParameter extends WikitextParentBase<"templateParameter"> {
+  /** 参数名；匿名参数为上游给出的名称，通常为空。 */
   readonly name: string;
+  /** 是否为匿名参数。 */
   readonly anonymous: boolean;
   /** 同名匿名参数中的序号（从 1 开始）；具名参数没有该字段。 */
   readonly index?: number;
@@ -305,6 +331,7 @@ export interface WikitextTemplateParameter extends WikitextParentBase<"templateP
 
 /** 模板调用。 */
 export interface WikitextTemplate extends WikitextParentBase<"template"> {
+  /** 调用的模板名。 */
   readonly name: string;
   /** 规整后的显示名，已去掉命名空间前缀。 */
   readonly displayName: string;
@@ -314,6 +341,7 @@ export interface WikitextTemplate extends WikitextParentBase<"template"> {
 
 /** 解析器函数调用。 */
 export interface WikitextParserFunction extends WikitextParentBase<"parserFunction"> {
+  /** 调用的解析器函数名。 */
   readonly name: string;
   /** 独占一行时使用块级展示。 */
   readonly block?: boolean;
@@ -321,6 +349,7 @@ export interface WikitextParserFunction extends WikitextParentBase<"parserFuncti
 
 /** 模板参数引用，例如 `{{{name|default}}}`。 */
 export interface WikitextArgument extends WikitextParentBase<"argument"> {
+  /** 引用的参数名。 */
   readonly name: string;
 }
 
@@ -336,8 +365,11 @@ export interface WikitextExtension extends WikitextParentBase<"extension"> {
 
 /** 引用（ref）节点。 */
 export interface WikitextReference extends WikitextParentBase<"reference"> {
+  /** `<ref>` 的 name 属性；未命名引用省略。 */
   readonly name?: string;
+  /** 引用分组；未分组时省略。 */
   readonly group?: string;
+  /** `<ref>` 标签上的其他 HTML 属性。 */
   readonly attributes: readonly WikitextAttribute[];
   /** 已解码的扩展标签内部原文，用于安全占位标题。 */
   readonly raw?: string;
@@ -456,17 +488,25 @@ export interface WikitextSnapshotBase {
   readonly graph: WikitextSourceGraph;
   /** 活动源码文本。 */
   readonly source: string;
+  /** 解析或准备阶段收集的诊断。 */
   readonly diagnostics: readonly WikitextDiagnostic[];
 }
 
 /** 解析快照的元数据。 */
 export interface WikitextParsedMeta {
+  /** 语义 AST 的 schema 版本。 */
   readonly astSchemaVersion: typeof AST_SCHEMA_VERSION;
+  /** 源码语法树的 schema 版本；未保留语法树时省略。 */
   readonly syntaxSchemaVersion?: typeof SYNTAX_SCHEMA_VERSION;
+  /** 解析器适配器名称。 */
   readonly parser: string;
+  /** 上游解析器版本。 */
   readonly parserVersion: string;
+  /** 本次解析的页面名；未提供时省略。 */
   readonly pageName?: string;
+  /** 源码是否因换行归一化而改变。 */
   readonly sourceNormalized: boolean;
+  /** 归一化前的源码长度。 */
   readonly originalLength: number;
   /**
    * 本次解析实际生效的预算；与单次选项、创建时默认值合并后的结果一致。
@@ -487,8 +527,11 @@ export interface WikitextParsedSnapshot extends WikitextSnapshotBase {
 
 /** 标题在文档中的位置与锚点信息。 */
 export interface WikitextHeadingInfo {
+  /** 对应标题语义节点的 id。 */
   readonly nodeId: string;
+  /** 标题级别 1–6。 */
   readonly level: number;
+  /** 标题纯文本。 */
   readonly text: string;
   /** 逻辑锚点；具体 DOM id 由视图按实例映射。 */
   readonly id?: string;
@@ -499,7 +542,9 @@ export type WikitextHeadingIdStrategy = "instance" | "mediawiki" | "none";
 
 /** 准备阶段实际使用的安全策略。 */
 export interface WikitextResolvedPolicy {
+  /** 是否允许相对链接；默认 `true`。 */
   readonly allowRelativeLinks: boolean;
+  /** 是否允许相对图片地址；默认 `false`。 */
   readonly allowRelativeImages: boolean;
   /** 是否允许插件（rehype）插入的图片。 */
   readonly allowPluginImages: boolean;
@@ -557,8 +602,9 @@ export interface WikitextCompilationStats {
   readonly providerRequests: number;
   /** 需求批次数量。 */
   readonly batches: number;
-  /** 模板语法程序的缓存命中与未命中。 */
+  /** 模板语法程序的缓存命中次数。 */
   readonly programCacheHits: number;
+  /** 模板语法程序的缓存未命中次数。 */
   readonly programCacheMisses: number;
   /** 实际编译模板语法程序的次数。 */
   readonly programCompilations: number;
@@ -578,7 +624,9 @@ export interface WikitextCompilationStats {
  * 诊断与来源图只保存在 `snapshot`；外层只描述状态、源码身份、依赖与统计。
  */
 export interface WikitextCompilation {
+  /** 编译封装的 schema 版本。 */
   readonly schemaVersion: typeof COMPILATION_SCHEMA_VERSION;
+  /** 整次编译的结果状态。 */
   readonly status: WikitextCompilationStatus;
   /** 页面原文源身份。 */
   readonly inputSourceId: WikitextSourceId;
@@ -586,7 +634,10 @@ export interface WikitextCompilation {
   readonly outputSourceId: WikitextSourceId;
   /** 尝试展开但失败时的输出源身份；失败诊断指向它。 */
   readonly attemptedSourceId?: WikitextSourceId;
+  /** 展开得到的解析快照；诊断与来源图都保存在它上面。 */
   readonly snapshot: WikitextParsedSnapshot;
+  /** 本次编译读取的模板依赖清单。 */
   readonly dependencies: readonly WikitextCompilationDependency[];
+  /** 本次编译的统计。 */
   readonly stats: WikitextCompilationStats;
 }

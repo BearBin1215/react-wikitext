@@ -158,6 +158,9 @@ async function prepareAsync(
  * 同步执行插件，要求所有插件都支持同步调用。
  * @param document 解析结果。
  * @param options 准备选项。
+ * @throws 输入不是解析快照时抛 `WikitextPrepareError`（`INVALID_DOCUMENT`）；
+ *   插件或转换失败时抛 `WikitextPrepareError`（`PREPARE_FAILED`，异步插件混入同步路径为
+ *   `ASYNC_PLUGIN_IN_SYNC_PATH`）。
  */
 export function prepareWikitext(
   document: WikitextParsedSnapshot,
@@ -171,6 +174,7 @@ export function prepareWikitext(
  * 异步版本：允许插件返回 Promise。
  * @param document 解析结果。
  * @param options 准备选项。
+ * @throws 失败情形与 {@link prepareWikitext} 相同，以 `WikitextPrepareError` 抛出。
  */
 export async function prepareWikitextAsync(
   document: WikitextParsedSnapshot,

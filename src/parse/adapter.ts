@@ -91,6 +91,7 @@ function createWikiparserAdapter(config?: ParserConfig): WikitextParserAdapter {
  * 使用默认配置或显式站点配置创建解析器。
  * 配置会在创建时固定；更换配置需要创建新的解析器。
  * @param options 站点配置与默认解析选项。
+ * @throws 配置缺失字段或形状非法时抛 `WikitextParseError`（`INVALID_CONFIG`）。
  */
 export function createWikiparser(options: CreateWikiparserOptions = {}): WikitextParser {
   const adapter = createWikiparserAdapter(options.config);

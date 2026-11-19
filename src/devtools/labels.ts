@@ -4,7 +4,9 @@ export interface AstTreeLabels {
   expand: string;
   /** 节点当前展开时的折叠提示 title；不进入 treeitem 的可访问名称。 */
   collapse: string;
+  /** 全部展开按钮的文案。 */
   expandAll: string;
+  /** 全部折叠按钮的文案。 */
   collapseAll: string;
   /** 搜索框的标签。 */
   searchLabel: string;
@@ -50,9 +52,13 @@ export function resolveAstTreeLabels(labels?: Partial<AstTreeLabels>): AstTreeLa
 
 /** 节点检查器的文案。 */
 export interface NodeInspectorLabels {
+  /** 复制节点 JSON 按钮的文案。 */
   copyJson: string;
+  /** 复制节点源码按钮的文案。 */
   copySource: string;
+  /** 复制成功后的短暂提示。 */
   copied: string;
+  /** 复制失败后的提示。 */
   copyFailed: string;
   /** 面板的区域名称。 */
   regionLabel: string;

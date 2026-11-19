@@ -1,9 +1,14 @@
 /** 缓存容量统计；跨编译累计，`clear` 会重置。 */
 export interface WikitextCacheStats {
+  /** 命中次数。 */
   readonly hits: number;
+  /** 未命中次数。 */
   readonly misses: number;
+  /** 因容量上限被逐出的次数。 */
   readonly evictions: number;
+  /** 当前缓存条目数。 */
   readonly entries: number;
+  /** 当前缓存的近似字节数。 */
   readonly bytes: number;
 }
 
