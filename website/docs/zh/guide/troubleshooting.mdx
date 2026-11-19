@@ -1,9 +1,11 @@
 ---
 title: 故障排查
-description: 常见显示、构建与错误码问题，以及定位问题的固定步骤。
+description: 常见显示与构建问题，以及一套固定的排查顺序。
 ---
 
 # 故障排查
+
+## 排查流程
 
 先按下面的步骤排查，通常能直接定位问题：
 
@@ -46,13 +48,9 @@ description: 常见显示、构建与错误码问题，以及定位问题的固�
 | `WikitextError("INVALID_DOCUMENT")`              | 把解析快照交给了 `prepare` 或 `WikitextView`             | 先调用 `prepareWikitext` 得到渲染快照；视图不接受解析快照                   |
 | CJS 环境加载失败                                 | 运行时版本过低或打包器不支持 `exports`                   | 使用 Node `>=20.19` 与支持条件导出的打包器                                  |
 
-## 错误码
-
-错误对象带有 `code`；准备阶段错误还带 `stage`。不要根据 `message` 文本分支。
-
-完整错误码、阶段含义与处理建议见[错误与诊断](../api/errors.mdx)。
-
 ## 诊断怎么读
+
+错误对象带有 `code`；准备阶段错误还带 `stage`。不要根据 `message` 文本分支；完整错误码、阶段含义与处理建议见[错误与诊断](../api/errors.mdx)。
 
 ```ts
 for (const diagnostic of prepared.diagnostics) {

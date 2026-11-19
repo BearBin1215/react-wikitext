@@ -40,7 +40,7 @@ import "react-wikitext/styles.css";
 import { Wikitext } from "react-wikitext";
 import "react-wikitext/styles.css";
 
-const source = `== 主题示例 ==
+const source = `'''主题示例'''
 '''正文'''、''强调'' 与 [[链接]]。
 
 {{Infobox|title=模板占位}}`;
@@ -204,3 +204,10 @@ function renderPrepared(document: WikitextParsedSnapshot, prepareOptions: Wikite
 ```
 
 `labels.renderFailed` 控制块级占位的标题；错误码与处理方式见[错误与诊断](../api/errors.mdx)。
+
+## 相关
+
+- [基本用法](./usage.mdx)：源码组件与显式管线。
+- [样式与组件定制](./customization.mdx)：CSS 变量、组件覆盖与文案。
+- [安全模型](./security.mdx)：组件覆盖与解析回调的可信边界。
+- [错误与诊断](../api/errors.mdx)：错误码与诊断字段。

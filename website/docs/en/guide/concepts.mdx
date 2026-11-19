@@ -11,12 +11,10 @@ The library splits rendering into stages that can be deployed separately. Unders
 
 ```text
 source
-  │
-  ├─ /parse ─────────────────────▶ WikitextParsedSnapshot (parse snapshot)
-  │
-  └─ (optional) /expand ─────────▶ WikitextCompilation.snapshot (expanded and parsed)
-  │
-  ▼
+  ├─ /parse ─────────────────────▶ WikitextParsedSnapshot (parse snapshot) ──┐
+  │                                                                           │
+  └─ (optional) /expand ─────────▶ WikitextCompilation.snapshot ─────────────┤
+                                                                              ▼
 /hast prepare ─▶ WikitextRenderSnapshot (render snapshot)
   │
   ▼
@@ -57,13 +55,11 @@ Queries must use the right snapshot: do not look up ids from a render snapshot i
 
 Parsing is expensive, while preparation options change often. Cache the parse snapshot and prepare it again with different resolvers, images, labels, or plugins instead of reparsing. Server preparation and client rendering use the same snapshot: the client loads no parser and reruns no plugins.
 
-Preparation works on a cloned tree, so the parse snapshot stays read-only. Snapshots are plain data: they can be cached, sent through a worker, or transferred over the network, and restore functions revalidate structure and budgets.
+Preparation works on a cloned tree, so the parse snapshot stays read-only. Snapshots are plain data: they can be cached, sent through a worker, or transferred over the network, and restore functions revalidate structure and budgets. The source graph travels with the snapshot, so locations survive template expansion, CRLF normalization, and plugin rewrites.
 
 :::note
 Preparation is not an optional "touch-up" step. It determines the final HAST content and the security boundary; handing unprocessed HAST to the view is unsupported.
 :::
-
-The source graph travels with the snapshot, so locations survive template expansion, CRLF normalization, and plugin rewrites.
 
 ## Semantic normalization
 
@@ -80,8 +76,11 @@ Each output can be traced back to its source, which makes issues easier to debug
 [Entry points](../api/index.mdx#subpaths) lists each subpath's contents, whether it loads a parser or React, and its typical use. For a symbol-by-symbol list, see the export notes on each entry page.
 
 :::warning
-React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components. The root entry, `/view`, `/preview`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments. On the server and at build time, use React-free entries such as `/parse`, `/expand`, and `/hast`; use `/worker` inside a Worker.
-:::
+
+- React entries use hooks such as `useId` and `useMemo`, so they only run in Client Components.
+- The root entry, `/view`, `/preview`, and `/devtools` ship a `"use client"` directive, so they work directly in Next.js App Router and similar environments.
+- On the server and at build time, use React-free entries such as `/parse`, `/expand`, and `/hast`; use `/worker` inside a Worker.
+  :::
 
 ## Glossary
 

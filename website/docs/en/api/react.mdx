@@ -78,7 +78,13 @@ On parse or prepare failure, `fallback` takes over:
 />
 ```
 
-The error boundary isolates top-level HAST blocks; see [view components](./view.mdx#render-errors) for block-level display and `onRenderError`. Parse and prepare failures never enter the boundary: without `onError` or `fallback` they propagate to the outer boundary; with only `onError` the built-in error container renders (`prepareOptions.labels.renderFailed`); with `fallback` it takes over entirely and returning `null` renders nothing.
+The error boundary isolates top-level HAST blocks; see [view components](./view.mdx#render-errors) for block-level display and `onRenderError`. Parse and prepare failures never enter the boundary; they follow the callbacks you pass:
+
+| Inputs                           | Behavior                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| Neither `onError` nor `fallback` | Propagate to the outer error boundary                                           |
+| Only `onError`                   | Render the built-in error container, using `prepareOptions.labels.renderFailed` |
+| `fallback` provided              | It takes over entirely; returning `null` renders nothing                        |
 
 ## Related
 

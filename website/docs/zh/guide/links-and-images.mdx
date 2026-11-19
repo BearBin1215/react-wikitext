@@ -163,3 +163,10 @@ export default function Demo() {
 `policy` 与默认值做单层浅合并；`extraTags`、`stripTags` 是整体替换，不会追加。需要保留默认数组时以 `DEFAULT_PREPARE_POLICY` 为基准展开。
 
 链接与文件的最终外观可以通过 [HTML 组件或语义组件](./customization.mdx#组件覆盖) 自定义。自定义组件属于可信代码，输出不再经过库清洗。
+
+## 相关
+
+- [渲染行为](./rendering.mdx#语法输出)：链接与文件的默认输出。
+- [样式与组件定制](./customization.mdx)：组件覆盖与文案。
+- [准备 `/hast`](../api/prepare.mdx#解析回调)：`resolveLink` / `resolveImage` 的完整签名。
+- [安全模型](./security.mdx)：URL 校验与图片授权。

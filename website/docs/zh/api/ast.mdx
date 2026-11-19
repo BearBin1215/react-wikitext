@@ -5,6 +5,8 @@ description: 语义节点模型、查询辅助函数、源码归一化与解析�
 
 # AST `/ast`
 
+`/ast` 不加载解析器与 React，可以在服务端、Worker 或纯数据处理脚本中使用。
+
 ```ts
 import {
   AST_SCHEMA_VERSION,
@@ -27,8 +29,6 @@ import {
   type WikitextNodeBase,
 } from "react-wikitext/ast";
 ```
-
-`/ast` 不加载解析器与 React，可以在服务端、Worker 或纯数据处理脚本中使用。
 
 ## 节点基础
 
@@ -111,7 +111,11 @@ interface WikitextSyntaxNode {
 }
 ```
 
-源码语法树是上游 token 的调试视图：语义节点的 `origin`、`getSourceText` 与 `findNodeAtOffset` 都不依赖它。它不决定渲染结构，语义 AST 才是渲染输入。`/expand` 的 `retainSyntax` 也只控制语法树是否公开。需要可视化查看语义树或源码语法树时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
+源码语法树是上游 token 的调试视图，不决定渲染结构；语义 AST 才是渲染输入。
+
+- 语义节点的 `origin`、`getSourceText` 与 `findNodeAtOffset` 不依赖它。
+- `/expand` 的 `retainSyntax` 只控制语法树是否公开。
+- 需要可视化查看时，使用 [`/devtools`](./devtools.mdx) 的 `AstTree`。
 
 ## 查询
 
@@ -155,7 +159,11 @@ interface SourceSnapshotLike {
 | `validateSourceGraph(value)`                     | 断言值是合法来源图；非法时抛 `WikitextError("INVALID_DOCUMENT")` |
 | `hashText(text)`                                 | 用于修订身份的稳定 32 位 FNV-1a 哈希；不用于安全用途             |
 
-`SOURCE_GRAPH_VERSION` 标识来源图 schema。`mapSourceSpan` 只在可证明的边界返回 `exact`；纯生成或被删除的文本没有对应关系，只有锚定到调用的输出使用 `enclosing-invocation`。映射精度与覆盖率规则见[展开 `/expand`](./expand.mdx#来源图与定位)。
+`SOURCE_GRAPH_VERSION` 标识来源图 schema。
+
+- `mapSourceSpan` 只在可证明的边界返回 `exact`。
+- 纯生成或被删除的文本没有对应关系，只有锚定到调用的输出使用 `enclosing-invocation`。
+- 映射精度与覆盖率规则见[展开 `/expand`](./expand.mdx#来源图与定位)。
 
 ## 结构化辅助函数
 
@@ -209,7 +217,9 @@ import {
 } from "react-wikitext/hast";
 ```
 
-恢复函数会校验结构版本、源码字符串、根节点、meta（含 `limits`）、`headings`、`diagnostics` 与 policy/labels 的完整结构，以及固定节点预算；渲染快照还会重新执行最终清洗与整理。快照内的 policy、labels 与 `authorizedImages` 属于可信边界，重新清洗只用于重建派生结构。不合法时抛：
+恢复函数会校验结构版本、源码字符串、根节点、meta（含 `limits`）、`headings`、`diagnostics` 与 policy/labels 的完整结构，以及固定节点预算；渲染快照还会重新执行最终清洗与整理。
+
+快照内的 policy、labels 与 `authorizedImages` 属于可信边界，重新清洗只用于重建派生结构。不合法时抛：
 
 - 解析快照：`WikitextError("INVALID_DOCUMENT")`。
 - 渲染快照：`WikitextError("INVALID_DOCUMENT")`（与解析快照同一基类，不含 `stage` 字段）。
@@ -225,3 +235,9 @@ import {
 | `SOURCE_GRAPH_VERSION`       | `1`    | 来源图     |
 
 版本变化意味着对应数据结构不兼容；缓存或跨进程传输时应把相关版本写入缓存键。
+
+## 相关
+
+- [解析 `/parse`](./parse.mdx)：解析快照的来源。
+- [准备 `/hast`](./prepare.mdx)：渲染快照与来源图的最终整理。
+- [调试组件 `/devtools`](./devtools.mdx)：语义树与源码语法树的可视化。

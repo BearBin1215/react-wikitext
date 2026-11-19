@@ -5,32 +5,28 @@ description: Subpath capabilities, loading boundaries, and the difference betwee
 
 # Entry Points
 
-Capabilities are split by subpath so hosts can load only what they need. The root entry is the main entry; `react-wikitext/view` is a lightweight entry that does not load the parser.
-
-## Pipeline
-
-See [How it works](../guide/concepts.mdx) for the stages, the optional expansion step, and the two snapshot types. The table below lists the entry for each stage.
+Capabilities are split by subpath so hosts can load only what they need. The root entry is the main entry; `react-wikitext/view` is a lightweight entry that does not load the parser. See [How it works](../guide/concepts.mdx) for the pipeline stages, the optional expansion step, and the two snapshot types.
 
 ## Subpaths
 
-| Subpath                       | Contents                                                                                                                               | Loads parser                 | Loads React |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
-| `react-wikitext`              | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
-| `react-wikitext/ast`          | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
-| `react-wikitext/parse`        | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
-| `react-wikitext/expand`       | `createWikitextCompiler`, template providers, compilation types and errors                                                             | No (parser injected)         | No          |
-| `react-wikitext/preview`      | `useWikitextPreview`, executor protocol, worker transport                                                                              | No                           | Yes         |
-| `react-wikitext/worker`       | `createWikitextWorkerHandler`, `attachWikitextWorker`, message protocol                                                                | No (parser injected)         | No          |
-| `react-wikitext/hast`         | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
-| `react-wikitext/unified`      | `createWikitextProcessor`, a unified integration with a library-owned final sanitize stage                                             | No (parser must be injected) | No          |
-| `react-wikitext/view`         | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
-| `react-wikitext/configs`      | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
-| `react-wikitext/devtools`     | `AstTree`, `NodeInspector`, node range/source queries, selection restore helpers, and debug label types                                | No                           | Yes         |
-| `react-wikitext/styles.css`   | Page rendering styles                                                                                                                  | —                            | —           |
-| `react-wikitext/tokens.css`   | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
-| `react-wikitext/devtools.css` | Debug component styles; includes theme variables                                                                                       | —                            | —           |
+| Subpath                                     | Contents                                                                                                                               | Loads parser                 | Loads React |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
+| [`react-wikitext`](./react.mdx)             | `Wikitext`, `WikitextView`, `WikitextFragment`, context hooks, component types, selected semantic types                                | Yes                          | Yes         |
+| [`react-wikitext/ast`](./ast.mdx)           | Semantic model, queries, helpers, pure parser factory, source normalization, serialization                                             | No                           | No          |
+| [`react-wikitext/parse`](./parse.mdx)       | Default parser, `parseWikitext`, parse options, parse errors                                                                           | Yes                          | No          |
+| [`react-wikitext/expand`](./expand.mdx)     | `createWikitextCompiler`, template providers, compilation types and errors                                                             | No (parser injected)         | No          |
+| [`react-wikitext/preview`](./preview.mdx)   | `useWikitextPreview`, executor protocol, worker transport                                                                              | No                           | Yes         |
+| [`react-wikitext/worker`](./worker.mdx)     | `createWikitextWorkerHandler`, `attachWikitextWorker`, message protocol                                                                | No (parser injected)         | No          |
+| [`react-wikitext/hast`](./prepare.mdx)      | `prepareWikitext`, `prepareWikitextAsync`, resolvers, policy, labels, heading strategies, URL utilities, render snapshot serialization | No                           | No          |
+| [`react-wikitext/unified`](./unified.mdx)   | `createWikitextProcessor`, a unified integration with a library-owned final sanitize stage                                             | No (parser must be injected) | No          |
+| [`react-wikitext/view`](./view.mdx)         | `WikitextView`, `WikitextFragment`, context hooks, component types                                                                     | No                           | Yes         |
+| [`react-wikitext/configs`](./configs.mdx)   | `MEDIAWIKI_CONFIG`, `createMediaWikiConfig`, `ParserConfig`                                                                            | No                           | No          |
+| [`react-wikitext/devtools`](./devtools.mdx) | `AstTree`, `NodeInspector`, node range/source queries, selection restore helpers, and debug label types                                | No                           | Yes         |
+| `react-wikitext/styles.css`                 | Page rendering styles                                                                                                                  | —                            | —           |
+| `react-wikitext/tokens.css`                 | Theme variables only; import when overriding variables without duplicating view styles                                                 | —                            | —           |
+| `react-wikitext/devtools.css`               | Debug component styles; includes theme variables                                                                                       | —                            | —           |
 
-The root entry does not export the parse, expand, hast, unified, or devtools entry APIs; import them from the corresponding entries. The shared error classes are also re-exported from the root entry.
+The root entry does not export the parse, expand, hast, unified, or devtools entry APIs; import them from the corresponding entries.
 
 ## Parse and render snapshots
 
@@ -55,25 +51,9 @@ Query transformed nodes with the render snapshot. Do not use ids from the render
 
 ## Types and errors
 
-- All four error classes (`WikitextError`, `WikitextParseError`, `WikitextExpandError`, `WikitextPrepareError`) are exported from the root entry and from the relevant feature entries; they are the same definitions, so `instanceof` works across entries.
+- The error classes are exported from the root entry and the relevant feature entries; see [Errors and diagnostics](./errors.mdx) for the full matrix.
 - The `WikitextLabels` type is available from `/ast` and `/view`; `DEFAULT_WIKITEXT_LABELS` and `DEFAULT_PREPARE_POLICY` come from `/hast`.
 - Import the full set of node subtypes, `WikitextNodeBase`, `KnownWikitextDiagnosticCode`, and `WikitextStage` from `/ast`; the root entry exports only selected semantic types used by view props.
-- Error codes, `stage`, and diagnostic fields are documented in [Errors and diagnostics](./errors.mdx).
+- `stage` and diagnostic fields are defined in [Errors and diagnostics](./errors.mdx).
 
-## Reference pages
-
-| Subpath     | Page                              |
-| ----------- | --------------------------------- |
-| Root        | [React components](./react.mdx)   |
-| `/view`     | [View components](./view.mdx)     |
-| `/parse`    | [Parsing](./parse.mdx)            |
-| `/ast`      | [AST](./ast.mdx)                  |
-| `/hast`     | [Preparation](./prepare.mdx)      |
-| `/expand`   | [Expansion](./expand.mdx)         |
-| `/preview`  | [Realtime preview](./preview.mdx) |
-| `/worker`   | [Worker](./worker.mdx)            |
-| `/unified`  | [unified](./unified.mdx)          |
-| `/configs`  | [configs](./configs.mdx)          |
-| `/devtools` | [Devtools](./devtools.mdx)        |
-
-Error codes and handling advice are in [Errors and diagnostics](./errors.mdx); versions, schema versions, and runtime requirements are in [Status and compatibility](../project/status.mdx).
+Versions, schema versions, and runtime requirements are in [Status and compatibility](../project/status.mdx).

@@ -45,24 +45,19 @@ export default function Demo() {
 
 示例里的标题会自动生成目录；`javascript:` 地址显示为可读文本，`<script>` 按纯文本转义；表格正常渲染，`<chem>` 这类没有专门支持的扩展标签显示为源码卡片；分类汇总到文末底栏。
 
-## 段落、文本与格式
+## 语法输出
 
-段落切分、行内格式、标题、水平线、注释、分类与行为开关按[语法支持](./syntax-support.mdx#文本与块)中的对应行处理。标题内容额外包在 `span.mw-headline` 中；注释、分类与行为开关不进入正文。
+常见构造的默认处理如下。逐条状态、属性规则与降级条件见[支持矩阵](./syntax-support.mdx)：
 
-## 列表
+| 构造                       | 默认行为                                                                       | 详见                                          |
+| -------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------- |
+| 段落、行内格式、标题       | 两个及以上空行分段；标题输出 `<h1>`–`<h6>` 并参与目录                          | [文本与块](./syntax-support.mdx#文本与块)     |
+| 列表与定义列表             | `*` / `#` 生成嵌套列表，续行并入当前项                                         | [列表与表格](./syntax-support.mdx#列表与表格) |
+| 表格                       | `wikitable` 套用 MediaWiki 1.43 外观；普通表格保持浏览器默认，移动端可横向滚动 | [列表与表格](./syntax-support.mdx#列表与表格) |
+| 内部链接、外部链接与裸外链 | 内部链接默认不可导航；外链校验协议；`javascript:` 显示为可读文本               | [链接与图片](./links-and-images.mdx)          |
+| 模板、解析器函数与参数     | 不求值，输出占位；`/expand` 可展开受支持的子集                                 | [模板与函数](./syntax-support.mdx#模板与函数) |
 
-列表前缀与输出见[语法支持](./syntax-support.mdx#列表与表格)。续行会并入当前列表项；空行、标题、表格、块级 HTML 等结束列表。单元格内的列表扫描受单元格范围限制，不会把下一个单元格并入列表。
-
-## 表格
-
-表格输出、属性处理、`colspan` / `rowspan` 布局、嵌套表格降级与 `data-*` 规则见[语法支持](./syntax-support.mdx#列表与表格)。补充行为：
-
-- 只有源 `wikitable` class 套用 MediaWiki 1.43 的边框、背景与单元格内边距；普通表格保持浏览器默认外观，移动端可横向滚动。
-- 最终 HAST 节点数超限时，语义 wiki 表格短行末尾的空填充格会被省略，并记录 `TABLE_FILLER_BUDGET_EXCEEDED` 警告；真实单元格、HTML 表格与插件内容不受影响。
-
-## 链接
-
-各类链接的默认输出、协议白名单、解析回调用法与外部链接策略见[链接与图片](./links-and-images.mdx)；构造矩阵见[语法支持](./syntax-support.mdx#链接与媒体)。
+最终 HAST 节点数超限时，语义 wiki 表格短行末尾的空填充格会被省略，并记录 `TABLE_FILLER_BUDGET_EXCEEDED` 警告；真实单元格、HTML 表格与插件内容不受影响。
 
 ## 文件与图片
 
@@ -80,10 +75,6 @@ export default function Demo() {
 - `resolveLink` 返回 `File:{name}` 时，图片包在 `a.mw-file-description` 中。
 - 只有 `resolveImage` 返回 `src` 且通过 `http:` / `https:` 校验时才生成 `<img loading="lazy" decoding="async">`；宽高限制在 1–4096。
 - 库不访问 `upload.wikimedia.org` 或任何图片地址。
-
-## 模板、函数与参数
-
-默认管线不求值模板、解析器函数与参数；它们的默认输出见[语法支持](./syntax-support.mdx#模板与函数)。需要展开时使用 [`/expand`](./templates.mdx)；展开失败而保留的调用仍然按占位渲染。
 
 ## 参考文献
 
@@ -107,11 +98,14 @@ export default function Demo() {
 
 ## HTML
 
-源码 HTML 不会作为原始 HTML 注入。标签分类与禁止标签见[语法支持](./syntax-support.mdx#html-与扩展标签)。HTML 属性只保留白名单中的 `class`、`title`、`dir`、`lang`、安全 `style` 与表格相关属性；`id`、事件属性不会进入 DOM。完整规则见[安全模型](./security.mdx)。
+源码 HTML 不会作为原始 HTML 注入。标签分类与禁止标签见[支持矩阵](./syntax-support.mdx#html-与扩展标签)。HTML 属性只保留白名单中的 `class`、`title`、`dir`、`lang`、安全 `style` 与表格相关属性；`id`、事件属性不会进入 DOM。完整规则见[安全模型](./security.mdx)。
 
 ## 扩展标签
 
-`<nowiki>`、`<pre>`、`<ref>`、`<references>`、`<math>`、`<syntaxhighlight>`、`<poem>`、`<gallery>`、`<imagemap>` 等扩展标签的默认输出见[语法支持](./syntax-support.mdx)。`semanticComponents.extension` 可以按标签名自定义这些扩展结构；`<ref>` 走 `semanticComponents.reference`，`<references>` 不产生组件调用。
+`<nowiki>`、`<pre>`、`<ref>`、`<references>`、`<math>`、`<syntaxhighlight>`、`<poem>`、`<gallery>`、`<imagemap>` 等标签的默认输出见[支持矩阵](./syntax-support.mdx#html-与扩展标签)。
+
+- `semanticComponents.extension` 可以按标签名自定义这些扩展结构。
+- `<ref>` 使用 `semanticComponents.reference`；`<references>` 不产生组件调用。
 
 ## 未知结构与降级
 
@@ -140,7 +134,6 @@ export default function Demo() {
 | 模板与 Lua 不执行              | 默认只占位；`/expand` 仅支持纯 wikitext 模板与受支持的解析器函数 |
 | 图片默认不加载                 | 需要宿主通过图片解析回调授权                                     |
 | 标记不配对的嵌套 wikitext 表格 | 整表降级；标记配对完整的嵌套表格与 HTML `<table>` 嵌套可渲染     |
-| 引用分组/回链                  | 支持命名复用、`group` 分组与 `<references/>` 位置                |
 | 重复引用定义                   | 保留第一次内容，并产生诊断                                       |
 | 行首空格                       | 按普通文本处理，不提供预格式化语义                               |
 | 目录能力有限                   | 不滚动联动、不折叠、不吸顶                                       |

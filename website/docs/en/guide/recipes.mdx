@@ -40,7 +40,7 @@ The same source in light and dark themes:
 import { Wikitext } from "react-wikitext";
 import "react-wikitext/styles.css";
 
-const source = `== Theme example ==
+const source = `'''Theme example'''
 '''Body text''', ''emphasis'', and a [[link]].
 
 {{Infobox|title=Template placeholder}}`;
@@ -204,3 +204,10 @@ function renderPrepared(document: WikitextParsedSnapshot, prepareOptions: Wikite
 ```
 
 `labels.renderFailed` controls the block placeholder title; see [Errors and diagnostics](../api/errors.mdx).
+
+## Related
+
+- [Basic usage](./usage.mdx): source component and explicit pipeline.
+- [Styling and components](./customization.mdx): CSS variables, component overrides, and labels.
+- [Security model](./security.mdx): trust boundaries for overrides and resolvers.
+- [Errors and diagnostics](../api/errors.mdx): error codes and diagnostic fields.

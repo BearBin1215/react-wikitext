@@ -163,3 +163,10 @@ To adjust defaults without a resolver:
 `policy` is shallow-merged with defaults. `extraTags` and `stripTags` are replaced wholesale, not appended. Spread `DEFAULT_PREPARE_POLICY` when you want to keep the defaults.
 
 Final link and file appearance can be taken over with [HTML or semantic components](./customization.mdx#component-overrides). Custom components are trusted code; their output is not sanitized again.
+
+## Related
+
+- [Rendering behavior](./rendering.mdx#syntax-output): default output for links and files.
+- [Styling and components](./customization.mdx): component overrides and labels.
+- [Preparation `/hast`](../api/prepare.mdx#resolvers): full `resolveLink` / `resolveImage` signatures.
+- [Security model](./security.mdx): URL validation and image authorization.

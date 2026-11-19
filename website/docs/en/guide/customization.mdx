@@ -77,21 +77,9 @@ All user-visible placeholders and notices come from `labels`. Prepare options ac
   prepareOptions={{
     labels: {
       templateNotExpanded: "Template not expanded",
-      parserFunctionNotEvaluated: "Parser function not evaluated",
       filePlaceholder: "File",
-      reference: "Reference",
       toc: "Contents",
-      tocHide: "hide",
-      tocShow: "show",
-      tocToggle: "Toggle table of contents",
-      categories: "Categories",
-      unknownNode: "Unsupported node",
-      redirectTo: "Redirect to",
-      blockedLink: "Blocked link",
-      blockedHtml: "Blocked HTML",
-      renderFailed: "Render failed",
-      nestedTableUnsupported: "Nested table not supported",
-      pageDoesNotExist: "(page does not exist)",
+      // See the table below for the remaining fields
     },
   }}
 />
@@ -241,6 +229,10 @@ function SectionLink() {
 
 These hooks and `WikitextFragment` must be used inside `<WikitextView>`.
 
+### Custom semantic nodes
+
+Custom nodes require extending `WikitextNodeMap` and registering a HAST converter in `prepareOptions.handlers`. A node without a handler produces a diagnostic and degrades to a source card. Handler context, budgets, and conversion details are in the [prepare API](../api/prepare.mdx#handlers).
+
 ## Plugins
 
 ```tsx
@@ -284,6 +276,9 @@ Plugin list shape, signatures, and async rules are in the [prepare API](../api/p
 
 `policy` is shallow-merged with defaults; array fields are replaced wholesale. `class` is filtered only by the `[A-Za-z0-9_-]` safe character set, with no option to widen or narrow it. For tags, attributes, or rich presentation outside the whitelist, prefer `/view` component overrides; do not loosen sanitization.
 
-## Custom semantic nodes
+## Related
 
-Custom nodes require extending `WikitextNodeMap` and registering a HAST converter in `prepareOptions.handlers`. A node without a handler produces a diagnostic and degrades to a source card. Handler context, budgets, and conversion details are in the [prepare API](../api/prepare.mdx#handlers).
+- [Basic usage](./usage.mdx): source component, explicit pipeline, and component overrides.
+- [Links and images](./links-and-images.mdx): resolvers, image authorization, and link policy.
+- [View components `/view`](../api/view.mdx): component props and context hooks.
+- [Security model](./security.mdx): trust boundaries for overrides and plugins.

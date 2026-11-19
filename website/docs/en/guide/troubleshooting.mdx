@@ -1,9 +1,11 @@
 ---
 title: Troubleshooting
-description: Common display, build, and error-code issues, plus a fixed way to narrow them down.
+description: Common display and build issues, plus a fixed triage order.
 ---
 
 # Troubleshooting
+
+## Triage
 
 The following checks usually locate the problem:
 
@@ -46,13 +48,9 @@ See [Syntax support](./syntax-support.mdx) for the full default output.
 | `WikitextError("INVALID_DOCUMENT")`                     | A parse snapshot was passed to `prepare` or `WikitextView`                     | Call `prepareWikitext` first to obtain a render snapshot; the view rejects parse snapshots             |
 | CJS environment fails to load                           | Runtime too old, or bundler ignores `exports`                                  | Use Node `>=20.19` and a bundler that supports conditional exports                                     |
 
-## Error codes
-
-Errors carry `code`; prepare errors also carry `stage`. Never branch on `message` text.
-
-The full list of error codes, stages, and handling advice is in [Errors and diagnostics](../api/errors.mdx).
-
 ## Reading diagnostics
+
+Errors carry `code`; prepare errors also carry `stage`. Never branch on `message` text. The full list of error codes, stages, and handling advice is in [Errors and diagnostics](../api/errors.mdx).
 
 ```ts
 for (const diagnostic of prepared.diagnostics) {

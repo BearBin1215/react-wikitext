@@ -78,7 +78,13 @@ interface WikitextProps extends Omit<WikitextViewProps, "snapshot"> {
 />
 ```
 
-错误边界按顶层 HAST 块隔离，块级失败的显示与 `onRenderError` 见[视图组件](./view.mdx#渲染错误)。解析与准备错误不会进入错误边界：未提供 `onError` 与 `fallback` 时直接抛给外层错误边界；只提供 `onError` 时显示内置错误容器（文案取 `prepareOptions.labels.renderFailed`）；提供 `fallback` 时由它完全接管，返回 `null` 即不渲染任何内容。
+错误边界按顶层 HAST 块隔离，块级失败的显示与 `onRenderError` 见[视图组件](./view.mdx#渲染错误)。解析与准备错误不会进入错误边界，按传入的回调处理：
+
+| 传入                     | 行为                                                          |
+| ------------------------ | ------------------------------------------------------------- |
+| 无 `onError`、`fallback` | 直接抛给外层错误边界                                          |
+| 只有 `onError`           | 显示内置错误容器，文案取 `prepareOptions.labels.renderFailed` |
+| 提供 `fallback`          | 由 `fallback` 完全接管；返回 `null` 时不渲染内容              |
 
 ## 相关
 

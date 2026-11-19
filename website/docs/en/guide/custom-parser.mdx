@@ -7,7 +7,7 @@ description: Wire another parser through an adapter, create it from /ast, and re
 
 The default parser is `wikiparser-node@1.48.2`. If a host already has another wikitext parser, an adapter can convert its output into the source syntax tree this library defines, reusing the semantic AST, preparation, HAST, and React rendering.
 
-## Import the factory from `/ast`
+## Create the factory
 
 ```ts
 import { createWikitextParser, type WikitextParserAdapter } from "react-wikitext/ast";
@@ -41,9 +41,9 @@ The semantic stage reuses the default adapter's token vocabulary, for example:
 
 Syntax that is not represented with these tokens gets no semantic structure; that is the adapter's boundary, not syntax the library infers.
 
-## A limited syntax example
+## Complete example
 
-The adapter below only recognizes `== Heading ==`, `[[Target|Label]]`, and plain paragraphs:
+The adapter below only recognizes `== Heading ==`, `[[Target|Label]]`, and plain paragraphs. It is a complete adapter and fairly long; the wiring steps follow the example, so you can skip there first and come back for the parsing details.
 
 ```tsx preview
 import {
@@ -196,4 +196,8 @@ The preview above registers the adapter with `createWikitextParser` and passes i
 - Adapters are trusted code. Their nodes still go through sanitization, but they must not fabricate source positions.
 - To expand templates, pass the same parser to [`/expand`](../api/expand.mdx); the expanded result is still wikitext and is parsed again.
 
-Related: [`/ast` API](../api/ast.mdx), [`/parse` API](../api/parse.mdx), [How it works](./concepts.mdx).
+## Related
+
+- [`/ast` API](../api/ast.mdx): node model, syntax tree types, and queries.
+- [`/parse` API](../api/parse.mdx): parse options, budgets, and errors.
+- [How it works](./concepts.mdx): pipeline, snapshots, and entry boundaries.

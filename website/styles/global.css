@@ -61,3 +61,31 @@
   min-width: 140px;
   font-size: 14px;
 }
+
+/* 示例预览里的标题只用于演示，不与文档章节争夺层级 */
+.rp-preview .wikitext-view :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0.6em 0 0.35em;
+  font-size: 1.1em;
+  line-height: 1.45;
+}
+
+.rp-preview .wikitext-view :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+/* 长表格的斑马纹，便于横向扫行；hover 用更深一档，保留反馈 */
+.rp-table-scroll-container tbody tr:nth-child(even) {
+  background: var(--rp-c-bg-soft);
+}
+
+.rp-table-scroll-container tbody tr:hover {
+  background: var(--rp-c-bg-mute);
+}
+
+/* 1280 宽度下三栏会把正文压到 532px；随视口连续收窄，避免断点处跳变 */
+@media (min-width: 1280px) {
+  :root:root {
+    --rp-sidebar-width: clamp(260px, calc(37.5vw - 220px), 320px);
+    --rp-outline-width: clamp(220px, calc(30vw - 164px), 268px);
+  }
+}

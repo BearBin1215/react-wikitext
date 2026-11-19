@@ -67,6 +67,15 @@ interface WikitextPreviewResult {
 }
 ```
 
+| 字段                | 说明                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| `status`            | `idle` 未开始；`scheduled` 等待防抖；`running` 执行中；`ready` 有可用快照；`error` 最近一次失败 |
+| `inputRevision`     | 当前输入的版本                                                                                  |
+| `displayedRevision` | 当前快照对应的版本；与 `inputRevision` 不一致时，快照属于旧输入                                 |
+| `snapshot`          | 最近一次成功的渲染快照；首次成功前为 `undefined`                                                |
+| `error`             | 最近一次失败；保留旧快照时仍可能与 `snapshot` 同时存在                                          |
+| `run` / `cancel`    | 跳过防抖立即执行，或取消等待与执行                                                              |
+
 ## 调度规则
 
 - 首次输入立即执行；同一输入 key 的后续编辑防抖。
@@ -85,3 +94,9 @@ transport.dispose();
 ```
 
 函数、compiler、provider 与 `AbortSignal` 不通过 `postMessage` 序列化；transport 只连接宿主创建的 Worker，不加载 parser。协议细节见 [`/worker`](./worker.mdx)。
+
+## 相关
+
+- [展开 `/expand`](./expand.mdx)：编译与缓存。
+- [Worker `/worker`](./worker.mdx)：消息协议与取消。
+- [视图组件 `/view`](./view.mdx)：渲染快照。

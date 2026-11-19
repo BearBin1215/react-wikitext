@@ -122,6 +122,27 @@ export default function Demo() {
 
 The returned `snapshot` is already a normal parsed snapshot; **do not parse again**. Hand it to `prepareWikitext`.
 
+## Supported syntax and functions
+
+The compiler executes only a supported subset of pure wikitext:
+
+- Transclusion with anonymous, named, default and dynamic parameters.
+- `noinclude` / `includeonly` / `onlyinclude`.
+- `#if`, `#ifeq`, `#switch`, `#iferror`, `#expr`, `#ifexpr`.
+- `#len`, `#sub`, `#replace`, `#titleparts`, `#padleft`, `#padright`, `#urlencode`, `#urldecode`.
+- `#lc`, `#uc`, `#lcfirst`, `#ucfirst`, `#trim`, `#tag`.
+- `{{!}}` and `{{=}}`.
+
+`#expr` supports the same operators and precedence as MediaWiki: `div` is an alias for `/`, and `%` is not a MediaWiki operator. Results are formatted with at most 14 significant digits; calculation errors and non-finite values produce `EXPRESSION_ERROR`.
+
+Template and function output keeps implicit newlines. Evaluation is lazy: template names, parameter names and conditions are evaluated only when their scope needs them. String lengths and slices count Unicode code points; source offsets remain UTF-16.
+
+These calls are preserved with diagnostics by default:
+
+- `#invoke` and Lua.
+- Transclusion modifiers such as `subst`.
+- Functions depending on site state or external runtime, such as `#ifexist` and `#time`.
+
 ## Template table provider
 
 ```ts
@@ -218,36 +239,13 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 - The source graph records piece relations and invocation records across page input, LF text, template source, effective body, and expanded text; nested calls keep their own scope, parent, and every output occurrence.
 - Mapping precision, unmapped subranges, and coverage rules live in [Expansion `/expand`](../api/expand.mdx#source-graph-and-lookup).
 
-## Supported syntax and functions
-
-- Transclusion with anonymous, named, default and dynamic parameters.
-- `noinclude` / `includeonly` / `onlyinclude`.
-- `#if`, `#ifeq`, `#switch`, `#iferror`, `#expr`, `#ifexpr`.
-- `#len`, `#sub`, `#replace`, `#titleparts`, `#padleft`, `#padright`, `#urlencode`, `#urldecode`.
-- `#lc`, `#uc`, `#lcfirst`, `#ucfirst`, `#trim`, `#tag`.
-- `{{!}}` and `{{=}}`.
-
-`#expr` supports the same operators and precedence as MediaWiki: `div` is an alias for `/`, and `%` is not a MediaWiki operator. Results are formatted with at most 14 significant digits; calculation errors and non-finite values produce `EXPRESSION_ERROR`.
-
-- Implicit newlines for template and function output.
-
-Evaluation is lazy: template names, parameter names and conditions are evaluated only when their scope needs them. String lengths and slices count Unicode code points; source offsets remain UTF-16.
-
-These calls are preserved with diagnostics by default:
-
-- `#invoke` and Lua.
-- Transclusion modifiers such as `subst`.
-- Functions depending on site state or external runtime, such as `#ifexist` and `#time`.
-
-## Budgets and failures
-
-Defaults, budget behavior, and cancellation live in [Expansion `/expand`](../api/expand.mdx); the full error-code list is in [Errors and diagnostics](../api/errors.mdx).
+## Failures and fallback
 
 - By default a failed final parse falls back to the original snapshot with `status: "fallback"`; `attemptedSourceId` points at the abandoned expanded source.
+- With `failureMode: "throw"`, recoverable failures such as a missing template throw instead; budget limits, cancellation, and an incompatible parser always fail.
+- Preserved templates, functions and parameters keep rendering as placeholders, never as evaluated content; see [Rendering behavior](./rendering.mdx#syntax-output).
 
-## How preserved calls render
-
-Preserved templates, functions and parameters keep their [placeholder structure](./rendering.mdx). Template sources and expanded results are untrusted wikitext and still pass semantic normalization, HAST conversion and final sanitization.
+Default budgets, cancellation semantics, and error codes live in [Expansion `/expand`](../api/expand.mdx) and [Errors and diagnostics](../api/errors.mdx).
 
 ## Limitations
 
@@ -255,3 +253,9 @@ Preserved templates, functions and parameters keep their [placeholder structure]
 - No Lua and no built-in site API client.
 - There is no option to configure title normalization; the parser decides the key, and hosts curate the table.
 - Categories, references and TOC in expanded output still follow normal rendering rules.
+
+## Related
+
+- [Expansion `/expand`](../api/expand.mdx): compiler options, provider protocol, caching, and error codes.
+- [Rendering behavior](./rendering.mdx): placeholder output for preserved calls.
+- [Security model](./security.mdx): the trust boundary for template sources and expanded results.

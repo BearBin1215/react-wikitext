@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { useLang } from "@rspress/core/runtime";
+import { Link } from "@rspress/core/theme-original";
 import "./home-example.css";
 
 type DemoWikitext = ComponentType<{
@@ -10,31 +11,43 @@ type DemoWikitext = ComponentType<{
 
 const examples = {
   zh: {
-    label: "在线示例",
+    label: "在线试用",
     lang: "zh-CN",
     sourceLabel: "wikitext 源码",
     previewLabel: "渲染预览",
+    hint: "安装：",
+    install: "pnpm add react-wikitext",
+    linkText: "查看快速开始",
+    linkHref: "/zh/guide/quick-start",
+    errorText: "示例加载失败，请查看快速开始。",
     source: [
       "== 你好，世界 ==",
       "'''wikitext''' 可以渲染成 ''React'' 组件。",
       "",
-      "# 安装：pnpm add react-wikitext",
-      "# 传入 source 与 lang 渲染",
-      "# 改动左侧源码，右侧实时更新",
+      "* 列表项",
+      "* 另一项",
+      "",
+      "> 引用块",
     ].join("\n"),
   },
   en: {
-    label: "Live example",
+    label: "Try it live",
     lang: "en",
     sourceLabel: "wikitext source",
     previewLabel: "Rendered preview",
+    hint: "Install with",
+    install: "pnpm add react-wikitext",
+    linkText: "Read the quick start",
+    linkHref: "/guide/quick-start",
+    errorText: "The example failed to load. See the quick start.",
     source: [
       "== Hello, world ==",
       "'''wikitext''' renders as ''React'' elements.",
       "",
-      "# Install: pnpm add react-wikitext",
-      "# Pass source and lang to render",
-      "# Edit the source and watch the preview",
+      "* First item",
+      "* Second item",
+      "",
+      "> Block quote",
     ].join("\n"),
   },
 } as const;
@@ -47,17 +60,22 @@ export function HomeExample() {
   const example = lang === "zh" ? examples.zh : examples.en;
   const [Wikitext, setWikitext] = useState<DemoWikitext | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void Promise.all([import("../../src"), import("../../src/styles/view.css")]).then(
-      ([module]) => {
+    void Promise.all([import("../../src"), import("../../src/styles/view.css")])
+      .then(([module]) => {
         if (active) {
           setWikitext(() => module.Wikitext);
         }
         return undefined;
-      },
-    );
+      })
+      .catch(() => {
+        if (active) {
+          setFailed(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -66,7 +84,16 @@ export function HomeExample() {
   const source = drafts[lang] ?? example.source;
 
   return (
-    <section className="home-example" aria-label={example.label}>
+    <section className="home-example" aria-labelledby="home-example-title">
+      <div className="home-example__header">
+        <h2 className="home-example__title" id="home-example-title">
+          {example.label}
+        </h2>
+        <p className="home-example__hint">
+          {example.hint} <code>{example.install}</code> ·{" "}
+          <Link href={example.linkHref}>{example.linkText}</Link>
+        </p>
+      </div>
       <div className="home-example__card">
         <div className="home-example__pane home-example__pane--input">
           <span className="home-example__label">{example.sourceLabel}</span>
@@ -87,7 +114,9 @@ export function HomeExample() {
         <div className="home-example__pane home-example__pane--preview">
           <span className="home-example__label">{example.previewLabel}</span>
           <div className="home-example__preview">
-            {Wikitext ? (
+            {failed ? (
+              <p className="home-example__error">{example.errorText}</p>
+            ) : Wikitext ? (
               <Wikitext source={source} lang={example.lang} onError={ignoreParseError} />
             ) : (
               <div className="home-example__loading" aria-hidden="true">

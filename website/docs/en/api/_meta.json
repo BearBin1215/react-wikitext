@@ -1,6 +1,6 @@
 [
   { "type": "section-header", "label": "Overview" },
-  { "type": "file", "name": "index", "label": "Entry overview" },
+  { "type": "file", "name": "index", "label": "Entry points" },
   { "type": "section-header", "label": "Rendering" },
   { "type": "file", "name": "react", "label": "React components" },
   { "type": "file", "name": "view", "label": "View components /view" },

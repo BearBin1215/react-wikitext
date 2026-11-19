@@ -68,3 +68,9 @@ type WikitextWorkerResponse =
 Cancellation is cooperative: `cancel` stops that request's queueing and waiting at the next checkpoint; it never interrupts a running synchronous parser.
 
 To hard-interrupt synchronous work, call `worker.terminate()` and rebuild the execution instance; its caches are discarded. The library does not interrupt a synchronous parser for you.
+
+## Related
+
+- [Realtime preview `/preview`](./preview.mdx): the scheduling hook that drives the transport.
+- [Expansion `/expand`](./expand.mdx): compiler and provider inside the Worker.
+- [Performance and budgets](../guide/performance.mdx): moving parse and preparation into a Worker.

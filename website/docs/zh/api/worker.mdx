@@ -68,3 +68,9 @@ type WikitextWorkerResponse =
 取消是协作式的：`cancel` 停止该请求的排队与等待，并在下一次检查点生效；不会中断正在运行的同步 parser。
 
 需要硬中断同步计算时，宿主应 `worker.terminate()` 并重建执行实例，该实例内的缓存随之失效；库不会替你中断同步 parser。
+
+## 相关
+
+- [实时预览 `/preview`](./preview.mdx)：调用 transport 的调度 Hook。
+- [展开 `/expand`](./expand.mdx)：Worker 内的编译器与 provider。
+- [性能与预算](../guide/performance.mdx)：把解析与准备放到 Worker。

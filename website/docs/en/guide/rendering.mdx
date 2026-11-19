@@ -45,24 +45,19 @@ export default function Demo() {
 
 Four headings trigger the TOC. The `javascript:` address becomes readable text, the `<script>` source is escaped, the table renders normally, an extension tag such as `<chem>` becomes a source card, and the category is collected into the footer.
 
-## Paragraphs, text, and formatting
+## Syntax output
 
-Paragraph splitting, inline formatting, headings, horizontal rules, comments, categories, and behavior switches follow their rows in [Syntax support](./syntax-support.mdx#text-and-blocks). Headings additionally wrap their content in `span.mw-headline`; comments, categories, and behavior switches never enter the body.
+The default pipeline handles common constructs as follows. See [Syntax support](./syntax-support.mdx) for per-construct status, attribute rules, and degradation:
 
-## Lists
+| Construct                               | Default behavior                                                                                                        | Details                                                                 |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Paragraphs, inline formatting, headings | Two or more blank lines split paragraphs; headings emit `<h1>`–`<h6>` and join the TOC                                  | [Text and blocks](./syntax-support.mdx#text-and-blocks)                 |
+| Lists and definition lists              | `*` / `#` produce nested lists; continuation lines join the current item                                                | [Lists and tables](./syntax-support.mdx#lists-and-tables)               |
+| Tables                                  | `wikitable` gets the MediaWiki 1.43 appearance; plain tables keep the browser default and scroll horizontally on mobile | [Lists and tables](./syntax-support.mdx#lists-and-tables)               |
+| Internal, external, and bare links      | Internal links are not navigable by default; external links validate protocols; `javascript:` becomes readable text     | [Links and images](./links-and-images.mdx)                              |
+| Templates, parser functions, arguments  | Not evaluated; emitted as placeholders. `/expand` expands the supported subset                                          | [Templates and functions](./syntax-support.mdx#templates-and-functions) |
 
-List prefixes and output are in [Syntax support](./syntax-support.mdx#lists-and-tables). Continuation lines join the current item; blank lines, headings, tables, and block HTML end a list. List scanning inside a table cell is bounded by the cell range and never consumes the next cell.
-
-## Tables
-
-Table output, attribute handling, `colspan` / `rowspan` layout, nested-table degradation, and `data-*` rules are in [Syntax support](./syntax-support.mdx#lists-and-tables). Additional behavior:
-
-- Only tables with the source `wikitable` class get MediaWiki 1.43 borders, background, and cell padding; plain tables keep the browser default and scroll horizontally on mobile.
-- When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
-
-## Links
-
-Default output for each link type, the protocol allowlist, resolver usage, and external-link policy are in [Links and images](./links-and-images.mdx); the construct matrix is in [Syntax support](./syntax-support.mdx#links-and-media).
+When the final HAST node count exceeds the budget, empty trailing fillers in short rows of semantic wiki tables are omitted and a `TABLE_FILLER_BUDGET_EXCEEDED` warning is recorded; real cells, HTML tables, and plugin content are unaffected.
 
 ## Files and images
 
@@ -80,10 +75,6 @@ File nodes render as a placeholder by default:
 - When `resolveLink` returns a `File:{name}` address, the image is wrapped in `a.mw-file-description`.
 - Only a `src` returned by `resolveImage` and validated as `http:` / `https:` produces `<img loading="lazy" decoding="async">`; dimensions are clamped to 1–4096.
 - The library never contacts `upload.wikimedia.org` or any image URL on its own.
-
-## Templates, functions, and arguments
-
-The default pipeline does not evaluate templates, parser functions, or arguments; their default output is listed in [Syntax support](./syntax-support.mdx#templates-and-functions). Use [`/expand`](./templates.mdx) when you need expansion; calls preserved after a failed expansion still render as placeholders.
 
 ## References
 
@@ -111,7 +102,10 @@ Source HTML is never injected as raw HTML. Tag categories and forbidden tags are
 
 ## Extension tags
 
-The default output of `<nowiki>`, `<pre>`, `<ref>`, `<references>`, `<math>`, `<syntaxhighlight>`, `<poem>`, `<gallery>`, `<imagemap>`, and other extension tags is listed in [Syntax support](./syntax-support.mdx). `semanticComponents.extension` can take over these structures by name; `<ref>` uses `semanticComponents.reference`, and `<references>` produces no component call.
+The default output of `<nowiki>`, `<pre>`, `<ref>`, `<references>`, `<math>`, `<syntaxhighlight>`, `<poem>`, `<gallery>`, `<imagemap>`, and other extension tags is listed in [Syntax support](./syntax-support.mdx#html-and-extension-tags).
+
+- `semanticComponents.extension` can take over these structures by name.
+- `<ref>` uses `semanticComponents.reference`; `<references>` produces no component call.
 
 ## Unknown structures and degradation
 
@@ -140,7 +134,6 @@ These limits come from parser capabilities or project scope and will not disappe
 | Templates and Lua are not executed      | The default pipeline only uses placeholders; `/expand` supports pure wikitext templates and selected parser functions |
 | Images are not loaded by default        | A host resolver must authorize them                                                                                   |
 | Unmatched nested wikitext table markers | The whole table degrades; matched nested tables and nested HTML `<table>` work                                        |
-| Reference groups and backlinks          | Named reuse, `group` grouping, and `<references/>` placement are supported                                            |
 | Duplicate reference definitions         | The first definition wins and a diagnostic is produced                                                                |
 | Leading spaces                          | Treated as normal text; no preformatted semantics                                                                     |
 | Limited table of contents               | No scroll synchronization, collapse, or sticky behavior                                                               |

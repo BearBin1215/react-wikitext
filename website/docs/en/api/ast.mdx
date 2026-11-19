@@ -5,6 +5,8 @@ description: Semantic node model, query helpers, source normalization, and parse
 
 # AST `/ast`
 
+`/ast` loads neither the parser nor React, so it works on the server, in a Worker, or in plain data-processing scripts.
+
 ```ts
 import {
   AST_SCHEMA_VERSION,
@@ -27,8 +29,6 @@ import {
   type WikitextNodeBase,
 } from "react-wikitext/ast";
 ```
-
-`/ast` loads neither the parser nor React. It can be used on servers, in workers, or in data-processing scripts.
 
 ## Node basics
 
@@ -111,7 +111,11 @@ interface WikitextSyntaxNode {
 }
 ```
 
-The syntax tree is a debugging view of upstream tokens: semantic node `origin`, `getSourceText`, and `findNodeAtOffset` do not depend on it. It does not determine render structure; the semantic AST is the render input. `/expand`'s `retainSyntax` also only controls whether the syntax tree is published. To visualize the semantic tree or source syntax tree, use `AstTree` from [`/devtools`](./devtools.mdx).
+The syntax tree is a debugging view of upstream tokens and does not determine render structure; the semantic AST is the render input.
+
+- Semantic node `origin`, `getSourceText`, and `findNodeAtOffset` do not depend on it.
+- `/expand`'s `retainSyntax` only controls whether the syntax tree is published.
+- To visualize it, use `AstTree` from [`/devtools`](./devtools.mdx).
 
 ## Queries
 
@@ -155,7 +159,11 @@ Source graph query helpers are exported from `/ast`; construction helpers stay i
 | `validateSourceGraph(value)`                     | Assert that a value is a valid source graph; throws `WikitextError("INVALID_DOCUMENT")`          |
 | `hashText(text)`                                 | Stable 32-bit FNV-1a hash for revisions; not for security                                        |
 
-`SOURCE_GRAPH_VERSION` identifies the graph schema. `mapSourceSpan` returns `exact` only for provable boundaries; pure generated or deleted text is unmapped, while invocation-anchored output uses `enclosing-invocation`. Mapping precision and coverage rules are in [Expansion `/expand`](./expand.mdx#source-graph-and-lookup).
+`SOURCE_GRAPH_VERSION` identifies the graph schema.
+
+- `mapSourceSpan` returns `exact` only for provable boundaries.
+- Pure generated or deleted text is unmapped; invocation-anchored output uses `enclosing-invocation`.
+- Mapping precision and coverage rules are in [Expansion `/expand`](./expand.mdx#source-graph-and-lookup).
 
 ## Structured helpers
 
@@ -209,7 +217,9 @@ import {
 } from "react-wikitext/hast";
 ```
 
-Restore functions validate schema versions, the source string, the root, meta (including `limits`), `headings`, `diagnostics`, the full policy/labels structure, and the fixed node budget. Render snapshots are sanitized and finalized again. The snapshot's policy, labels, and `authorizedImages` belong to the trusted boundary; re-sanitizing only rebuilds derived structure. Invalid input throws:
+Restore functions validate schema versions, the source string, the root, meta (including `limits`), `headings`, `diagnostics`, the full policy/labels structure, and the fixed node budget. Render snapshots are sanitized and finalized again.
+
+The snapshot's policy, labels, and `authorizedImages` belong to the trusted boundary; re-sanitizing only rebuilds derived structure. Invalid input throws:
 
 - Parse snapshot: `WikitextError("INVALID_DOCUMENT")`.
 - Render snapshot: `WikitextError("INVALID_DOCUMENT")` (same base class as parse snapshots, without a `stage` field).
@@ -225,3 +235,9 @@ Restore functions validate schema versions, the source string, the root, meta (i
 | `SOURCE_GRAPH_VERSION`       | `1`           | Source graph       |
 
 A version change means the corresponding data shape is incompatible. Include the relevant versions in cache keys when caching or transferring data across processes.
+
+## Related
+
+- [Parsing `/parse`](./parse.mdx): where parse snapshots come from.
+- [Preparation `/hast`](./prepare.mdx): finalization of render snapshots and source graphs.
+- [Devtools `/devtools`](./devtools.mdx): visualize semantic and syntax trees.

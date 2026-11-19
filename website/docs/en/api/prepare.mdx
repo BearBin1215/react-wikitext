@@ -5,6 +5,8 @@ description: Semantic tree plugins, resolvers, security policy, heading anchors,
 
 # Preparation `/hast`
 
+`/hast` loads neither the parser nor React. It turns a parse snapshot into a sanitized render snapshot.
+
 ```ts
 import {
   prepareWikitext,
@@ -18,8 +20,6 @@ import {
   restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
-
-`/hast` loads neither the parser nor React. It turns a parse snapshot into a sanitized render snapshot.
 
 ## Basic usage
 
@@ -240,7 +240,13 @@ type WikitextHastHandlers = {
 
 Built-in keys infer their concrete node type from `WikitextNodeMap`; custom nodes get the same inference by augmenting `WikitextNodeMap`, while unregistered keys need explicit parameter types.
 
-`context` provides the original document, working tree, labels, policy, resolvers, handlers, read-only `authorizedImages` and `diagnostics`, plus `reportDiagnostic`, `convert`, and `convertChildren`. Handlers take precedence over built-in conversion, so registering a built-in type such as `heading` overrides the default. Results still go through rehype plugins and final sanitization; final link/image attributes, image authorization, and the table of contents are decided by the finalize stage.
+`context` provides:
+
+- The original document, working tree, labels, and policy.
+- Resolvers, handlers, read-only `authorizedImages`, and `diagnostics`.
+- `reportDiagnostic`, `convert`, and `convertChildren`.
+
+Handlers take precedence over built-in conversion, so registering a built-in type such as `heading` overrides the default. Results still go through rehype plugins and final sanitization; final link/image attributes, image authorization, and the table of contents are decided by the finalize stage.
 
 ## URL and attribute utilities
 
@@ -277,3 +283,10 @@ Preparation diagnostics are merged into the render snapshot. Their `stage` may b
 - `finalize`: finalization.
 
 Use `diagnostics` with `meta` for debugging or reporting. A single diagnostic never stops the whole page from rendering.
+
+## Related
+
+- [View components `/view`](./view.mdx): consumers of render snapshots.
+- [Rendering behavior](../guide/rendering.mdx): final TOC, reference, and category structure.
+- [Security model](../guide/security.mdx): sanitize order and policy boundaries.
+- [Performance and budgets](../guide/performance.mdx): preparation budgets and caching.

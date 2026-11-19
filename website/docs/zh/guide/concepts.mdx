@@ -11,17 +11,17 @@ description: 处理管线、快照类型、入口加载边界与语义归一化�
 
 ```text
 source
-  │
-  ├─ /parse ───────────────▶ WikitextParsedSnapshot（解析快照）
-  │
-  └─（可选）/expand ───────▶ WikitextCompilation.snapshot（展开并重新解析）
-  │
-  ▼
-/hast prepare ─▶ WikitextRenderSnapshot（渲染快照）
+  ├─ /parse ──────────────▶ WikitextParsedSnapshot ──────────────┐
+  │                                                              │
+  └─ /expand ────────────▶ WikitextCompilation.snapshot ────────┤
+                                                                 ▼
+/hast prepare ─▶ WikitextRenderSnapshot
   │
   ▼
 /view ─▶ React
 ```
+
+`/expand` 是可选阶段；`WikitextParsedSnapshot` 是解析快照，`WikitextRenderSnapshot` 是渲染快照。
 
 | 阶段 | 入口                                               | 输入                        | 输出                            | 是否必需   |
 | ---- | -------------------------------------------------- | --------------------------- | ------------------------------- | ---------- |
@@ -78,8 +78,11 @@ source
 各子路径的内容、是否加载解析器或 React，以及典型用途见[入口总览](../api/index.mdx#子路径)；逐个符号的清单见各入口的导出说明。
 
 :::warning 警告
-React 入口使用 `useId` / `useMemo` 等 Hook，因此只能在客户端组件中运行。根入口、`/view`、`/preview` 与 `/devtools` 的产物顶部带有 `"use client"` 指令，在 Next.js App Router 等环境中可以直接使用。服务端与构建期只使用 `/parse`、`/expand`、`/hast` 等无 React 入口；`/worker` 在 Worker 中使用。
-:::
+
+- React 入口使用 `useId` / `useMemo` 等 Hook，只能在客户端组件中运行。
+- 根入口、`/view`、`/preview` 与 `/devtools` 的产物带 `"use client"`，在 Next.js App Router 等环境中可以直接使用。
+- 服务端与构建期只使用 `/parse`、`/expand`、`/hast` 等无 React 入口；`/worker` 在 Worker 中使用。
+  :::
 
 ## 术语
 

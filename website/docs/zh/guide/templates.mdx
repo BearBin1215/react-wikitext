@@ -122,6 +122,27 @@ export default function Demo() {
 
 返回的 `snapshot` 已经是普通解析快照；**不需要再次解析**，直接交给 `prepareWikitext`。
 
+## 支持的语法与函数
+
+编译器只执行受支持的纯 wikitext 子集：
+
+- 模板嵌入与参数替换：匿名参数、具名参数、参数默认值与动态参数名。
+- `noinclude` / `includeonly` / `onlyinclude`。
+- `#if`、`#ifeq`、`#switch`、`#iferror`、`#expr`、`#ifexpr`。
+- `#len`、`#sub`、`#replace`、`#titleparts`、`#padleft`、`#padright`、`#urlencode`、`#urldecode`。
+- `#lc`、`#uc`、`#lcfirst`、`#ucfirst`、`#trim`、`#tag`。
+- `{{!}}` 与 `{{=}}`。
+
+`#expr` 支持与 MediaWiki 相同的运算符和优先级：`div` 是 `/` 的别名，`%` 不是 MediaWiki 运算符。结果格式化为最多 14 位有效数字；计算错误或结果为非有限数时，会产生 `EXPRESSION_ERROR`。
+
+模板与函数输出保留隐式换行。模板名、参数名与条件表达式只在所属作用域需要时求值；字符串长度与截取按 Unicode 码点计算，源码 offset 仍按 UTF-16 表示。
+
+以下调用默认保留原文并产生诊断：
+
+- `#invoke` 与 Lua。
+- `subst` 等嵌入修饰符。
+- 依赖站点状态或外部运行环境的函数，例如 `#ifexist`、`#time`。
+
 ## 模板表 provider
 
 ```ts
@@ -200,7 +221,7 @@ const provider: WikitextTemplateProvider = {
 
 ## 调度与缓存
 
-求值按确定顺序推进，未选中的分支不会触发获取；缓存按用途分层，并发编译共享同一 provider 快照的未完成请求。缓存键、批大小、并发与取消语义见[展开 `/expand`](../api/expand.mdx#缓存与调度)。
+求值按确定顺序推进，未选中的分支不会触发获取；缓存分为取回结果、模板语法程序与页面语法编译三层，并发编译共享同一 provider 快照的未完成请求。缓存键、批大小、并发与取消语义见[展开 `/expand`](../api/expand.mdx#缓存与调度)。
 
 ## 来源与定位
 
@@ -218,36 +239,13 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 - 来源图登记页面原文、LF 文本、模板原文、有效正文与展开结果之间的片段关系与调用记录；嵌套调用各自保存作用域、父调用与全部输出位置。
 - 映射精度、未映射子范围与覆盖率规则见[展开 `/expand`](../api/expand.mdx#来源图与定位)。
 
-## 支持的语法与函数
-
-- 模板嵌入与参数替换：匿名参数、具名参数、参数默认值与动态参数名。
-- `noinclude` / `includeonly` / `onlyinclude`。
-- `#if`、`#ifeq`、`#switch`、`#iferror`、`#expr`、`#ifexpr`。
-- `#len`、`#sub`、`#replace`、`#titleparts`、`#padleft`、`#padright`、`#urlencode`、`#urldecode`。
-- `#lc`、`#uc`、`#lcfirst`、`#ucfirst`、`#trim`、`#tag`。
-- `{{!}}` 与 `{{=}}`。
-
-`#expr` 支持与 MediaWiki 相同的运算符和优先级：`div` 是 `/` 的别名，`%` 不是 MediaWiki 运算符。结果格式化为最多 14 位有效数字；计算错误或结果为非有限数时，会产生 `EXPRESSION_ERROR`。
-
-- 模板与函数输出的隐式换行。
-
-按需计算：模板名、参数名与条件表达式只在所属作用域需要时求值。字符串长度与截取按 Unicode 码点计算，源码 offset 仍按 UTF-16 表示。
-
-以下调用默认保留原文并产生诊断：
-
-- `#invoke` 与 Lua。
-- `subst` 等嵌入修饰符。
-- 依赖站点状态或外部运行环境的函数，例如 `#ifexist`、`#time`。
-
-## 预算与失败
-
-默认值、预算行为与取消语义见[展开 `/expand`](../api/expand.mdx)，错误码的完整清单见[错误与诊断](../api/errors.mdx)。
+## 失败与回退
 
 - 默认模式下，最终源码解析失败会退回原始快照，`status` 为 `"fallback"`；`attemptedSourceId` 指向被放弃的展开源。
+- `failureMode: "throw"` 时，模板缺失等可恢复失败会直接抛错；预算、取消与不兼容解析器始终失败。
+- 展开失败保留的模板、函数与参数继续按默认占位渲染，不会显示成已求值内容；细节见[渲染行为](./rendering.mdx#语法输出)。
 
-## 未展开的调用如何显示
-
-展开失败保留的模板、函数与参数继续按[占位结构](./rendering.mdx)渲染，不会显示成已求值内容。模板源码与展开结果都按不可信 wikitext 处理，仍会经过语义归一化、HAST 转换与最终清洗。
+预算默认值、取消语义与错误码见[展开 `/expand`](../api/expand.mdx)与[错误与诊断](../api/errors.mdx)。
 
 ## 限制
 
@@ -255,3 +253,9 @@ const nodes = findRenderedNodes(compilation.snapshot, {
 - 不执行 Lua，不内置站点 API 客户端。
 - 不提供标题规范化选项；需要时由宿主整理模板键。
 - 展开结果中的分类、引用、目录等仍按默认渲染规则处理。
+
+## 相关
+
+- [展开 `/expand`](../api/expand.mdx)：编译选项、provider 协议、缓存与错误码。
+- [渲染行为](./rendering.mdx)：未展开调用的占位输出。
+- [安全模型](./security.mdx)：模板源码与展开结果的信任边界。

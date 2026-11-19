@@ -5,6 +5,8 @@ description: Version status, runtime matrix, pinned upstream, schema versions, a
 
 # Status and Compatibility
 
+This page collects version status, runtime requirements, the pinned upstream, and schema versions. Check it before adopting or upgrading.
+
 ## Version status
 
 | Item          | Current state                                                                                             |
@@ -58,7 +60,7 @@ A version change is a structural break. Include the relevant versions in cache k
 - During 0.x, breaking public changes move to a new minor series; compatible fixes stay in the current minor series.
 - From 1.x, published subpaths, exports, parameter meanings, and existing discriminated-union members remain compatible. Removing or renaming exports, narrowing types, changing field meaning, or making promised official snapshots unrestorable are breaking changes. New union members still require checking exhaustive consumers.
 - The schemas are maintained independently and only increment when structure or interpretation changes. A parser upgrade does not automatically bump them, but it does require snapshot and rendering regression tests.
-- The HAST node budget is fixed. When a semantic wiki table exceeds it, filler-cell degradation does not change the schema and remains restorable within the same major version. See [Rendering behavior](../guide/rendering.mdx#tables) for the degradation rules.
+- The HAST node budget is fixed. When a semantic wiki table exceeds it, filler-cell degradation does not change the schema and remains restorable within the same major version. See [Rendering behavior](../guide/rendering.mdx#syntax-output) for the degradation rules.
 - Within 1.x, official snapshots from the same major version with matching applicable schemas, produced normally by the library and coming from the trusted boundary, are accepted. Snapshots from other majors, unknown schemas, or third-party data are not promised.
 - Render snapshots are a rebuildable cache: when a render snapshot is invalid but the AST is still supported, prepare again; when the AST is also unsupported, reparse the retained source with its `pageName` and parser config.
 - Cache keys should include the package version, schemas, parser/config, source, `pageName`, and the policy, labels, resolver, plugin, and template-data versions that affect preparation. Functions themselves cannot be written into a cache key.

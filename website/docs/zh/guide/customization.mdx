@@ -77,21 +77,9 @@ import "react-wikitext/tokens.css"; // 只有变量
   prepareOptions={{
     labels: {
       templateNotExpanded: "模板未展开",
-      parserFunctionNotEvaluated: "解析器函数未求值",
       filePlaceholder: "文件",
-      reference: "引用",
       toc: "目录",
-      tocHide: "隐藏",
-      tocShow: "显示",
-      tocToggle: "切换目录",
-      categories: "分类",
-      unknownNode: "不支持的结构",
-      redirectTo: "重定向至",
-      blockedLink: "链接已拦截",
-      blockedHtml: "HTML 已拦截",
-      renderFailed: "渲染失败",
-      nestedTableUnsupported: "不支持嵌套表格",
-      pageDoesNotExist: "（页面不存在）",
+      // 其余字段见下表
     },
   }}
 />
@@ -241,6 +229,10 @@ function SectionLink() {
 
 这些 Hook 与 `WikitextFragment` 必须在 `<WikitextView>` 内使用。
 
+### 自定义语义节点
+
+自定义节点需要同时扩展 `WikitextNodeMap` 并在 `prepareOptions.handlers` 注册对应的 HAST 转换函数。未注册转换函数的节点会产生诊断并降级为源码卡片。转换函数的上下文、预算与转换细节见[准备 API](../api/prepare.mdx#handlers)。
+
 ## 插件
 
 ```tsx
@@ -284,6 +276,9 @@ function SectionLink() {
 
 `policy` 与默认值单层浅合并；数组字段整体替换。`class` 只按 `[A-Za-z0-9_-]` 安全字符集过滤，不提供放宽或收窄选项。需要白名单之外的标签、属性或富展示时，优先通过 `/view` 的组件覆盖实现，不要放宽清洗规则。
 
-## 自定义语义节点
+## 相关
 
-自定义节点需要同时扩展 `WikitextNodeMap` 并在 `prepareOptions.handlers` 注册对应的 HAST 转换函数。未注册转换函数的节点会产生诊断并降级为源码卡片。转换函数的上下文、预算与转换细节见[准备 API](../api/prepare.mdx#handlers)。
+- [基本用法](./usage.mdx)：源码组件、显式管线与组件覆盖示例。
+- [链接与图片](./links-and-images.mdx)：解析回调、图片授权与链接策略。
+- [视图组件 `/view`](../api/view.mdx)：组件属性与 Context Hook。
+- [安全模型](./security.mdx)：组件覆盖与插件的信任边界。

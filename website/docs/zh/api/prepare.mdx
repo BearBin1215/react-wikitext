@@ -5,6 +5,8 @@ description: 语义树插件、解析回调、安全策略、标题锚点与渲�
 
 # 准备 `/hast`
 
+`/hast` 不加载解析器与 React。它把解析快照转换为已清洗的渲染快照。
+
 ```ts
 import {
   prepareWikitext,
@@ -18,8 +20,6 @@ import {
   restoreWikitextRenderSnapshot,
 } from "react-wikitext/hast";
 ```
-
-`/hast` 不加载解析器与 React。它把解析快照转换为已清洗的渲染快照。
 
 ## 基本用法
 
@@ -242,7 +242,13 @@ type WikitextHastHandlers = {
 
 内建键会按 `WikitextNodeMap` 推导出具体的节点类型；自定义节点应通过模块扩展写入 `WikitextNodeMap`，即可获得同样的推导；未注册的键需要显式标注参数类型。
 
-`context` 提供原始文档、工作树、文案、策略、解析回调、转换函数、只读的 `authorizedImages` 与 `diagnostics`，以及 `reportDiagnostic`、`convert`、`convertChildren`。`handlers` 优先于内建转换，注册内建类型（例如 `heading`）会覆盖默认实现。转换结果仍会经过 rehype 插件与最终清洗；链接与图片的最终属性、图片授权和目录由整理阶段统一决定。
+`context` 提供：
+
+- 原始文档、工作树、文案与策略。
+- 解析回调、转换函数、只读的 `authorizedImages` 与 `diagnostics`。
+- `reportDiagnostic`、`convert` 与 `convertChildren`。
+
+`handlers` 优先于内建转换，注册内建类型（例如 `heading`）会覆盖默认实现。转换结果仍会经过 rehype 插件与最终清洗；链接与图片的最终属性、图片授权和目录由整理阶段统一决定。
 
 ## URL 与属性工具
 
@@ -279,3 +285,10 @@ const restored = restoreWikitextRenderSnapshot(payload);
 - `finalize`：最终整理。
 
 `diagnostics` 与 `meta` 一起可用于调试或上报；单条诊断不会中断整页渲染。
+
+## 相关
+
+- [视图组件 `/view`](./view.mdx)：渲染快照的消费方。
+- [渲染行为](../guide/rendering.mdx)：目录、引用与分类的最终结构。
+- [安全模型](../guide/security.mdx)：清洗顺序与策略边界。
+- [性能与预算](../guide/performance.mdx)：准备阶段预算与缓存。

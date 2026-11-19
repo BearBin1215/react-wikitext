@@ -65,6 +65,15 @@ interface WikitextPreviewResult {
 }
 ```
 
+| Field               | Description                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `status`            | `idle` not started; `scheduled` waiting for the debounce; `running` in flight; `ready` has a snapshot; `error` last run failed |
+| `inputRevision`     | Revision of the current input                                                                                                  |
+| `displayedRevision` | Revision of the displayed snapshot; when it differs from `inputRevision`, the snapshot is stale                                |
+| `snapshot`          | Last successful render snapshot; `undefined` before the first success                                                          |
+| `error`             | Last failure; it can coexist with a retained old `snapshot`                                                                    |
+| `run` / `cancel`    | Skip the debounce and run now, or cancel waiting and execution                                                                 |
+
 ## Scheduling rules
 
 - The first input runs immediately; later edits of the same input key are debounced.
@@ -83,3 +92,9 @@ transport.dispose();
 ```
 
 Functions, compilers, providers and `AbortSignal` are never sent through `postMessage`; the transport only connects a host-created Worker and never loads a parser. See [`/worker`](./worker.mdx) for the protocol.
+
+## Related
+
+- [Expansion `/expand`](./expand.mdx): compilation and caching.
+- [Worker `/worker`](./worker.mdx): message protocol and cancellation.
+- [View components `/view`](./view.mdx): render snapshots.
