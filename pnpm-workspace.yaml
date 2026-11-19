@@ -1,1 +1,5 @@
 minimumReleaseAge: 1440
+
+overrides:
+  # 修复 basic-ftp <= 6.2.3 漏洞；release-it 固定的 proxy-agent@8.0.2 仍指向旧链
+  release-it>proxy-agent: 8.0.3
