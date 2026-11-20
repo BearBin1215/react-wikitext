@@ -27,6 +27,7 @@ updates:
           - "vfile"
           - "hast-util-sanitize"
           - "hast-util-to-jsx-runtime"
+          - "inline-style-parser"
           - "@types/hast"
           - "@types/unist"
       dev-dependencies:
@@ -38,6 +39,7 @@ updates:
           - "vfile"
           - "hast-util-sanitize"
           - "hast-util-to-jsx-runtime"
+          - "inline-style-parser"
           - "@types/hast"
           - "@types/unist"
     ignore:
